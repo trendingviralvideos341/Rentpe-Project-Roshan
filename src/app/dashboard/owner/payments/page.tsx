@@ -1,6 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import PeriodSelector from '@/components/ui/PeriodSelector';
+import { parsePeriodSearchParams, serializePeriodFilter } from '@/lib/router/periodSearchParams';
+import type { PeriodFilter } from '@/types/date';
 import { RentCollectionContainer } from '@/components/dashboard/RentCollectionContainer';
 import {
     getOwnerPayoutsForOwner,
@@ -455,48 +459,24 @@ const TABS: { key: MainTab; label: string; icon: any; activeClass: string; inact
 
 export default function OwnerPaymentsPage() {
     const [activeTab, setActiveTab] = useState<MainTab>('inflows');
-    const [month, setMonth] = useState(getCurrentMonth());
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const [periodFilter, setPeriodFilter] = useState<PeriodFilter>(
+        () => parsePeriodSearchParams(new URLSearchParams(searchParams?.toString() ?? ''))
+    );
 
-    const _now = new Date();
-    const currentYearNum = _now.getMonth() >= 3 ? _now.getFullYear() : _now.getFullYear() - 1;
-    const currentMonthNum = _now.getMonth() + 1;
-    
-    // Start strictly from 2026 up to current year
-    const startYear = 2026;
-    const yearOptions = Array.from({ length: Math.max(1, currentYearNum - startYear + 1) }, (_, i) => {
-        const yrNum = currentYearNum - i;
-        const yr = yrNum.toString();
-        const nextYr = (yrNum + 1).toString().slice(-2);
-        return { value: yr, label: `FY ${yr}-${nextYr}` };
-    });
+    const handlePeriodChange = (filter: PeriodFilter) => {
+        setPeriodFilter(filter);
+        router.replace(`?${serializePeriodFilter(filter)}`, { scroll: false });
+    };
 
-    const [selectedYear, selectedMonth] = month.split('-');
-
-    // Hide future months if the selected year is the current year
-    const allMonths = [
-        { value: '04', label: 'April' }, { value: '05', label: 'May' },
-        { value: '06', label: 'June' }, { value: '07', label: 'July' },
-        { value: '08', label: 'August' }, { value: '09', label: 'September' },
-        { value: '10', label: 'October' }, { value: '11', label: 'November' },
-        { value: '12', label: 'December' }, { value: '01', label: 'January' },
-        { value: '02', label: 'February' }, { value: '03', label: 'March' }
-    ];
-
-    // For current FY, only hide months that haven't started yet.
-    // FY months run April(04)→March(03). We convert each month to its
-    // actual calendar date and compare to today to determine if it's future.
-    const today = new Date();
-    const monthOptions = allMonths.filter(m => {
-        if (selectedYear === currentYearNum.toString()) {
-            const mv = parseInt(m.value);
-            // Determine which calendar year this FY month falls in
-            const calYear = mv >= 4 ? currentYearNum : currentYearNum + 1;
-            // Hide months whose calendar date is strictly in the future
-            const monthStart = new Date(calYear, mv - 1, 1);
-            return monthStart <= today;
-        }
-        return true; // past FY years: show all 12 months
-    });
+    // Derive a "YYYY-MM" month string for child components that expect it.
+    // When month is "all", use the first month of the FY (April) as a representative month.
+    const fyYear = parseInt(periodFilter.financialYear ?? String(new Date().getFullYear()), 10);
+    const pfMonth = periodFilter.month && periodFilter.month !== 'all' ? periodFilter.month : null;
+    const month: string = pfMonth
+        ? `${pfMonth >= '04' ? fyYear : fyYear + 1}-${pfMonth}`
+        : `${fyYear}-04`; // Default to April of the selected FY
 
     return (
         <div className="p-4 md:p-8 space-y-6">
@@ -514,29 +494,12 @@ export default function OwnerPaymentsPage() {
                     </p>
                 </div>
 
-                {/* YYYY and MM filter */}
-                <div className="flex items-center gap-4 flex-wrap">
-                    <div className="flex flex-col">
-                        <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">SELECT YEAR</label>
-                        <select
-                            value={selectedYear}
-                            onChange={(e) => setMonth(`${e.target.value}-${selectedMonth}`)}
-                            className="bg-white border-[1.5px] border-indigo-500 rounded-full text-indigo-700 font-black text-xs px-4 py-2 outline-none focus:ring-4 focus:ring-indigo-500/20 shadow-sm appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%234F46E5%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_12px_center] bg-[length:8px_auto]"
-                        >
-                            {yearOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                    </div>
-                    <div className="flex flex-col">
-                        <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">SELECT MONTH</label>
-                        <select
-                            value={selectedMonth}
-                            onChange={(e) => setMonth(`${selectedYear}-${e.target.value}`)}
-                            className="bg-white border-[1.5px] border-slate-200 rounded-full text-slate-700 font-black text-xs px-4 py-2 outline-none focus:border-slate-400 shadow-sm appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394A3B8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_12px_center] bg-[length:8px_auto]"
-                        >
-                            {monthOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                    </div>
-                </div>
+                {/* Period filter — Financial Year + Month */}
+                <PeriodSelector
+                    value={periodFilter}
+                    onChange={handlePeriodChange}
+                    showLabels={true}
+                />
             </div>
 
             {/* Tab Switcher */}

@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { RefreshCcw, Search, Download, FileText, Filter, X, ChevronDown, TrendingUp, TrendingDown, IndianRupee, Receipt, Users, Building2, ArrowDownLeft, ArrowUpRight, CreditCard, AlertCircle } from "lucide-react";
 import { getTransactions, reconcileSinglePayment } from "@/actions/admin";
 import { toast } from "sonner";
+import { useRouter, useSearchParams } from 'next/navigation';
+import PeriodSelector from '@/components/ui/PeriodSelector';
+import { parsePeriodSearchParams, serializePeriodFilter } from '@/lib/router/periodSearchParams';
+import type { PeriodFilter } from '@/types/date';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -1142,9 +1146,16 @@ export default function AdminTransactionsPage() {
     const [refunds, setRefunds] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Global Year & Month selection states (default to current date's Year and Month)
-    const [selectedYear, setSelectedYear] = useState<string>(() => { const _n = new Date(); return (_n.getMonth() >= 3 ? _n.getFullYear() : _n.getFullYear() - 1).toString(); });
-    const [selectedMonth, setSelectedMonth] = useState<string>(() => new Date().getMonth().toString());
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const [periodFilter, setPeriodFilter] = useState<PeriodFilter>(
+        () => parsePeriodSearchParams(new URLSearchParams(searchParams?.toString() ?? ''))
+    );
+
+    const handlePeriodChange = (filter: PeriodFilter) => {
+        setPeriodFilter(filter);
+        router.replace(`?${serializePeriodFilter(filter)}`, { scroll: false });
+    };
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -1173,14 +1184,17 @@ export default function AdminTransactionsPage() {
         return items.filter(item => {
             if (!item.date) return true;
             const d = new Date(item.date);
-            const y = d.getFullYear().toString();
-            const m = d.getMonth().toString(); // "0" is January
-
-            if (selectedYear !== "ALL" && y !== selectedYear) return false;
-            if (selectedMonth !== "ALL" && m !== selectedMonth) return false;
+            const calYear = d.getFullYear();
+            const calMonthStr = String(d.getMonth() + 1).padStart(2, '0');
+            const fyYearStr = periodFilter.financialYear || String(new Date().getFullYear());
+            const fyYear = parseInt(fyYearStr, 10);
+            const selMonth = periodFilter.month || 'all';
+            const itemFY = d.getMonth() >= 3 ? calYear : calYear - 1;
+            if (itemFY !== fyYear) return false;
+            if (selMonth !== 'all' && calMonthStr !== selMonth) return false;
             return true;
         });
-    }, [selectedYear, selectedMonth]);
+    }, [periodFilter.financialYear, periodFilter.month]);
 
     const filteredTransactions = useMemo(() => filterByYearAndMonth(transactions), [transactions, filterByYearAndMonth]);
     const filteredPayouts = useMemo(() => filterByYearAndMonth(payouts), [payouts, filterByYearAndMonth]);
@@ -1197,54 +1211,11 @@ export default function AdminTransactionsPage() {
                 
                 {/* Year & Month select inputs next to refresh */}
                 <div className="flex items-center gap-3.5 flex-wrap">
-                    <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Year</span>
-                        <div className="relative">
-                            <select
-                                value={selectedYear}
-                                onChange={(e) => setSelectedYear(e.target.value)}
-                                className="appearance-none pl-3 pr-8 py-1.5 text-xs font-bold border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer min-w-[110px] h-9 text-slate-700"
-                            >
-                                <option value="ALL">All Years</option>
-                                {(() => {
-                                    const now = new Date();
-                                    const y = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
-                                    return [y + 1, y, y - 1, y - 2].map(yr => {
-                                        const nextYr = (yr + 1).toString().slice(-2);
-                                        return <option key={yr} value={yr.toString()}>{`FY ${yr}-${nextYr}`}</option>;
-                                    });
-                                })()}
-                            </select>
-                            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        </div>
-                    </div>
-
-                    {/* Month selection — ordered April→March for Indian FY */}
-                    <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Month</span>
-                        <div className="relative">
-                            <select
-                                value={selectedMonth}
-                                onChange={(e) => setSelectedMonth(e.target.value)}
-                                className="appearance-none pl-3 pr-8 py-1.5 text-xs font-bold border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer min-w-[130px] h-9 text-slate-700"
-                            >
-                                <option value="ALL">All Months (FY)</option>
-                                <option value="3">April</option>
-                                <option value="4">May</option>
-                                <option value="5">June</option>
-                                <option value="6">July</option>
-                                <option value="7">August</option>
-                                <option value="8">September</option>
-                                <option value="9">October</option>
-                                <option value="10">November</option>
-                                <option value="11">December</option>
-                                <option value="0">January</option>
-                                <option value="1">February</option>
-                                <option value="2">March</option>
-                            </select>
-                            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        </div>
-                    </div>
+                    <PeriodSelector 
+                        value={periodFilter}
+                        onChange={handlePeriodChange}
+                        showLabels={true}
+                    />
 
                     <div className="flex flex-col gap-1">
                         <span className="h-4"></span>

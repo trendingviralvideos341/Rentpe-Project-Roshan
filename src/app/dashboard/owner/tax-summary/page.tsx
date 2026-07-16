@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getOwnerFinancialReport, getOwnerMonthlyTaxBreakdown } from '@/actions/ownerDashboard';
 import { toast } from 'sonner';
 import {
@@ -8,6 +9,9 @@ import {
     BadgeCheck, AlertTriangle, TrendingUp, Receipt, Building2,
     Eye, X, Info, CheckSquare, Square, CalendarDays, HelpCircle, Search
 } from 'lucide-react';
+import PeriodSelector from '@/components/ui/PeriodSelector';
+import { parsePeriodSearchParams, serializePeriodFilter } from '@/lib/router/periodSearchParams';
+import type { PeriodFilter } from '@/types/date';
 
 // Build Financial Year options: FY 2025–26, FY 2026–27, FY 2027–28
 // Indian FY: April 1st (IST) to March 31st (IST) = UTC offsets applied
@@ -81,14 +85,38 @@ function KpiCard({ label, value, sub, icon: Icon, color = 'indigo' }: any) {
 }
 
 export default function TaxSummaryPage() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // ── Period filter (replaces separate year/month selects) ──────────────────
+    const [periodFilter, setPeriodFilter] = useState<PeriodFilter>(
+        () => parsePeriodSearchParams(new URLSearchParams(searchParams?.toString() ?? ''))
+    );
+
+    const handlePeriodChange = (filter: PeriodFilter) => {
+        setPeriodFilter(filter);
+        router.replace(`?${serializePeriodFilter(filter)}`, { scroll: false });
+    };
+
+    // ── Legacy vars derived from periodFilter so all downstream logic is unchanged ──
+    const [fyOptions] = useState(buildFYOptions);
+
+    // Map PeriodFilter.financialYear (e.g. '2026') → selectedFY object used by reload/export
+    const selectedFY = useMemo(() => {
+        const fyYear = parseInt(periodFilter.financialYear ?? String(new Date().getFullYear()), 10);
+        return fyOptions.find(f => f.from.getUTCFullYear() === fyYear || f.label.startsWith(`FY ${fyYear}`)) || fyOptions[fyOptions.length - 1];
+    }, [periodFilter.financialYear, fyOptions]);
+
+    // Map PeriodFilter.month ('04' → JS idx 3, 'all' → 'ALL')
+    const globalMonth = useMemo<string>(() => {
+        if (!periodFilter.month || periodFilter.month === 'all' || periodFilter.month === 'ALL') return 'ALL';
+        return String(parseInt(periodFilter.month, 10) - 1);
+    }, [periodFilter.month]);
+
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState<'pdf' | 'csv' | null>(null);
     const [report, setReport] = useState<any>(null);
     const [monthly, setMonthly] = useState<any[]>([]);
-    const [fyOptions] = useState(buildFYOptions);
-    const [selectedFY, setSelectedFY] = useState(
-        fyOptions.find(f => f.label === getCurrentFY()) || fyOptions[0]
-    );
 
     // UX states
     const [previewMonth, setPreviewMonth] = useState<string | null>(null);
@@ -111,7 +139,6 @@ export default function TaxSummaryPage() {
     const [endDate, setEndDate] = useState('');
     const [exportMonth, setExportMonth] = useState('ALL');
     const [exportFYLabel, setExportFYLabel] = useState(fyOptions[fyOptions.length - 1].label);
-    const [globalMonth, setGlobalMonth] = useState<string>(String(new Date().getMonth()));
 
     const uniqueProperties = Array.from(new Set((report?.report || []).map((r: any) => r.property))).filter(Boolean).sort() as string[];
 
@@ -184,6 +211,7 @@ export default function TaxSummaryPage() {
         });
     };
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         reload(selectedFY);
     }, [selectedFY]);
@@ -373,46 +401,11 @@ export default function TaxSummaryPage() {
                         </div>
                         {/* FY & Month Selector */}
                         <div className="flex items-center gap-3 flex-wrap mt-2 sm:mt-0">
-                            {/* SELECT YEAR */}
-                            <div className="flex flex-col">
-                                <label className="text-[10px] font-bold uppercase tracking-widest text-indigo-200 mb-1">Select Year</label>
-                                <select
-                                    value={selectedFY.label}
-                                    onChange={(e) => {
-                                        const fy = fyOptions.find(f => f.label === e.target.value);
-                                        if (fy) setSelectedFY(fy);
-                                    }}
-                                    className="text-sm font-black rounded-full px-5 py-2.5 bg-white/90 hover:bg-white text-indigo-900 focus:outline-none focus:ring-4 focus:ring-white/20 cursor-pointer min-w-[120px] shadow-lg transition-all border-0 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23312E81%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_16px_center] bg-[length:10px_auto] pr-10"
-                                >
-                                    {fyOptions.map((fy: any) => (
-                                        <option key={fy.label} value={fy.label}>{fy.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            
-                            {/* SELECT MONTH */}
-                            <div className="flex flex-col">
-                                <label className="text-[10px] font-bold uppercase tracking-widest text-indigo-200 mb-1">Select Month</label>
-                                <select
-                                    value={globalMonth}
-                                    onChange={(e) => setGlobalMonth(e.target.value)}
-                                    className="text-sm font-black rounded-full px-5 py-2.5 bg-white/90 hover:bg-white text-indigo-900 focus:outline-none focus:ring-4 focus:ring-white/20 cursor-pointer min-w-[140px] shadow-lg transition-all border-0 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23312E81%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_16px_center] bg-[length:10px_auto] pr-10"
-                                >
-                                    <option value="ALL">All Months (Full FY)</option>
-                                    <option value="3">April</option>
-                                    <option value="4">May</option>
-                                    <option value="5">June</option>
-                                    <option value="6">July</option>
-                                    <option value="7">August</option>
-                                    <option value="8">September</option>
-                                    <option value="9">October</option>
-                                    <option value="10">November</option>
-                                    <option value="11">December</option>
-                                    <option value="0">January</option>
-                                    <option value="1">February</option>
-                                    <option value="2">March</option>
-                                </select>
-                            </div>
+                            <PeriodSelector
+                                value={periodFilter}
+                                onChange={handlePeriodChange}
+                                showLabels={true}
+                            />
                         </div>
                     </div>
 

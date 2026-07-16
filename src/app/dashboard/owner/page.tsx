@@ -22,6 +22,10 @@ import { TenantLifecycleManager } from "@/components/dashboard/TenantLifecycleMa
 import { OwnerPropertyPanel } from "@/components/dashboard/OwnerPropertyPanel";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, BarChart, Bar } from "recharts";
 
+import PeriodSelector from '@/components/ui/PeriodSelector';
+import { parsePeriodSearchParams, serializePeriodFilter } from '@/lib/router/periodSearchParams';
+import type { PeriodFilter } from '@/types/date';
+
 const COLORS = ['#8b5cf6', '#e2e8f0'];
 const PIE_COLORS = ['#6366f1', '#e2e8f0', '#f59e0b'];
 
@@ -47,10 +51,18 @@ export default function OwnerDashboard() {
 
     const [chartData, setChartData] = useState<any[]>([]);
     const [chartLoading, setChartLoading] = useState(false);
-    const _now = new Date();
-    const _initialYear = _now.getMonth() >= 3 ? _now.getFullYear() : _now.getFullYear() - 1;
-    const [selectedYear, setSelectedYear] = useState<string>(_initialYear.toString());
-    const [selectedMonth, setSelectedMonth] = useState<string>("all");
+
+    const [periodFilter, setPeriodFilter] = useState<PeriodFilter>(
+        () => parsePeriodSearchParams(new URLSearchParams(searchParams?.toString() ?? ''))
+    );
+
+    const handlePeriodChange = (filter: PeriodFilter) => {
+        setPeriodFilter(filter);
+        router.replace(`?${serializePeriodFilter(filter)}`, { scroll: false });
+    };
+
+    const selectedYear = periodFilter.financialYear ?? String(new Date().getFullYear());
+    const selectedMonth = periodFilter.month ?? 'all';
 
     const fetchChart = useCallback(async (year: string, month: string) => {
         setChartLoading(true);
@@ -308,35 +320,11 @@ export default function OwnerDashboard() {
                                     <p className="text-xs text-slate-400 font-bold mt-0.5">Yearly / Weekly Revenue Breakdown</p>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <select 
-                                        className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 outline-none focus:border-violet-400 cursor-pointer"
-                                        value={selectedYear}
-                                        onChange={(e) => setSelectedYear(e.target.value)}
-                                    >
-                                        <option value="2027">FY 2027-28</option>
-                                        <option value="2026">FY 2026-27</option>
-                                        <option value="2025">FY 2025-26</option>
-                                        <option value="2024">FY 2024-25</option>
-                                    </select>
-                                    <select 
-                                        className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 outline-none focus:border-violet-400 cursor-pointer"
-                                        value={selectedMonth}
-                                        onChange={(e) => setSelectedMonth(e.target.value)}
-                                    >
-                                        <option value="all">All Months</option>
-                                        <option value="4">Apr</option>
-                                        <option value="5">May</option>
-                                        <option value="6">Jun</option>
-                                        <option value="7">Jul</option>
-                                        <option value="8">Aug</option>
-                                        <option value="9">Sep</option>
-                                        <option value="10">Oct</option>
-                                        <option value="11">Nov</option>
-                                        <option value="12">Dec</option>
-                                        <option value="1">Jan</option>
-                                        <option value="2">Feb</option>
-                                        <option value="3">Mar</option>
-                                    </select>
+                                    <PeriodSelector 
+                                        value={periodFilter} 
+                                        onChange={handlePeriodChange} 
+                                        showLabels={false} 
+                                    />
                                 </div>
                             </CardHeader>
                             <CardContent>

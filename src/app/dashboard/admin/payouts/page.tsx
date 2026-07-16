@@ -7,6 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { IndianRupee, RefreshCcw, CheckCircle, Users, Loader2, Square, CheckSquare, ChevronDown, ChevronUp, User } from "lucide-react";
+import { useRouter, useSearchParams } from 'next/navigation';
+import PeriodSelector from '@/components/ui/PeriodSelector';
+import { parsePeriodSearchParams, serializePeriodFilter } from '@/lib/router/periodSearchParams';
+import type { PeriodFilter } from '@/types/date';
 
 const STATUS_TABS = [
     { key: "ALL", label: "All" },
@@ -31,16 +35,18 @@ export default function PayoutsPage() {
     const [processing, setProcessing] = useState<string | null>(null);
     const [bulkProcessing, setBulkProcessing] = useState(false);
 
-    // FY + Month filters (client-side filtering over loaded data)
-    const now = new Date();
-    const fyStartYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
-    const fyOptions = [
-        { label: `FY ${fyStartYear - 1}\u2013${String(fyStartYear).slice(-2)}`, start: fyStartYear - 1 },
-        { label: `FY ${fyStartYear}\u2013${String(fyStartYear + 1).slice(-2)}`, start: fyStartYear },
-        { label: `FY ${fyStartYear + 1}\u2013${String(fyStartYear + 2).slice(-2)}`, start: fyStartYear + 1 },
-    ];
-    const [selectedFYStart, setSelectedFYStart] = useState<string>(String(fyStartYear));
-    const [selectedFYMonth, setSelectedFYMonth] = useState<string>('ALL');
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // ── Centralized period filter (replaces manual selectedFYStart + selectedFYMonth) ──
+    const [periodFilter, setPeriodFilter] = useState<PeriodFilter>(
+        () => parsePeriodSearchParams(new URLSearchParams(searchParams?.toString() ?? ''))
+    );
+
+    const handlePeriodChange = (filter: PeriodFilter) => {
+        setPeriodFilter(filter);
+        router.replace(`?${serializePeriodFilter(filter)}`, { scroll: false });
+    };
 
     // Expandable states for detailed student breakdown
     const [expandedPayouts, setExpandedPayouts] = useState<Record<string, boolean>>({});
@@ -92,12 +98,17 @@ export default function PayoutsPage() {
             const dt = new Date(d);
             const yr = dt.getFullYear();
             const mo = dt.getMonth(); // 0-indexed
-            const fyS = parseInt(selectedFYStart);
+            const fyS = parseInt(periodFilter.financialYear ?? '0');
             if (isNaN(fyS)) return true;
             // FY spans from April fyS to March fyS+1
             const inFY = (yr === fyS && mo >= 3) || (yr === fyS + 1 && mo <= 2);
             if (!inFY) return false;
-            if (selectedFYMonth !== 'ALL' && mo !== parseInt(selectedFYMonth)) return false;
+            // periodFilter.month is '01'..'12' (1-indexed) or 'all'
+            const pfMonth = periodFilter.month;
+            if (pfMonth && pfMonth !== 'all') {
+                const pfMo = parseInt(pfMonth) - 1; // convert to 0-indexed
+                if (mo !== pfMo) return false;
+            }
             return true;
         });
     };
@@ -139,36 +150,11 @@ export default function PayoutsPage() {
                     <p className="text-muted-foreground text-sm mt-1">Process and track owner payout disbursements — <span className="font-bold text-indigo-600">Indian FY: April – March</span></p>
                 </div>
                 <div className="flex flex-wrap gap-2 items-center">
-                    {/* FY Selector */}
-                    <select
-                        value={selectedFYStart}
-                        onChange={e => setSelectedFYStart(e.target.value)}
-                        className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer"
-                    >
-                        {fyOptions.map(fy => (
-                            <option key={fy.start} value={String(fy.start)}>{fy.label}</option>
-                        ))}
-                    </select>
-                    {/* Month Selector */}
-                    <select
-                        value={selectedFYMonth}
-                        onChange={e => setSelectedFYMonth(e.target.value)}
-                        className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer min-w-[130px]"
-                    >
-                        <option value="ALL">All Months (FY)</option>
-                        <option value="3">April</option>
-                        <option value="4">May</option>
-                        <option value="5">June</option>
-                        <option value="6">July</option>
-                        <option value="7">August</option>
-                        <option value="8">September</option>
-                        <option value="9">October</option>
-                        <option value="10">November</option>
-                        <option value="11">December</option>
-                        <option value="0">January</option>
-                        <option value="1">February</option>
-                        <option value="2">March</option>
-                    </select>
+                    <PeriodSelector
+                        value={periodFilter}
+                        onChange={handlePeriodChange}
+                        showLabels={false}
+                    />
                     <Button variant="outline" onClick={fetchData} disabled={loading}>
                         <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
                     </Button>
