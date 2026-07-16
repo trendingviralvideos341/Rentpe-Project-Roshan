@@ -47,10 +47,17 @@ export default function OwnerNoticesPage() {
         if (year !== 'ALL') {
             const newDate = new Date(currentDate);
             newDate.setFullYear(Number(year));
+            setCurrentDate(newDate);
+        }
     };
 
     const handleMonthChange = (month: string) => {
         setSelectedMonth(month);
+        if (month !== 'ALL') {
+            const newDate = new Date(currentDate);
+            newDate.setMonth(Number(month));
+            setCurrentDate(newDate);
+        }
     };
 
     useEffect(() => {

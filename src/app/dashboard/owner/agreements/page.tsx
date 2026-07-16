@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   getOwnerAgreements,
   sendSignerAgreementOTP,
@@ -699,7 +699,7 @@ export default function OwnerAgreementsPage() {
   const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const loadAgreements = async (silent = false) => {
+  const loadAgreements = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     else setRefreshing(true);
     setError(null);
@@ -713,21 +713,21 @@ export default function OwnerAgreementsPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
-  const fetchOwnerProps = async () => {
+  const fetchOwnerProps = useCallback(async () => {
     try {
       const props = await getProperties();
       setOwnerProperties(props);
     } catch (e) {
       console.error(e);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadAgreements();
     fetchOwnerProps();
-  }, []);
+  }, [loadAgreements, fetchOwnerProps]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -778,6 +778,7 @@ export default function OwnerAgreementsPage() {
           if (itemYear !== selectedYear || (selectedMonth !== 'ALL' && itemMonth !== selectedMonth)) {
               matchDate = false;
           }
+      }
       return matchStatus && matchProperty && matchDate;
   });
 

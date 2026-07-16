@@ -282,6 +282,7 @@ function RefundsTab({ month }: { month: string }) {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [exportModalOpen, setExportModalOpen] = useState(false);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -462,7 +463,7 @@ export default function OwnerPaymentsPage() {
     // Start strictly from 2026 up to current year
     const startYear = 2026;
     const yearOptions = Array.from({ length: Math.max(1, currentYearNum - startYear + 1) }, (_, i) => {
-        const yr = (startYear + i).toString();
+        const yr = (currentYearNum - i).toString();
         return { value: yr, label: yr };
     });
 
