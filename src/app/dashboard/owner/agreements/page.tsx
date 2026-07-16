@@ -9,6 +9,7 @@ import {
   getAgreementDownloadUrl,
   terminateAgreement,
 } from '@/actions/agreements';
+import { getProperties } from '@/actions/properties';
 import type { AgreementRecord, AgreementStatus } from '@/actions/agreements';
 import { toast } from 'sonner';
 import {
@@ -649,12 +650,15 @@ function AgreementRow({ agreement, onActionComplete, onTerminate }: AgreementRow
 
 // ─── SUMMARY CARD ─────────────────────────────────────────────────────────────
 
-function SummaryCard({ label, count, color }: { label: string; count: number; color: string }) {
+function SummaryCard({ label, count, color, isActive, onClick }: { label: string; count: number; color: string; isActive?: boolean; onClick?: () => void }) {
   return (
-    <div className={`${color} rounded-2xl p-4 border`}>
+    <button 
+      onClick={onClick}
+      className={`w-full text-left rounded-2xl p-4 border transition-all ${color} ${isActive ? 'ring-2 ring-offset-2 ring-indigo-500 shadow-lg scale-[1.02]' : 'hover:scale-[1.01] hover:shadow-md'}`}
+    >
       <p className="text-2xl font-black">{count}</p>
       <p className="text-sm font-bold mt-0.5 opacity-90">{label}</p>
-    </div>
+    </button>
   );
 }
 
@@ -677,6 +681,9 @@ function EmptyState() {
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 
 export default function OwnerAgreementsPage() {
+  const currentYearNum = new Date().getFullYear();
+  const defaultMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
+
   const [agreements, setAgreements] = useState<AgreementRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -684,6 +691,12 @@ export default function OwnerAgreementsPage() {
   const [terminateTarget, setTerminateTarget] = useState<string | null>(null);
   const [terminateReason, setTerminateReason] = useState('');
   const [isTerminating, setIsTerminating] = useState(false);
+
+  const [activeTab, setActiveTab] = useState('ALL');
+  const [ownerProperties, setOwnerProperties] = useState<any[]>([]);
+  const [selectedProperty, setSelectedProperty] = useState('ALL');
+  const [selectedYear, setSelectedYear] = useState(currentYearNum.toString());
+  const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
 
   const loadAgreements = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -701,9 +714,65 @@ export default function OwnerAgreementsPage() {
     }
   };
 
+  const fetchOwnerProps = async () => {
+    try {
+      const props = await getProperties();
+      setOwnerProperties(props);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     loadAgreements();
+    fetchOwnerProps();
   }, []);
+
+  const propertiesList = Array.from(new Set([
+      ...ownerProperties.map(p => p.name),
+      ...agreements.map(a => a.propertyName)
+  ].filter(Boolean))) as string[];
+
+  const yearOptions = [
+      { value: (currentYearNum - 1).toString(), label: (currentYearNum - 1).toString() },
+      { value: currentYearNum.toString(), label: currentYearNum.toString() },
+      { value: (currentYearNum + 1).toString(), label: (currentYearNum + 1).toString() },
+      { value: (currentYearNum + 2).toString(), label: (currentYearNum + 2).toString() }
+  ];
+
+  const monthOptions = [
+      { value: '01', label: 'January' }, { value: '02', label: 'February' },
+      { value: '03', label: 'March' }, { value: '04', label: 'April' },
+      { value: '05', label: 'May' }, { value: '06', label: 'June' },
+      { value: '07', label: 'July' }, { value: '08', label: 'August' },
+      { value: '09', label: 'September' }, { value: '10', label: 'October' },
+      { value: '11', label: 'November' }, { value: '12', label: 'December' }
+  ];
+
+  const filteredAgreements = agreements.filter(a => {
+      let matchStatus = true;
+      if (activeTab === 'PENDING_TENANT_VERIFY') matchStatus = a.status === 'PENDING_TENANT_VERIFICATION';
+      else if (activeTab === 'AWAITING_COUNTER_SIGN') matchStatus = ['TENANT_VERIFIED', 'PENDING_COUNTER_SIGN'].includes(a.status);
+      else if (activeTab === 'READY_FOR_UPLOAD') matchStatus = ['AGREEMENT_READY_FOR_DOWNLOAD', 'PENDING_SIGNED_UPLOAD'].includes(a.status);
+      else if (activeTab === 'COMPLETED') matchStatus = a.status === 'AGREEMENT_COMPLETED';
+
+      let matchProperty = true;
+      if (selectedProperty !== 'ALL') {
+          matchProperty = a.propertyName === selectedProperty;
+      }
+
+      let matchDate = true;
+      if (selectedYear && selectedMonth && a.createdAt) {
+          const date = new Date(a.createdAt);
+          const itemYear = date.getFullYear().toString();
+          const itemMonth = (date.getMonth() + 1).toString().padStart(2, '0');
+          if (itemYear !== selectedYear || itemMonth !== selectedMonth) {
+              matchDate = false;
+          }
+      }
+
+      return matchStatus && matchProperty && matchDate;
+  });
 
   // Computed stats
   const stats = {
@@ -719,7 +788,7 @@ export default function OwnerAgreementsPage() {
       <div className="bg-gradient-to-r from-[#3b5bdb] to-[#7048e8] px-4 pt-10 pb-20 relative overflow-hidden">
         <div className="absolute -right-16 -top-16 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -left-10 bottom-0 w-48 h-48 bg-white/5 rounded-full blur-2xl pointer-events-none" />
-        <div className="max-w-6xl mx-auto relative z-10 flex items-start justify-between gap-4">
+        <div className="w-full relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Building2 className="w-5 h-5 text-purple-200" />
@@ -730,19 +799,61 @@ export default function OwnerAgreementsPage() {
               Manage tenant agreements, counter-sign, and upload signed copies
             </p>
           </div>
-          <button
-            onClick={() => loadAgreements(true)}
-            disabled={refreshing}
-            className="shrink-0 flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-black text-sm rounded-xl transition-all disabled:opacity-60 mt-6"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+          
+          <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 mt-4 lg:mt-0 w-full lg:w-auto">
+            {/* Filters */}
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-2 border border-white/20 flex flex-wrap items-center gap-3 shrink-0 w-full sm:w-auto">
+                <div className="flex flex-col pr-3">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-purple-200 mb-0.5 ml-2 -mt-1">PROPERTY</span>
+                    <select
+                        value={selectedProperty}
+                        onChange={(e) => setSelectedProperty(e.target.value)}
+                        className="appearance-none bg-white/20 text-white rounded-md border border-white/10 hover:border-white/30 focus:border-purple-300 px-3 py-0.5 pr-7 text-xs font-black focus:outline-none transition-all cursor-pointer relative"
+                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '0.875rem' }}
+                    >
+                        <option value="ALL" className="text-slate-900">All Properties</option>
+                        {propertiesList.map(p => <option key={p} value={p} className="text-slate-900">{p}</option>)}
+                    </select>
+                </div>
+                <div className="w-px h-8 bg-white/20 mx-1"></div>
+                <div className="flex flex-col pl-1">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-purple-200 mb-0.5 ml-2 -mt-1">SELECT YEAR</span>
+                    <select
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(e.target.value)}
+                        className="appearance-none bg-white/20 text-white border border-white/10 hover:border-white/30 focus:border-purple-300 rounded-md px-3 py-0.5 pr-7 text-xs font-black focus:outline-none transition-all cursor-pointer relative"
+                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '0.875rem' }}
+                    >
+                        {yearOptions.map(y => <option key={y.value} value={y.value} className="text-slate-900">{y.label}</option>)}
+                    </select>
+                </div>
+                <div className="flex flex-col pl-1">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-purple-200 mb-0.5 ml-2 -mt-1">SELECT MONTH</span>
+                    <select
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(e.target.value)}
+                        className="appearance-none bg-white/20 text-white border border-white/10 hover:border-white/30 focus:border-purple-300 rounded-md px-3 py-0.5 pr-7 text-xs font-black focus:outline-none transition-all cursor-pointer relative"
+                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '0.875rem' }}
+                    >
+                        {monthOptions.map(m => <option key={m.value} value={m.value} className="text-slate-900">{m.label}</option>)}
+                    </select>
+                </div>
+            </div>
+            
+            <button
+              onClick={() => loadAgreements(true)}
+              disabled={refreshing}
+              className="shrink-0 flex items-center gap-2 px-4 py-3 bg-white/20 hover:bg-white/30 text-white font-black text-sm rounded-xl transition-all disabled:opacity-60 w-full sm:w-auto justify-center shadow-lg"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
         </div>
       </div>
 
       {/* ── Content ── */}
-      <div className="max-w-6xl mx-auto px-4 -mt-12 relative z-10 space-y-5">
+      <div className="w-full px-4 -mt-12 relative z-10 space-y-5">
         {loading ? (
           <OwnerAgreementSkeleton />
         ) : error ? (
@@ -764,31 +875,39 @@ export default function OwnerAgreementsPage() {
                 label="📄 Pending Tenant Verify"
                 count={stats.pendingTenantVerify}
                 color="bg-amber-50 border-amber-200 text-amber-800"
+                isActive={activeTab === 'PENDING_TENANT_VERIFY'}
+                onClick={() => setActiveTab(activeTab === 'PENDING_TENANT_VERIFY' ? 'ALL' : 'PENDING_TENANT_VERIFY')}
               />
               <SummaryCard
                 label="⏳ Awaiting My Counter-Sign"
                 count={stats.awaitingCounterSign}
                 color="bg-blue-50 border-blue-200 text-blue-800"
+                isActive={activeTab === 'AWAITING_COUNTER_SIGN'}
+                onClick={() => setActiveTab(activeTab === 'AWAITING_COUNTER_SIGN' ? 'ALL' : 'AWAITING_COUNTER_SIGN')}
               />
               <SummaryCard
                 label="📥 Ready for Upload"
                 count={stats.readyForUpload}
                 color="bg-indigo-50 border-indigo-200 text-indigo-800"
+                isActive={activeTab === 'READY_FOR_UPLOAD'}
+                onClick={() => setActiveTab(activeTab === 'READY_FOR_UPLOAD' ? 'ALL' : 'READY_FOR_UPLOAD')}
               />
               <SummaryCard
                 label="✅ Completed"
                 count={stats.completed}
                 color="bg-emerald-50 border-emerald-200 text-emerald-800"
+                isActive={activeTab === 'COMPLETED'}
+                onClick={() => setActiveTab(activeTab === 'COMPLETED' ? 'ALL' : 'COMPLETED')}
               />
             </div>
 
-            {agreements.length === 0 ? (
+            {filteredAgreements.length === 0 ? (
               <EmptyState />
             ) : (
               <>
                 {/* Mobile Cards */}
                 <div className="md:hidden space-y-4">
-                  {agreements.map(agreement => (
+                  {filteredAgreements.map(agreement => (
                     <AgreementRow
                       key={agreement.id}
                       agreement={agreement}
@@ -803,9 +922,11 @@ export default function OwnerAgreementsPage() {
                   <div className="px-6 py-4 border-b border-purple-100 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Users className="w-5 h-5 text-purple-600" />
-                      <h2 className="font-black text-slate-900">All Agreements</h2>
+                      <h2 className="font-black text-slate-900">
+                        {activeTab === 'ALL' ? 'All Agreements' : 'Filtered Agreements'}
+                      </h2>
                       <span className="px-2 py-0.5 bg-purple-100 text-purple-700 font-black text-xs rounded-full">
-                        {agreements.length}
+                        {filteredAgreements.length}
                       </span>
                     </div>
                   </div>
@@ -822,7 +943,7 @@ export default function OwnerAgreementsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {agreements.map(agreement => (
+                        {filteredAgreements.map(agreement => (
                           <AgreementRow
                             key={agreement.id}
                             agreement={agreement}
