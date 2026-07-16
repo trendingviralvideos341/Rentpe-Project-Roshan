@@ -102,34 +102,34 @@ function TimePicker({
         <div className="flex items-center gap-1">
             {/* HH */}
             <div className="flex flex-col items-center">
-                <span className="text-[8px] font-bold text-slate-400 uppercase mb-0.5">HH</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase mb-1">HH</span>
                 <select
                     value={h12}
                     onChange={e => updateTime(e.target.value, min, ampm)}
-                    className="w-10 text-center text-xs font-mono font-bold border border-slate-200 rounded-lg py-1.5 bg-white text-slate-800 outline-none cursor-pointer focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                    className="w-12 text-center text-xs font-mono font-bold border border-slate-300 rounded-lg py-1.5 bg-white text-slate-800 outline-none cursor-pointer focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 >
                     {HOURS_12.map(h => <option key={h} value={h}>{h}</option>)}
                 </select>
             </div>
-            <span className="text-slate-400 font-bold text-sm mt-3">:</span>
+            <span className="text-slate-400 font-bold text-sm mt-4">:</span>
             {/* MM */}
             <div className="flex flex-col items-center">
-                <span className="text-[8px] font-bold text-slate-400 uppercase mb-0.5">MM</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase mb-1">MM</span>
                 <select
                     value={min}
                     onChange={e => updateTime(h12, e.target.value, ampm)}
-                    className="w-10 text-center text-xs font-mono font-bold border border-slate-200 rounded-lg py-1.5 bg-white text-slate-800 outline-none cursor-pointer focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                    className="w-12 text-center text-xs font-mono font-bold border border-slate-300 rounded-lg py-1.5 bg-white text-slate-800 outline-none cursor-pointer focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 >
                     {MINUTES.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
             </div>
             {/* AM/PM */}
-            <div className="flex flex-col items-center ml-0.5">
-                <span className="text-[8px] font-bold text-slate-400 uppercase mb-0.5">AM/PM</span>
+            <div className="flex flex-col items-center ml-1">
+                <span className="text-[10px] font-bold text-slate-500 uppercase mb-1">AM/PM</span>
                 <select
                     value={ampm}
                     onChange={e => updateTime(h12, min, e.target.value)}
-                    className="w-14 text-center text-xs font-bold border border-slate-200 rounded-lg py-1.5 bg-white outline-none cursor-pointer focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-indigo-600"
+                    className="w-16 text-center text-xs font-bold border border-slate-300 rounded-lg py-1.5 bg-white outline-none cursor-pointer focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-indigo-600"
                 >
                     <option value="AM">AM</option>
                     <option value="PM">PM</option>
@@ -323,20 +323,20 @@ export function FoodMenuContainer() {
             {/* ── Property banner — center, vivid ── */}
             {selectedProperty && (
                 <div className="flex flex-col items-center gap-1 py-2">
-                    <div className="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 shadow-md shadow-indigo-200">
-                        <Building2 className="h-4 w-4 text-white/80 shrink-0" />
-                        <span className="text-sm font-black text-white tracking-tight">
+                    <div className="flex items-center gap-2.5 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 shadow-md shadow-indigo-200">
+                        <Building2 className="h-5 w-5 text-white/90 shrink-0" />
+                        <span className="text-base font-black text-white tracking-tight">
                             {selectedProperty.name}
                         </span>
-                        <span className="w-1 h-1 rounded-full bg-white/40" />
-                        <span className="text-xs text-white/70 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-300" />
+                        <span className="text-sm text-indigo-100 font-bold">
                             {selectedProperty.city}
                         </span>
-                        <span className="text-[10px] font-mono text-white/50 ml-1">
+                        <span className="text-xs font-mono text-indigo-200 ml-2 bg-black/10 px-2 py-0.5 rounded-md">
                             [{selectedProperty.displayId}]
                         </span>
                     </div>
-                    <p className="text-[11px] text-slate-400">Editing weekly food menu · All times in IST</p>
+                    <p className="text-[11px] text-slate-500 font-medium mt-1">Editing weekly food menu · All times in IST</p>
                 </div>
             )}
 
@@ -572,16 +572,16 @@ function DayCard({
                                             <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
                                                 {m.emoji} {m.label} items
                                             </p>
-                                            <input
-                                                type="text"
+                                            <textarea
+                                                rows={2}
                                                 placeholder={PLACEHOLDERS[slot.type] ?? PLACEHOLDERS.Default}
                                                 value={slot.items}
                                                 onChange={e => onUpdate(day, slot.id, "items", e.target.value)}
                                                 className={cn(
-                                                    "w-full text-sm px-3 py-2 border rounded-xl outline-none transition-all font-medium",
+                                                    "w-full text-sm px-3 py-2 border rounded-xl outline-none transition-all font-medium resize-y min-h-[60px]",
                                                     slot.items
                                                         ? "border-indigo-200 bg-indigo-50 text-indigo-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
-                                                        : "border-slate-200 bg-white text-slate-700 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                                                        : "border-slate-300 bg-white text-slate-700 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                                                 )}
                                             />
                                         </div>
