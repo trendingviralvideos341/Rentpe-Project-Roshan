@@ -482,11 +482,20 @@ export default function OwnerPaymentsPage() {
         { value: '02', label: 'February' }, { value: '03', label: 'March' }
     ];
 
+    // For current FY, only hide months that haven't started yet.
+    // FY months run April(04)→March(03). We convert each month to its
+    // actual calendar date and compare to today to determine if it's future.
+    const today = new Date();
     const monthOptions = allMonths.filter(m => {
         if (selectedYear === currentYearNum.toString()) {
-            return parseInt(m.value) <= currentMonthNum;
+            const mv = parseInt(m.value);
+            // Determine which calendar year this FY month falls in
+            const calYear = mv >= 4 ? currentYearNum : currentYearNum + 1;
+            // Hide months whose calendar date is strictly in the future
+            const monthStart = new Date(calYear, mv - 1, 1);
+            return monthStart <= today;
         }
-        return true;
+        return true; // past FY years: show all 12 months
     });
 
     return (
