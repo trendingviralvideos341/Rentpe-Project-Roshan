@@ -574,11 +574,12 @@ export async function getOwnerDeposits(filters?: {
             let end: Date;
             if (month && month !== 'ALL') {
                 const m = parseInt(month);
-                start = new Date(y, m - 1, 1);
-                end = new Date(y, m, 1);
+                const queryYear = m < 4 ? y + 1 : y; // Jan, Feb, Mar belong to the next calendar year in a FY
+                start = new Date(queryYear, m - 1, 1);
+                end = new Date(queryYear, m, 1);
             } else {
-                start = new Date(y, 0, 1);
-                end = new Date(y + 1, 0, 1);
+                start = new Date(Date.UTC(y, 2, 31, 18, 30, 0, 0)); // Apr 1
+                end = new Date(Date.UTC(y + 1, 2, 31, 18, 30, 0, 0)); // Mar 31
             }
             whereClause.createdAt = { gte: start, lt: end };
         } else {

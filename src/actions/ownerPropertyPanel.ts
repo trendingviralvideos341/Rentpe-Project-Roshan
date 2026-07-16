@@ -17,6 +17,11 @@ export async function getOwnerPropertyPanel() {
         throw new Error("Unauthorized");
     }
 
+    // ── Indian Financial Year: April 1st 00:00:00 IST = March 31st 18:30:00 UTC ──
+    const now = new Date();
+    const fyStartYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    const fyStart = new Date(Date.UTC(fyStartYear, 2, 31, 18, 30, 0, 0)); // April 1 00:00 IST
+
     const userId = (session as any).userId;
 
     // â”€â”€ 1. Resolve which properties this user can see â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -78,12 +83,13 @@ export async function getOwnerPropertyPanel() {
             where: { propertyId: { in: propIds }, status: 'MOVE_OUT_SCHEDULED' },
             _count: { id: true }
         }),
-        // Revenue per property (confirmed bookings)
+        // Revenue per property (confirmed bookings — Current Financial Year only, rent excl. deposits)
         prisma.booking.groupBy({
             by: ['propertyId'],
             where: {
                 propertyId: { in: propIds },
-                status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID'] }
+                status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID'] },
+                createdAt: { gte: fyStart }
             },
             _sum: { amount: true }
         }),

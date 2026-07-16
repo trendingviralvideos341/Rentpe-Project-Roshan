@@ -469,6 +469,12 @@ export async function getPlatformHealthReport() {
     const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const last7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
+    // Indian Financial Year: April 1st 00:00:00 IST = March 31st 18:30:00 UTC
+    const nowFY = new Date();
+    const fyStartYear = nowFY.getMonth() >= 3 ? nowFY.getFullYear() : nowFY.getFullYear() - 1;
+    const fyStart = new Date(Date.UTC(fyStartYear, 2, 31, 18, 30, 0, 0)); // April 1 00:00 IST
+    const fyEnd   = new Date(Date.UTC(fyStartYear + 1, 2, 31, 18, 29, 59, 999)); // March 31 23:59 IST
+
     const [errors24h, warnings24h, loginFailures24h, rateLimitHits24h, suspiciousAccess24h,
         errors7d, openFraudAlerts, criticalEvents, recentErrors] = await Promise.all([
         (prisma as any).systemEvent.count({ where: { severity: { in: ['ERROR','CRITICAL'] }, createdAt: { gte: last24h } } }),
@@ -577,7 +583,12 @@ export async function getAdminPropertyDashboard(propertyId: string) {
     });
     if (!property) throw new Error('Property not found');
 
-    const cutoff12m = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+    // Indian Financial Year: April 1st 00:00:00 IST = March 31st 18:30:00 UTC
+    const now = new Date();
+    const currentMonth = now.getMonth(); // 0-indexed; 3 = April
+    const fyStartYear = currentMonth >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    const fyStart = new Date(Date.UTC(fyStartYear, 2, 31, 18, 30, 0, 0)); // April 1 00:00 IST
+    const fyEnd = new Date(Date.UTC(fyStartYear + 1, 2, 31, 18, 29, 59, 999)); // March 31 23:59 IST
 
     const [
         activeTenants,
@@ -593,12 +604,12 @@ export async function getAdminPropertyDashboard(propertyId: string) {
         (prisma.tenant as any).count({ where: { propertyId, status: 'ACTIVE_TENANT' } }),
         // Pending booking requests
         prisma.booking.count({ where: { propertyId, status: 'PENDING_APPROVAL' } }),
-        // Confirmed bookings last 12m — rent revenue only
+        // Confirmed bookings — Current Financial Year (April to March) — rent revenue only
         prisma.booking.findMany({
             where: {
                 propertyId,
                 status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID', 'COMPLETED'] },
-                createdAt: { gte: cutoff12m }
+                createdAt: { gte: fyStart, lte: fyEnd }
             },
             select: { createdAt: true, amount: true, depositAmount: true }
         }),
@@ -632,9 +643,9 @@ export async function getAdminPropertyDashboard(propertyId: string) {
         const key = d.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
         monthMap[key] = (monthMap[key] || 0) + Number(b.amount || 0);
     }
-    const revenueHistory = Array.from({ length: 6 }, (_, i) => {
-        const d = new Date();
-        d.setMonth(d.getMonth() - (5 - i));
+    // FY revenue history: April to March (12 months, CA/GST compliant)
+    const revenueHistory = Array.from({ length: 12 }, (_, i) => {
+        const d = new Date(fyStartYear, 3 + i, 1); // starts from April (month=3)
         const key = d.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
         return { month: d.toLocaleString('en-IN', { month: 'short' }), revenue: monthMap[key] || 0 };
     });

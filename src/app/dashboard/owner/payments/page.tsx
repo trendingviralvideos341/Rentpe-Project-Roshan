@@ -457,26 +457,29 @@ export default function OwnerPaymentsPage() {
     const [activeTab, setActiveTab] = useState<MainTab>('inflows');
     const [month, setMonth] = useState(getCurrentMonth());
 
-    const currentYearNum = new Date().getFullYear();
-    const currentMonthNum = new Date().getMonth() + 1;
+    const _now = new Date();
+    const currentYearNum = _now.getMonth() >= 3 ? _now.getFullYear() : _now.getFullYear() - 1;
+    const currentMonthNum = _now.getMonth() + 1;
     
     // Start strictly from 2026 up to current year
     const startYear = 2026;
     const yearOptions = Array.from({ length: Math.max(1, currentYearNum - startYear + 1) }, (_, i) => {
-        const yr = (currentYearNum - i).toString();
-        return { value: yr, label: yr };
+        const yrNum = currentYearNum - i;
+        const yr = yrNum.toString();
+        const nextYr = (yrNum + 1).toString().slice(-2);
+        return { value: yr, label: `FY ${yr}-${nextYr}` };
     });
 
     const [selectedYear, selectedMonth] = month.split('-');
 
     // Hide future months if the selected year is the current year
     const allMonths = [
-        { value: '01', label: 'January' }, { value: '02', label: 'February' },
-        { value: '03', label: 'March' }, { value: '04', label: 'April' },
-        { value: '05', label: 'May' }, { value: '06', label: 'June' },
-        { value: '07', label: 'July' }, { value: '08', label: 'August' },
-        { value: '09', label: 'September' }, { value: '10', label: 'October' },
-        { value: '11', label: 'November' }, { value: '12', label: 'December' }
+        { value: '04', label: 'April' }, { value: '05', label: 'May' },
+        { value: '06', label: 'June' }, { value: '07', label: 'July' },
+        { value: '08', label: 'August' }, { value: '09', label: 'September' },
+        { value: '10', label: 'October' }, { value: '11', label: 'November' },
+        { value: '12', label: 'December' }, { value: '01', label: 'January' },
+        { value: '02', label: 'February' }, { value: '03', label: 'March' }
     ];
 
     const monthOptions = allMonths.filter(m => {

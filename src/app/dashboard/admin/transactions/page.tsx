@@ -1143,7 +1143,7 @@ export default function AdminTransactionsPage() {
     const [loading, setLoading] = useState(true);
 
     // Global Year & Month selection states (default to current date's Year and Month)
-    const [selectedYear, setSelectedYear] = useState<string>(() => new Date().getFullYear().toString());
+    const [selectedYear, setSelectedYear] = useState<string>(() => { const _n = new Date(); return (_n.getMonth() >= 3 ? _n.getFullYear() : _n.getFullYear() - 1).toString(); });
     const [selectedMonth, setSelectedMonth] = useState<string>(() => new Date().getMonth().toString());
 
     const fetchData = useCallback(async () => {
@@ -1192,12 +1192,11 @@ export default function AdminTransactionsPage() {
             <div className="flex justify-between items-center flex-wrap gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                 <div>
                     <h1 className="text-3xl font-black text-slate-900">Global Transactions</h1>
-                    <p className="text-slate-500 mt-1 text-sm">Complete financial ledger — inflows, owner payouts, and refunds across the platform.</p>
+                    <p className="text-slate-500 mt-1 text-sm">Complete financial ledger — inflows, owner payouts, and refunds across the platform. <span className="font-bold text-indigo-600">Indian FY: April – March</span></p>
                 </div>
                 
                 {/* Year & Month select inputs next to refresh */}
                 <div className="flex items-center gap-3.5 flex-wrap">
-                    {/* Year selection */}
                     <div className="flex flex-col gap-1">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Year</span>
                         <div className="relative">
@@ -1207,15 +1206,20 @@ export default function AdminTransactionsPage() {
                                 className="appearance-none pl-3 pr-8 py-1.5 text-xs font-bold border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer min-w-[110px] h-9 text-slate-700"
                             >
                                 <option value="ALL">All Years</option>
-                                <option value="2026">2026</option>
-                                <option value="2025">2025</option>
-                                <option value="2024">2024</option>
+                                {(() => {
+                                    const now = new Date();
+                                    const y = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+                                    return [y + 1, y, y - 1, y - 2].map(yr => {
+                                        const nextYr = (yr + 1).toString().slice(-2);
+                                        return <option key={yr} value={yr.toString()}>{`FY ${yr}-${nextYr}`}</option>;
+                                    });
+                                })()}
                             </select>
                             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                         </div>
                     </div>
 
-                    {/* Month selection */}
+                    {/* Month selection — ordered April→March for Indian FY */}
                     <div className="flex flex-col gap-1">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Month</span>
                         <div className="relative">
@@ -1224,10 +1228,7 @@ export default function AdminTransactionsPage() {
                                 onChange={(e) => setSelectedMonth(e.target.value)}
                                 className="appearance-none pl-3 pr-8 py-1.5 text-xs font-bold border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer min-w-[130px] h-9 text-slate-700"
                             >
-                                <option value="ALL">All Months</option>
-                                <option value="0">January</option>
-                                <option value="1">February</option>
-                                <option value="2">March</option>
+                                <option value="ALL">All Months (FY)</option>
                                 <option value="3">April</option>
                                 <option value="4">May</option>
                                 <option value="5">June</option>
@@ -1237,6 +1238,9 @@ export default function AdminTransactionsPage() {
                                 <option value="9">October</option>
                                 <option value="10">November</option>
                                 <option value="11">December</option>
+                                <option value="0">January</option>
+                                <option value="1">February</option>
+                                <option value="2">March</option>
                             </select>
                             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                         </div>

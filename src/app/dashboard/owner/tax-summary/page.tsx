@@ -9,17 +9,35 @@ import {
     Eye, X, Info, CheckSquare, Square, CalendarDays, HelpCircle, Search
 } from 'lucide-react';
 
+// Build Financial Year options: FY 2025–26, FY 2026–27, FY 2027–28
+// Indian FY: April 1st (IST) to March 31st (IST) = UTC offsets applied
 function buildFYOptions() {
-    const year = new Date().getFullYear();
+    const now = new Date();
+    const thisYear = now.getFullYear();
+    const fyStart = now.getMonth() >= 3 ? thisYear : thisYear - 1; // If Jan-Mar, FY started last year
     return [
-        { label: `${year - 1}`, from: new Date(`${year - 1}-01-01`), to: new Date(`${year - 1}-12-31`) },
-        { label: `${year}`, from: new Date(`${year}-01-01`), to: new Date(`${year}-12-31`) },
-        { label: `${year + 1}`, from: new Date(`${year + 1}-01-01`), to: new Date(`${year + 1}-12-31`) },
+        {
+            label: `FY ${fyStart - 1}\u201326`,
+            from: new Date(Date.UTC(fyStart - 1, 2, 31, 18, 30, 0, 0)),      // Apr 1 IST
+            to:   new Date(Date.UTC(fyStart, 2, 31, 18, 29, 59, 999)),        // Mar 31 23:59 IST
+        },
+        {
+            label: `FY ${fyStart}\u2013${String(fyStart + 1).slice(-2)}`,
+            from: new Date(Date.UTC(fyStart, 2, 31, 18, 30, 0, 0)),
+            to:   new Date(Date.UTC(fyStart + 1, 2, 31, 18, 29, 59, 999)),
+        },
+        {
+            label: `FY ${fyStart + 1}\u2013${String(fyStart + 2).slice(-2)}`,
+            from: new Date(Date.UTC(fyStart + 1, 2, 31, 18, 30, 0, 0)),
+            to:   new Date(Date.UTC(fyStart + 2, 2, 31, 18, 29, 59, 999)),
+        },
     ];
 }
 
 function getCurrentFY() {
-    return `${new Date().getFullYear()}`;
+    const now = new Date();
+    const s = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    return `FY ${s}\u2013${String(s + 1).slice(-2)}`;
 }
 
 const fmt = (n: number) => `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -380,10 +398,7 @@ export default function TaxSummaryPage() {
                                     onChange={(e) => setGlobalMonth(e.target.value)}
                                     className="text-sm font-black rounded-full px-5 py-2.5 bg-white/90 hover:bg-white text-indigo-900 focus:outline-none focus:ring-4 focus:ring-white/20 cursor-pointer min-w-[140px] shadow-lg transition-all border-0 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23312E81%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_16px_center] bg-[length:10px_auto] pr-10"
                                 >
-                                    <option value="ALL">All Months</option>
-                                    <option value="0">January</option>
-                                    <option value="1">February</option>
-                                    <option value="2">March</option>
+                                    <option value="ALL">All Months (Full FY)</option>
                                     <option value="3">April</option>
                                     <option value="4">May</option>
                                     <option value="5">June</option>
@@ -393,6 +408,9 @@ export default function TaxSummaryPage() {
                                     <option value="9">October</option>
                                     <option value="10">November</option>
                                     <option value="11">December</option>
+                                    <option value="0">January</option>
+                                    <option value="1">February</option>
+                                    <option value="2">March</option>
                                 </select>
                             </div>
                         </div>
@@ -620,10 +638,7 @@ export default function TaxSummaryPage() {
                                         value={exportMonth}
                                         onChange={(e) => setExportMonth(e.target.value)}
                                     >
-                                        <option value="ALL">All Months</option>
-                                        <option value="0">January</option>
-                                        <option value="1">February</option>
-                                        <option value="2">March</option>
+                                        <option value="ALL">All Months (Full FY)</option>
                                         <option value="3">April</option>
                                         <option value="4">May</option>
                                         <option value="5">June</option>
@@ -633,6 +648,9 @@ export default function TaxSummaryPage() {
                                         <option value="9">October</option>
                                         <option value="10">November</option>
                                         <option value="11">December</option>
+                                        <option value="0">January</option>
+                                        <option value="1">February</option>
+                                        <option value="2">March</option>
                                     </select>
                                 </div>
                             </div>

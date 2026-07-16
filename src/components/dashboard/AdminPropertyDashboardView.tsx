@@ -253,7 +253,7 @@ export function AdminPropertyDashboardView({ initialOwners }: { initialOwners: O
                             <CardContent>
                                 <div className="text-xl font-black text-slate-900">₹{kpis.totalRevenue.toLocaleString('en-IN')}</div>
                                 <p className="text-[10px] mt-1 text-emerald-600 font-bold flex items-center gap-1">
-                                    <TrendingUp className="h-2.5 w-2.5" /> Rent only · Excl. deposits
+                                    <TrendingUp className="h-2.5 w-2.5" /> Current FY · April to March · Rent only
                                 </p>
                             </CardContent>
                         </Card>
@@ -333,8 +333,8 @@ export function AdminPropertyDashboardView({ initialOwners }: { initialOwners: O
                             <CardHeader className="border-b bg-slate-50/50 p-5">
                                 <div className="flex justify-between items-center">
                                     <div>
-                                        <CardTitle className="text-base font-black text-slate-800">Revenue Trend (6 Months)</CardTitle>
-                                        <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Rent only · Deposits excluded</CardDescription>
+                                        <CardTitle className="text-base font-black text-slate-800">Revenue Trend · Current FY (April–March)</CardTitle>
+                                        <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Rent only · Deposits excluded · IST-aligned</CardDescription>
                                     </div>
                                     <TrendingUp className="h-4 w-4 text-indigo-400" />
                                 </div>

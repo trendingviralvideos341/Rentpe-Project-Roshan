@@ -31,6 +31,17 @@ export default function PayoutsPage() {
     const [processing, setProcessing] = useState<string | null>(null);
     const [bulkProcessing, setBulkProcessing] = useState(false);
 
+    // FY + Month filters (client-side filtering over loaded data)
+    const now = new Date();
+    const fyStartYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    const fyOptions = [
+        { label: `FY ${fyStartYear - 1}\u2013${String(fyStartYear).slice(-2)}`, start: fyStartYear - 1 },
+        { label: `FY ${fyStartYear}\u2013${String(fyStartYear + 1).slice(-2)}`, start: fyStartYear },
+        { label: `FY ${fyStartYear + 1}\u2013${String(fyStartYear + 2).slice(-2)}`, start: fyStartYear + 1 },
+    ];
+    const [selectedFYStart, setSelectedFYStart] = useState<string>(String(fyStartYear));
+    const [selectedFYMonth, setSelectedFYMonth] = useState<string>('ALL');
+
     // Expandable states for detailed student breakdown
     const [expandedPayouts, setExpandedPayouts] = useState<Record<string, boolean>>({});
     const [payoutDetails, setPayoutDetails] = useState<Record<string, any[]>>({});
@@ -73,8 +84,28 @@ export default function PayoutsPage() {
     const toggleSelect = (id: string) =>
         setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
 
+    const filterPayouts = (list: any[]) => {
+        if (!list) return [];
+        return list.filter((p: any) => {
+            const d = p.createdAt || p.paidAt || p.date;
+            if (!d) return true;
+            const dt = new Date(d);
+            const yr = dt.getFullYear();
+            const mo = dt.getMonth(); // 0-indexed
+            const fyS = parseInt(selectedFYStart);
+            if (isNaN(fyS)) return true;
+            // FY spans from April fyS to March fyS+1
+            const inFY = (yr === fyS && mo >= 3) || (yr === fyS + 1 && mo <= 2);
+            if (!inFY) return false;
+            if (selectedFYMonth !== 'ALL' && mo !== parseInt(selectedFYMonth)) return false;
+            return true;
+        });
+    };
+
+    const filteredPayouts = filterPayouts(data?.payouts || []);
+
     const toggleAll = () => {
-        const pending = data?.payouts.filter((p: any) => p.status === 'PENDING' || p.status === 'APPROVED').map((p: any) => p.id) || [];
+        const pending = filteredPayouts.filter((p: any) => p.status === 'PENDING' || p.status === 'APPROVED').map((p: any) => p.id) || [];
         setSelected(prev => prev.length === pending.length ? [] : pending);
     };
 
@@ -105,9 +136,39 @@ export default function PayoutsPage() {
                     <h1 className="text-2xl md:text-3xl font-black text-slate-900 flex items-center gap-2">
                         <IndianRupee className="h-7 w-7 text-green-600" /> Owner Payout Management
                     </h1>
-                    <p className="text-muted-foreground text-sm mt-1">Process and track owner payout disbursements</p>
+                    <p className="text-muted-foreground text-sm mt-1">Process and track owner payout disbursements — <span className="font-bold text-indigo-600">Indian FY: April – March</span></p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 items-center">
+                    {/* FY Selector */}
+                    <select
+                        value={selectedFYStart}
+                        onChange={e => setSelectedFYStart(e.target.value)}
+                        className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer"
+                    >
+                        {fyOptions.map(fy => (
+                            <option key={fy.start} value={String(fy.start)}>{fy.label}</option>
+                        ))}
+                    </select>
+                    {/* Month Selector */}
+                    <select
+                        value={selectedFYMonth}
+                        onChange={e => setSelectedFYMonth(e.target.value)}
+                        className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer min-w-[130px]"
+                    >
+                        <option value="ALL">All Months (FY)</option>
+                        <option value="3">April</option>
+                        <option value="4">May</option>
+                        <option value="5">June</option>
+                        <option value="6">July</option>
+                        <option value="7">August</option>
+                        <option value="8">September</option>
+                        <option value="9">October</option>
+                        <option value="10">November</option>
+                        <option value="11">December</option>
+                        <option value="0">January</option>
+                        <option value="1">February</option>
+                        <option value="2">March</option>
+                    </select>
                     <Button variant="outline" onClick={fetchData} disabled={loading}>
                         <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
                     </Button>
@@ -122,10 +183,10 @@ export default function PayoutsPage() {
             {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                 {[
-                    { label: "💰 Total Volume", value: data ? formatAmount(data.stats.totalThisMonth) : "—", color: "text-slate-900", bg: "bg-slate-50 border-slate-200" },
-                    { label: "⏳ Pending", value: data ? formatAmount(data.stats.pending) : "—", color: "text-amber-600", bg: "bg-amber-50 border-amber-200" },
-                    { label: "✅ Paid Out", value: data ? formatAmount(data.stats.paid) : "—", color: "text-green-600", bg: "bg-green-50 border-green-200" },
-                    { label: "💹 Commission Earned", value: data ? formatAmount(data.stats.commission) : "—", color: "text-indigo-600", bg: "bg-indigo-50 border-indigo-200" },
+                    { label: "💰 Total Volume (Period)", value: data ? formatAmount(filteredPayouts.reduce((s: number, p: any) => s + Number(p.netAmount || 0), 0)) : "—", color: "text-slate-900", bg: "bg-slate-50 border-slate-200" },
+                    { label: "⏳ Pending", value: data ? formatAmount(filteredPayouts.filter((p: any) => p.status === 'PENDING').reduce((s: number, p: any) => s + Number(p.netAmount || 0), 0)) : "—", color: "text-amber-600", bg: "bg-amber-50 border-amber-200" },
+                    { label: "✅ Paid Out", value: data ? formatAmount(filteredPayouts.filter((p: any) => p.status === 'PAID').reduce((s: number, p: any) => s + Number(p.netAmount || 0), 0)) : "—", color: "text-green-600", bg: "bg-green-50 border-green-200" },
+                    { label: "💹 Commission Earned", value: data ? formatAmount(filteredPayouts.reduce((s: number, p: any) => s + Number(p.commissionAmount || 0), 0)) : "—", color: "text-indigo-600", bg: "bg-indigo-50 border-indigo-200" },
                 ].map(card => (
                     <Card key={card.label} className={`border ${card.bg}`}>
                         <CardContent className="p-4">
@@ -149,7 +210,7 @@ export default function PayoutsPage() {
             {/* Content */}
             {loading ? (
                 <div className="grid gap-3">{[...Array(5)].map((_, i) => <div key={i} className="h-20 bg-slate-100 rounded-xl animate-pulse" />)}</div>
-            ) : data?.payouts.length === 0 ? (
+            ) : filteredPayouts.length === 0 ? (
                 <div className="py-20 text-center border-2 border-dashed rounded-xl">
                     <CheckCircle className="h-10 w-10 text-green-500 mx-auto mb-3" />
                     <p className="font-bold text-slate-700">No payouts in this category.</p>
@@ -158,7 +219,7 @@ export default function PayoutsPage() {
                 <>
                     {/* Mobile Cards */}
                     <div className="md:hidden space-y-3">
-                        {data?.payouts.map((p: any) => {
+                        {filteredPayouts.map((p: any) => {
                             const canPay = p.status === 'PENDING' || p.status === 'APPROVED';
                             const isExpanded = !!expandedPayouts[p.id];
                             return (
@@ -250,7 +311,7 @@ export default function PayoutsPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y text-slate-700">
-                                {data?.payouts.map((p: any) => {
+                                {filteredPayouts.map((p: any) => {
                                     const canPay = p.status === 'PENDING' || p.status === 'APPROVED';
                                     const isSelected = selected.includes(p.id);
                                     const isExpanded = !!expandedPayouts[p.id];

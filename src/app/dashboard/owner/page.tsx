@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 
-import { getOwnerDashboardStats, getOwnerInventory } from "@/actions/dashboard";
+import { getOwnerDashboardStats, getOwnerInventory, getRevenueTrends } from "@/actions/dashboard";
 import { getOwnerStaff } from "@/actions/staff";
 import { getNotifications, getUnreadCount, markNotificationRead } from "@/actions/notifications";
 import { InventoryGrid } from "@/components/dashboard/InventoryGrid";
@@ -44,6 +44,31 @@ export default function OwnerDashboard() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const activeTab = searchParams.get("tab") || "overview";
+
+    const [chartData, setChartData] = useState<any[]>([]);
+    const [chartLoading, setChartLoading] = useState(false);
+    const _now = new Date();
+    const _initialYear = _now.getMonth() >= 3 ? _now.getFullYear() : _now.getFullYear() - 1;
+    const [selectedYear, setSelectedYear] = useState<string>(_initialYear.toString());
+    const [selectedMonth, setSelectedMonth] = useState<string>("all");
+
+    const fetchChart = useCallback(async (year: string, month: string) => {
+        setChartLoading(true);
+        try {
+            const data = await getRevenueTrends(year, month);
+            setChartData(data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setChartLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (stats) {
+            fetchChart(selectedYear, selectedMonth);
+        }
+    }, [stats, selectedYear, selectedMonth, fetchChart]);
 
     const fetchStats = useCallback(async () => {
         setLoading(true);
@@ -196,8 +221,8 @@ export default function OwnerDashboard() {
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-black text-white">₹{(stats.totalRevenue ?? 0).toLocaleString('en-IN')}</div>
-                                <p className="text-xs mt-1 flex items-center gap-1 text-white/70 font-bold">
-                                    <TrendingUp className="h-3 w-3" /> Rent only · Excl. deposits
+                                <p className="text-[10px] mt-1 flex items-center gap-1 text-white/90 font-bold leading-tight">
+                                    <TrendingUp className="h-3 w-3" /> Data Showing for financial year April To March
                                 </p>
                             </CardContent>
                         </Card>
@@ -277,15 +302,49 @@ export default function OwnerDashboard() {
                     <div className="grid gap-6 md:grid-cols-3">
                         {/* Revenue Trend Chart */}
                         <Card className="md:col-span-2 hover:shadow-lg transition-shadow">
-                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-2 gap-4">
                                 <div>
                                     <CardTitle className="text-base font-black">Revenue Trends</CardTitle>
-                                    <p className="text-xs text-slate-400 font-bold mt-0.5">Last 6 months · Confirmed bookings</p>
+                                    <p className="text-xs text-slate-400 font-bold mt-0.5">Yearly / Weekly Revenue Breakdown</p>
                                 </div>
-                                <BarChart3 className="h-5 w-5 text-slate-300" />
+                                <div className="flex items-center gap-2">
+                                    <select 
+                                        className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 outline-none focus:border-violet-400 cursor-pointer"
+                                        value={selectedYear}
+                                        onChange={(e) => setSelectedYear(e.target.value)}
+                                    >
+                                        <option value="2027">FY 2027-28</option>
+                                        <option value="2026">FY 2026-27</option>
+                                        <option value="2025">FY 2025-26</option>
+                                        <option value="2024">FY 2024-25</option>
+                                    </select>
+                                    <select 
+                                        className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 outline-none focus:border-violet-400 cursor-pointer"
+                                        value={selectedMonth}
+                                        onChange={(e) => setSelectedMonth(e.target.value)}
+                                    >
+                                        <option value="all">All Months</option>
+                                        <option value="4">Apr</option>
+                                        <option value="5">May</option>
+                                        <option value="6">Jun</option>
+                                        <option value="7">Jul</option>
+                                        <option value="8">Aug</option>
+                                        <option value="9">Sep</option>
+                                        <option value="10">Oct</option>
+                                        <option value="11">Nov</option>
+                                        <option value="12">Dec</option>
+                                        <option value="1">Jan</option>
+                                        <option value="2">Feb</option>
+                                        <option value="3">Mar</option>
+                                    </select>
+                                </div>
                             </CardHeader>
                             <CardContent>
-                                {(stats.revenueHistory ?? []).every((r: any) => r.revenue === 0) ? (
+                                {chartLoading ? (
+                                    <div className="h-[240px] flex items-center justify-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                                        <div className="w-8 h-8 border-4 border-violet-600/20 border-t-violet-600 rounded-full animate-spin"></div>
+                                    </div>
+                                ) : chartData.length === 0 || chartData.every((r: any) => r.revenue === 0) ? (
                                     <div className="h-[240px] flex flex-col items-center justify-center gap-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                                         <BarChart3 className="h-10 w-10 text-slate-200" />
                                         <p className="text-sm font-black text-slate-400">No revenue recorded yet</p>
@@ -294,7 +353,7 @@ export default function OwnerDashboard() {
                                 ) : (
                                     <div className="h-[240px] w-full">
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <AreaChart data={stats.revenueHistory ?? []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                                 <defs>
                                                     <linearGradient id="tealGradient" x1="0" y1="0" x2="0" y2="1">
                                                         <stop offset="0%" stopColor="#10b981" stopOpacity={0.3}/>

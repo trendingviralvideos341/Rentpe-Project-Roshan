@@ -56,14 +56,23 @@ export async function getOwnerDashboardStats() {
                     status: 'PENDING_APPROVAL'
                 }
             }),
-            // Revenue from confirmed bookings — rent ONLY (excludes deposits) — last 12 months
+            // Revenue from confirmed bookings — rent ONLY (excludes deposits) — current Financial Year (April to March)
             // Note: booking.amount = monthly rent; booking.depositAmount = security deposit (separate field)
             // Per CA/GST standards, security deposits are liabilities — NOT revenue
             prisma.booking.findMany({
                 where: {
                     property: { ownerId: userId },
                     status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID', 'COMPLETED'] },
-                    createdAt: { gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) }
+                    createdAt: { 
+                        gte: (() => {
+                            // Indian Financial Year exactly from April 1st 00:00:00 IST
+                            const now = new Date();
+                            const currentMonth = now.getMonth(); // 0-indexed (3 = April)
+                            const startYear = currentMonth >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+                            // April 1st 00:00:00 IST is March 31st 18:30:00 UTC
+                            return new Date(Date.UTC(startYear, 2, 31, 18, 30, 0, 0));
+                        })()
+                    }
                 },
                 select: { createdAt: true, amount: true, depositAmount: true }
             }),
@@ -108,7 +117,7 @@ export async function getOwnerDashboardStats() {
             return { month: d.toLocaleString('en-IN', { month: 'short' }), revenue: monthMap[key] || 0 };
         });
 
-        // Total rent revenue (12 months window)
+        // Total rent revenue (Financial Year window)
         const totalRevenue = confirmedBookings.reduce((s: number, b: any) => s + Number(b.amount || 0), 0);
 
         // ── Security Deposits Held (Liability — not revenue) ─────────────
@@ -320,6 +329,87 @@ export async function getOwnerInventory() {
         return enrichedProperties;
     } catch (e) {
         console.error("getOwnerInventory Error:", e);
+        return [];
+    }
+}
+
+export async function getRevenueTrends(yearStr?: string, monthStr?: string) {
+    try {
+        const session = await getSession();
+        if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+        const userId = session.userId;
+
+        const now = new Date();
+        let startDate: Date;
+        let endDate: Date;
+        let isWeekly = false;
+
+        const parsedYear = parseInt(yearStr || "");
+        const year = isNaN(parsedYear) ? (now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1) : parsedYear;
+
+        if (monthStr && monthStr !== 'all') {
+            const parsedMonth = parseInt(monthStr);
+            if (isNaN(parsedMonth) || parsedMonth < 1 || parsedMonth > 12) {
+                throw new Error("Invalid month parameter");
+            }
+            const queryYear = parsedMonth < 4 ? year + 1 : year; // Jan-Mar belong to the next calendar year
+            // Specific month -> Weekly breakdown (Exact IST boundaries)
+            // Start of month IST (UTC: prev month last day 18:30)
+            startDate = new Date(Date.UTC(queryYear, parsedMonth - 2, new Date(queryYear, parsedMonth - 1, 0).getDate(), 18, 30, 0, 0));
+            // End of month IST (UTC: last day 18:29:59.999)
+            endDate = new Date(Date.UTC(queryYear, parsedMonth - 1, new Date(queryYear, parsedMonth, 0).getDate(), 18, 29, 59, 999));
+            isWeekly = true;
+        } else {
+            // All months -> Monthly breakdown for the selected Financial Year (Exact IST boundaries)
+            // If year passed is 2026, it means FY 2026-27 (April 2026 to March 2027)
+            startDate = new Date(Date.UTC(year, 2, 31, 18, 30, 0, 0)); // Apr 1st 00:00 IST
+            endDate = new Date(Date.UTC(year + 1, 2, 31, 18, 29, 59, 999)); // Mar 31st 23:59 IST
+        }
+
+        const bookings = await prisma.booking.findMany({
+            where: {
+                property: { ownerId: userId },
+                status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID', 'COMPLETED'] },
+                createdAt: { gte: startDate, lte: endDate }
+            },
+            select: { createdAt: true, amount: true }
+        });
+
+        if (isWeekly) {
+            // group by week (Week 1: 1-7, Week 2: 8-14, Week 3: 15-21, Week 4: 22+)
+            let w1 = 0, w2 = 0, w3 = 0, w4 = 0;
+            for (const b of bookings) {
+                const day = new Date(b.createdAt).getDate();
+                const amt = Number(b.amount || 0);
+                if (day <= 7) w1 += amt;
+                else if (day <= 14) w2 += amt;
+                else if (day <= 21) w3 += amt;
+                else w4 += amt;
+            }
+            return [
+                { month: 'Week 1 (1-7)', revenue: w1 },
+                { month: 'Week 2 (8-14)', revenue: w2 },
+                { month: 'Week 3 (15-21)', revenue: w3 },
+                { month: 'Week 4 (22+)', revenue: w4 },
+            ];
+        } else {
+            // group by month
+            const monthMap: Record<string, number> = {};
+            for(let i = 0; i < 12; i++) {
+                const d = new Date(year, 3 + i, 1); // April = 3
+                const mName = d.toLocaleString('en-IN', { month: 'short' });
+                monthMap[mName] = 0;
+            }
+            for (const b of bookings) {
+                const d = new Date(b.createdAt);
+                const mName = d.toLocaleString('en-IN', { month: 'short' });
+                monthMap[mName] += Number(b.amount || 0);
+            }
+            // Return in chronological order
+            return Object.keys(monthMap).map(k => ({ month: k, revenue: monthMap[k] }));
+        }
+    } catch (e) {
+        console.error("getRevenueTrends Error:", e);
         return [];
     }
 }

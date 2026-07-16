@@ -659,7 +659,11 @@ const session = await getSession();
 
     const n = (val: any) => Number(val || 0);
 
-    const from = fromDate || new Date(new Date().getFullYear(), 3, 1); // April 1 of current year
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const fyStartYear = now.getMonth() >= 3 ? currentYear : currentYear - 1;
+    const from = fromDate || new Date(Date.UTC(fyStartYear, 2, 31, 18, 30, 0, 0)); // April 1 of current FY
+
     const to = toDate || new Date();
 
     const payments = await prisma.payment.findMany({
@@ -1008,7 +1012,11 @@ export async function getAdminTaxLiability(fromDate?: Date, toDate?: Date) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
 
-    const from = fromDate || new Date(new Date().getFullYear(), 3, 1);
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const fyStartYear = now.getMonth() >= 3 ? currentYear : currentYear - 1;
+    const from = fromDate || new Date(Date.UTC(fyStartYear, 2, 31, 18, 30, 0, 0));
+
     const to = toDate || new Date();
 
     const fees = await (prisma as any).platformFee.findMany({
@@ -1100,7 +1108,9 @@ export async function getAdminPropertyUnitEconomics(fromDate?: Date, toDate?: Da
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
 
-    const from = fromDate || new Date(new Date().getFullYear(), 3, 1);
+    const now = new Date();
+    const fyStartYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    const from = fromDate || new Date(Date.UTC(fyStartYear, 2, 31, 18, 30, 0, 0)); // April 1 00:00 IST
     const to = toDate || new Date();
 
     const fees = await (prisma as any).platformFee.findMany({

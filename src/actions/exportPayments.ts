@@ -32,11 +32,27 @@ export const getExportRentInflows = withSafeAction(async ({ year, month }: z.inf
     const propertyIds = properties.map((p: any) => p.id);
 
     const isAllMonths = month === 'ALL';
+    const y = parseInt(year, 10);
+    let dateFilter: any = {};
+    if (isAllMonths) {
+        dateFilter = {
+            gte: new Date(Date.UTC(y, 2, 31, 18, 30, 0, 0)),
+            lt: new Date(Date.UTC(y + 1, 2, 31, 18, 30, 0, 0))
+        };
+    } else {
+        const m = parseInt(month, 10);
+        const queryYear = m < 4 ? y + 1 : y;
+        const lastDay = new Date(queryYear, m, 0).getDate();
+        dateFilter = {
+            gte: new Date(`${queryYear}-${String(m).padStart(2, '0')}-01T00:00:00+05:30`),
+            lt: new Date(`${queryYear}-${String(m).padStart(2, '0')}-${lastDay}T23:59:59.999+05:30`)
+        };
+    }
     
     const invoices = await prisma.rentInvoice.findMany({
         where: {
             propertyId: { in: propertyIds },
-            billingMonth: isAllMonths ? { startsWith: `${year}-` } : `${year}-${month}`,
+            paidAt: dateFilter,
             status: 'PAID'
         },
         include: {
@@ -72,7 +88,8 @@ export const getExportPayouts = withSafeAction(async ({ year, month }: z.infer<t
     let whereClause: any = { ownerId };
     
     if (month === 'ALL') {
-        whereClause.createdAt = { gte: new Date(`${year}-01-01T00:00:00+05:30`), lt: new Date(`${parseInt(year, 10) + 1}-01-01T00:00:00+05:30`) };
+        const y = parseInt(year, 10);
+        whereClause.createdAt = { gte: new Date(Date.UTC(y, 2, 31, 18, 30, 0, 0)), lt: new Date(Date.UTC(y + 1, 2, 31, 18, 30, 0, 0)) };
     } else {
         const nextMonth = parseInt(month, 10) === 12 ? 1 : parseInt(month, 10) + 1;
         const nextYear = parseInt(month, 10) === 12 ? parseInt(year, 10) + 1 : parseInt(year, 10);
@@ -100,7 +117,8 @@ export const getExportPayouts = withSafeAction(async ({ year, month }: z.infer<t
 export const getExportRefunds = withSafeAction(async ({ year, month }: z.infer<typeof exportSchema>) => {
     let whereClause: any = {};
     if (month === 'ALL') {
-        whereClause.initiatedAt = { gte: new Date(`${year}-01-01T00:00:00+05:30`), lt: new Date(`${parseInt(year, 10) + 1}-01-01T00:00:00+05:30`) };
+        const y = parseInt(year, 10);
+        whereClause.initiatedAt = { gte: new Date(Date.UTC(y, 2, 31, 18, 30, 0, 0)), lt: new Date(Date.UTC(y + 1, 2, 31, 18, 30, 0, 0)) };
     } else {
         const nextMonth = parseInt(month, 10) === 12 ? 1 : parseInt(month, 10) + 1;
         const nextYear = parseInt(month, 10) === 12 ? parseInt(year, 10) + 1 : parseInt(year, 10);
