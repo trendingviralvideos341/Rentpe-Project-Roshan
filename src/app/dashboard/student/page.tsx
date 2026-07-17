@@ -1494,10 +1494,10 @@ export default function StudentDashboardPage() {
                             ) : (
                                 <div className="space-y-4">
                                     {/* Hero row */}
-                                    <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-5 flex items-center gap-4">
+                                    <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 p-5 flex items-center gap-4 shadow-md shadow-indigo-200">
                                         {/* bg glow blobs */}
-                                        <div className="absolute -top-10 -right-10 w-40 h-40 bg-violet-500/20 rounded-full blur-2xl pointer-events-none" />
-                                        <div className="absolute -bottom-10 left-1/3 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none" />
+                                        <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/20 rounded-full blur-3xl pointer-events-none" />
+                                        <div className="absolute -bottom-10 left-1/3 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" />
                                         <div className="relative z-10 w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-sm shrink-0">
                                             <User className="h-8 w-8 text-white" />
                                         </div>
