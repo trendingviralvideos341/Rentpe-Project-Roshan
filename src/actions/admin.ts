@@ -734,8 +734,12 @@ async function _adminDeleteTenant(tenantId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { status: true } });
+    if (tenant?.status === 'Active' || tenant?.status === 'ACTIVE') {
+        throw new Error("Cannot delete an active tenant. Please process their move-out first.");
+    }
+
     await prisma.$transaction(async (tx) => {
-        await tx.rentRecord.updateMany({ where: { tenantId }, data: { amount: 0, month: 'PURGED' } });
         await tx.tenant.update({ where: { id: tenantId }, data: { status: 'CANCELLED' } });
     });
 

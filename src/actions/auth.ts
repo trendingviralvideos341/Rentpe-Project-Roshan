@@ -138,8 +138,8 @@ export async function signup(formData: FormData) {
             actionType: 'CREATE',
             entityType: 'USER',
             entityId: user.id,
-            description: `User signed up and agreed to: T&C: true, Marketing: ${marketingAgreed}, DataSharing: ${dataSharingAgreed}`,
-            newValue: { marketingAgreed, dataSharingAgreed }
+            description: `User signed up and agreed to: T&C: true (Version: v1.0-2026-03), Marketing: ${marketingAgreed}, DataSharing: ${dataSharingAgreed}`,
+            newValue: { termsAccepted: true, termsVersion: 'v1.0-2026-03', marketingAgreed, dataSharingAgreed }
         });
 
         // Send Welcome Email (account is already verified via OTP)

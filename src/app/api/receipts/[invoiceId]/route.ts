@@ -272,7 +272,13 @@ export async function GET(
         });
 
         if (!invoice) return new NextResponse("Not found", { status: 404 });
-        if ((session as any).role === "USER" && invoice.booking?.userId !== userId) {
+        const sessionRole = (session as any).role;
+        const sessionOwnerId = (session as any).parentOwnerId || userId;
+
+        if (sessionRole === "USER" && invoice.booking?.userId !== userId) {
+            return new NextResponse("Unauthorized", { status: 401 });
+        }
+        if ((sessionRole === "OWNER" || sessionRole === "STAFF") && invoice.booking?.property?.ownerId !== sessionOwnerId) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
         if (invoice.status !== "PAID") {

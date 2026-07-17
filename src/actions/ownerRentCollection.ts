@@ -64,8 +64,22 @@ export async function getOwnerRentCollection(month?: string, propertyId?: string
                     // CRITICAL: internalGenerateInvoice expects YYYY-MM format, NOT the human label
                     await internalGenerateInvoice(tenant.id, targetMonth, "SYSTEM");
                     console.log(`[getOwnerRentCollection] Auto-generated invoice for tenant ${tenant.id} for ${targetMonth}`);
-                } catch (e) {
+                } catch (e: any) {
                     console.error(`[getOwnerRentCollection] Error generating invoice for tenant ${tenant.id}:`, e);
+                    if (tenant.propertyId) {
+                        const prop = await prisma.property.findUnique({ where: { id: tenant.propertyId } });
+                        if (prop) {
+                            await prisma.notification.create({
+                                data: {
+                                    userId: prop.ownerId,
+                                    type: 'SYSTEM',
+                                    category: 'PAYMENT',
+                                    message: `CRITICAL: Auto-invoice generation failed for tenant ${tenant.name || tenant.id} (${targetMonth}). Please generate manually.`,
+                                    isPersistent: true
+                                }
+                            }).catch(() => {});
+                        }
+                    }
                 }
             }
 

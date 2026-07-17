@@ -1024,10 +1024,37 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
                                 }
                             });
                         }
-                    } catch (billingErr) { console.error('Auto-billing setup error (non-fatal):', billingErr); }
+                    } catch (billingErr: any) {
+                        console.error('Auto-billing setup error (non-fatal):', billingErr);
+                        await prisma.notification.create({
+                            data: {
+                                userId: room!.property.ownerId,
+                                type: 'SYSTEM',
+                                category: 'PAYMENT',
+                                message: `CRITICAL: Auto-billing failed for ${booking.guestName} (${room!.property.name}). Please generate invoice manually.`,
+                                isPersistent: true
+                            }
+                        }).catch(() => {});
+                    }
                 }
             }
-        } catch (e) { console.error('Auto-activate tenant error:', e); }
+        } catch (e: any) {
+            console.error('Auto-activate tenant error:', e);
+            if (booking.propertyId) {
+                const prop = await prisma.property.findUnique({ where: { id: booking.propertyId } });
+                if (prop) {
+                    await prisma.notification.create({
+                        data: {
+                            userId: prop.ownerId,
+                            type: 'SYSTEM',
+                            category: 'PAYMENT',
+                            message: `CRITICAL: Tenant profile auto-activation failed for ${booking.guestName}. Please activate manually.`,
+                            isPersistent: true
+                        }
+                    }).catch(() => {});
+                }
+            }
+        }
     }
 
     revalidatePath('/dashboard/owner/bookings');
