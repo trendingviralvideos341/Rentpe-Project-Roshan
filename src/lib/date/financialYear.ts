@@ -59,32 +59,32 @@ export function isFutureFYMonth(monthValue: string, fyYear: number, today: Date 
 
 /**
  * Returns the exact UTC Date range for a given Financial Year or a single month inside it.
- * Enforces IST boundary rules (00:00:00 IST to 23:59:59.999 IST).
+ * Uses EXCLUSIVE upper bound (lt) for microsecond-safe Prisma lt queries.
+ * Strategy: lt = start of next period (April 1 00:00:00.000 IST), NOT March 31 23:59:59.999.
+ * This guarantees no transaction is ever dropped due to sub-millisecond DB precision.
+ * Use with Prisma: { gte: range.gte, lt: range.lt } — NOT lte.
  */
 export function getFYDateRange(fyYear: number, month?: string): DateRange {
     if (!month || month === 'all' || month === 'ALL') {
-        // Full Financial Year: April 1st 00:00:00 IST to March 31st 23:59:59.999 IST of next year
-        const start = new Date(Date.UTC(fyYear, 3, 1, 0, 0, 0, 0));
-        start.setUTCHours(start.getUTCHours() - 5);
-        start.setUTCMinutes(start.getUTCMinutes() - 30); // April 1 00:00 IST
-
-        const end = new Date(Date.UTC(fyYear + 1, 2, 31, 23, 59, 59, 999));
-        end.setUTCHours(end.getUTCHours() - 5);
-        end.setUTCMinutes(end.getUTCMinutes() - 30); // March 31 23:59 IST
-
+        // Full Financial Year:
+        // gte: April 1st 00:00:00.000 IST = March 31st 18:30:00.000 UTC
+        // lt:  April 1st 00:00:00.000 IST of NEXT year (exclusive — captures all of March 31)
+        const start = new Date(Date.UTC(fyYear, 2, 31, 18, 30, 0, 0));   // Apr 1 00:00 IST
+        const end   = new Date(Date.UTC(fyYear + 1, 2, 31, 18, 30, 0, 0)); // Apr 1 00:00 IST next year
         return { gte: start, lt: end };
     }
 
     const monthNum = parseInt(month, 10);
     const calendarYear = monthNum >= 4 ? fyYear : fyYear + 1;
 
-    // Start of month
+    // gte: 1st of month at 00:00:00.000 IST
+    // lt:  1st of next month at 00:00:00.000 IST (exclusive — captures all of last day)
     const start = new Date(Date.UTC(calendarYear, monthNum - 1, 1, 0, 0, 0, 0));
     start.setUTCHours(start.getUTCHours() - 5);
     start.setUTCMinutes(start.getUTCMinutes() - 30);
 
-    // End of month (last millisecond of the month)
-    const end = new Date(Date.UTC(calendarYear, monthNum, 0, 23, 59, 59, 999));
+    // Next month's 1st day 00:00 IST — exclusive upper bound
+    const end = new Date(Date.UTC(calendarYear, monthNum, 1, 0, 0, 0, 0));
     end.setUTCHours(end.getUTCHours() - 5);
     end.setUTCMinutes(end.getUTCMinutes() - 30);
 

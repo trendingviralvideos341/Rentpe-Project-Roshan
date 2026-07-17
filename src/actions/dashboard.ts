@@ -3,6 +3,8 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { runOnDemandExpiry } from "@/actions/expiry";
+import { getISTDate } from "@/lib/date";
+
 
 export async function getOwnerDashboardStats() {
     // Opportunistically expire stale bookings on every dashboard load.
@@ -65,11 +67,10 @@ export async function getOwnerDashboardStats() {
                     status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID', 'COMPLETED'] },
                     createdAt: { 
                         gte: (() => {
-                            // Indian Financial Year exactly from April 1st 00:00:00 IST
-                            const now = new Date();
-                            const currentMonth = now.getMonth(); // 0-indexed (3 = April)
-                            const startYear = currentMonth >= 3 ? now.getFullYear() : now.getFullYear() - 1;
-                            // April 1st 00:00:00 IST is March 31st 18:30:00 UTC
+                            // IST-aware FY detection — safe even in the 5.5hr April 1 UTC crossover
+                            const now = getISTDate(new Date());
+                            const startYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+                            // April 1st 00:00:00 IST = March 31st 18:30:00 UTC
                             return new Date(Date.UTC(startYear, 2, 31, 18, 30, 0, 0));
                         })()
                     }
@@ -102,19 +103,19 @@ export async function getOwnerDashboardStats() {
         // Revenue = sum of rent amounts from confirmed bookings.
         const monthMap: Record<string, number> = {};
         for (const booking of confirmedBookings) {
-            const d = new Date(booking.createdAt);
-            const key = d.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
-            // Use rent amount only (booking.amount is rent, depositAmount is stored separately)
+            const d = getISTDate(new Date(booking.createdAt)); // IST-correct bucket
+            const key = d.toLocaleString('en-IN', { month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
             const rentAmount = Number(booking.amount || 0);
             monthMap[key] = (monthMap[key] || 0) + rentAmount;
         }
 
-        // Last 6 months in order
+        // Last 6 months in order — using IST-correct dates
+        const nowIST = getISTDate(new Date());
         const revenueHistory = Array.from({ length: 6 }, (_, i) => {
-            const d = new Date();
+            const d = new Date(nowIST);
             d.setMonth(d.getMonth() - (5 - i));
-            const key = d.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
-            return { month: d.toLocaleString('en-IN', { month: 'short' }), revenue: monthMap[key] || 0 };
+            const key = d.toLocaleString('en-IN', { month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
+            return { month: d.toLocaleString('en-IN', { month: 'short', timeZone: 'Asia/Kolkata' }), revenue: monthMap[key] || 0 };
         });
 
         // Total rent revenue (Financial Year window)
@@ -339,7 +340,7 @@ export async function getRevenueTrends(yearStr?: string, monthStr?: string) {
         if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
         const userId = session.userId;
 
-        const now = new Date();
+        const now = getISTDate(new Date()); // IST-aware: avoids 5.5h crossover on April 1
         let startDate: Date;
         let endDate: Date;
         let isWeekly = false;
@@ -379,7 +380,8 @@ export async function getRevenueTrends(yearStr?: string, monthStr?: string) {
             // group by week (Week 1: 1-7, Week 2: 8-14, Week 3: 15-21, Week 4: 22+)
             let w1 = 0, w2 = 0, w3 = 0, w4 = 0;
             for (const b of bookings) {
-                const day = new Date(b.createdAt).getDate();
+                // Use IST date for day grouping — avoids midnight-IST transactions landing in wrong week
+                const day = getISTDate(new Date(b.createdAt)).getDate();
                 const amt = Number(b.amount || 0);
                 if (day <= 7) w1 += amt;
                 else if (day <= 14) w2 += amt;
@@ -397,12 +399,12 @@ export async function getRevenueTrends(yearStr?: string, monthStr?: string) {
             const monthMap: Record<string, number> = {};
             for(let i = 0; i < 12; i++) {
                 const d = new Date(year, 3 + i, 1); // April = 3
-                const mName = d.toLocaleString('en-IN', { month: 'short' });
+                const mName = d.toLocaleString('en-IN', { month: 'short', timeZone: 'Asia/Kolkata' });
                 monthMap[mName] = 0;
             }
             for (const b of bookings) {
-                const d = new Date(b.createdAt);
-                const mName = d.toLocaleString('en-IN', { month: 'short' });
+                const d = getISTDate(new Date(b.createdAt)); // IST-correct bucket
+                const mName = d.toLocaleString('en-IN', { month: 'short', timeZone: 'Asia/Kolkata' });
                 monthMap[mName] += Number(b.amount || 0);
             }
             // Return in chronological order

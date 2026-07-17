@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
+import { getISTDate } from "@/lib/date";
 
 // Decimal serialization helper
 const n = (val: any) => Number(val || 0);
@@ -659,7 +660,7 @@ const session = await getSession();
 
     const n = (val: any) => Number(val || 0);
 
-    const now = new Date();
+    const now = getISTDate(new Date()); // IST-aware: avoids 5.5h crossover error on April 1 UTC
     const currentYear = now.getFullYear();
     const fyStartYear = now.getMonth() >= 3 ? currentYear : currentYear - 1;
     const from = fromDate || new Date(Date.UTC(fyStartYear, 2, 31, 18, 30, 0, 0)); // April 1 of current FY
@@ -668,7 +669,7 @@ const session = await getSession();
 
     const payments = await prisma.payment.findMany({
         where: {
-            date: { gte: from, lte: to },
+            date: { gte: from, lt: to },
             status: { in: ['SUCCESS', 'VERIFIED', 'CAPTURED'] }
         },
         orderBy: { date: 'desc' },
@@ -756,7 +757,7 @@ const session = await getSession();
     // Fetch paid cash rent invoices
     const cashInvoices = await prisma.rentInvoice.findMany({
         where: {
-            paidAt: { gte: from, lte: to },
+            paidAt: { gte: from, lt: to },
             status: 'PAID',
             paymentMethod: 'CASH',
         },
@@ -792,8 +793,8 @@ const session = await getSession();
         where: {
             paymentMethod: 'CASH',
             OR: [
-                { paidAt: { gte: from, lte: to }, paymentStatus: 'PAID' },
-                { tokenPaidAt: { gte: from, lte: to } }
+                { paidAt: { gte: from, lt: to }, paymentStatus: 'PAID' },
+                { tokenPaidAt: { gte: from, lt: to } }
             ]
         },
         include: {
@@ -940,7 +941,7 @@ const session = await getSession();
     // Fetch all properties with paid onboarding fees in the range
     const onboardingPaidProperties = await prisma.property.findMany({
         where: {
-            onboardingPaidAt: { gte: from, lte: to }
+            onboardingPaidAt: { gte: from, lt: to }
         },
         include: {
             owner: { select: { id: true, name: true, displayId: true, email: true } }
@@ -1012,7 +1013,7 @@ export async function getAdminTaxLiability(fromDate?: Date, toDate?: Date) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
 
-    const now = new Date();
+    const now = getISTDate(new Date()); // IST-aware: avoids 5.5h crossover error on April 1 UTC
     const currentYear = now.getFullYear();
     const fyStartYear = now.getMonth() >= 3 ? currentYear : currentYear - 1;
     const from = fromDate || new Date(Date.UTC(fyStartYear, 2, 31, 18, 30, 0, 0));
@@ -1020,7 +1021,7 @@ export async function getAdminTaxLiability(fromDate?: Date, toDate?: Date) {
     const to = toDate || new Date();
 
     const fees = await (prisma as any).platformFee.findMany({
-        where: { createdAt: { gte: from, lte: to }, status: 'ACTIVE' },
+        where: { createdAt: { gte: from, lt: to }, status: 'ACTIVE' },
         include: {
             booking: {
                 select: {
@@ -1033,7 +1034,7 @@ export async function getAdminTaxLiability(fromDate?: Date, toDate?: Date) {
     });
 
     const onboardingPaidProperties = await prisma.property.findMany({
-        where: { onboardingPaidAt: { gte: from, lte: to } },
+        where: { onboardingPaidAt: { gte: from, lt: to } },
         include: {
             owner: { select: { id: true, name: true, displayId: true, email: true } }
         }
@@ -1042,9 +1043,9 @@ export async function getAdminTaxLiability(fromDate?: Date, toDate?: Date) {
     // Group by month
     const monthlyMap: Record<string, any> = {};
     for (const f of fees) {
-        const d = new Date(f.createdAt);
+        const d = getISTDate(new Date(f.createdAt)); // IST-correct month grouping
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        const label = d.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+        const label = d.toLocaleString('en-IN', { month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' });
         if (!monthlyMap[key]) monthlyMap[key] = { month: label, key, gst: 0, cgst: 0, sgst: 0, tds: 0, transactions: 0, platformEarned: 0, onboardingFees: 0, onboardingGst: 0 };
         monthlyMap[key].gst += n(f.gstOnStudentFee) + n(f.gstOnOwnerFee);
         monthlyMap[key].cgst += n(f.gstOnStudentFee) ? n(f.gstOnStudentFee) / 2 : 0;
@@ -1055,9 +1056,9 @@ export async function getAdminTaxLiability(fromDate?: Date, toDate?: Date) {
     }
 
     for (const p of onboardingPaidProperties) {
-        const d = new Date(p.onboardingPaidAt!);
+        const d = getISTDate(new Date(p.onboardingPaidAt!)); // IST-correct month grouping
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        const label = d.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+        const label = d.toLocaleString('en-IN', { month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' });
         if (!monthlyMap[key]) monthlyMap[key] = { month: label, key, gst: 0, cgst: 0, sgst: 0, tds: 0, transactions: 0, platformEarned: 0, onboardingFees: 0, onboardingGst: 0 };
         const cgstVal = 7.55;
         const sgstVal = 7.55;
@@ -1108,13 +1109,13 @@ export async function getAdminPropertyUnitEconomics(fromDate?: Date, toDate?: Da
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
 
-    const now = new Date();
+    const now = getISTDate(new Date()); // IST-aware: avoids 5.5h crossover error on April 1 UTC
     const fyStartYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
     const from = fromDate || new Date(Date.UTC(fyStartYear, 2, 31, 18, 30, 0, 0)); // April 1 00:00 IST
     const to = toDate || new Date();
 
     const fees = await (prisma as any).platformFee.findMany({
-        where: { createdAt: { gte: from, lte: to }, status: 'ACTIVE' },
+        where: { createdAt: { gte: from, lt: to }, status: 'ACTIVE' },
         include: {
             booking: {
                 select: {

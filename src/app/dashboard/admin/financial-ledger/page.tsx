@@ -6,7 +6,8 @@ import { toast } from 'sonner';
 import { Download, FileText, Loader2, IndianRupee, TrendingUp, Shield, Building2, RefreshCcw, Search, Filter, Receipt, BadgeCheck, BarChart3, Users, Info } from 'lucide-react';
 import PeriodSelector from '@/components/ui/PeriodSelector';
 import type { PeriodFilter } from '@/types/date';
-import { getFYDateRange, getCurrentFY, getISTDate } from '@/lib/date';
+import { getFYDateRange, getCurrentFY, getISTDate, getISTStartOfDayUTC, getISTEndOfDayUTC } from '@/lib/date';
+
 
 // ── Tooltip Component ────────────────────────────────────────────────────────
 function Tip({ text }: { text: string }) {
@@ -119,8 +120,10 @@ export default function AdminFinancialLedgerPage() {
     const getActiveDateRange = useCallback((filter: PeriodFilter) => {
         const fyYear = parseInt(filter.financialYear || String(getCurrentFY(getISTDate(new Date()))), 10);
         const range = getFYDateRange(fyYear, filter.month);
-        return { from: range.gte, to: new Date(range.lt.getTime() - 1) };
+        // range.lt is EXCLUSIVE (start of next period at .000ms) — pass directly; Prisma uses lt:
+        return { from: range.gte, to: range.lt };
     }, []);
+
 
     const fetchAll = useCallback(async (from: Date, to: Date) => {
         setLoading(true);
@@ -154,95 +157,58 @@ export default function AdminFinancialLedgerPage() {
     const uniqueProperties = Array.from(new Set((ledger?.rows || []).map((r: any) => r.propertyName))).filter(Boolean).sort() as string[];
     const uniqueOwners = Array.from(new Set((ledger?.rows || []).map((r: any) => r.ownerName))).filter(Boolean).sort() as string[];
 
-    const filteredRows = (ledger?.rows || []).filter((r: any) => {
+    // ── Shared Row Filter — Single Source of Truth ───────────────────────────
+    // Performance: hoist static computations outside the loop
+    const applyRowFilters = useCallback((rows: any[]): any[] => {
         const q = search.toLowerCase();
-        if (q) {
-            const match = (
-                r.studentName?.toLowerCase().includes(q) ||
-                r.studentEmail?.toLowerCase().includes(q) ||
-                r.propertyName?.toLowerCase().includes(q) ||
-                r.ownerName?.toLowerCase().includes(q) ||
-                r.rentpeBookingId?.toLowerCase().includes(q) ||
-                r.razorpayOrderId?.toLowerCase().includes(q) ||
-                r.razorpayPaymentId?.toLowerCase().includes(q) ||
-                r.razorpayTransferId?.toLowerCase().includes(q)
-            );
-            if (!match) return false;
-        }
-        if (selectedProperty !== 'ALL' && r.propertyName !== selectedProperty) return false;
-        if (selectedOwner !== 'ALL' && r.ownerName !== selectedOwner) return false;
-        if (startDate) {
-            const d = new Date(r.date);
-            const s = new Date(startDate);
-            s.setHours(0,0,0,0);
-            if (d < s) return false;
-        }
-        if (endDate) {
-            const d = new Date(r.date);
-            const e = new Date(endDate);
-            e.setHours(23,59,59,999);
-            if (d > e) return false;
-        }
-        return true;
-    });
+        // Pre-compute IST boundaries once (not per-row)
+        const startBoundary = startDate ? getISTStartOfDayUTC(startDate) : null;
+        const endBoundary   = endDate   ? getISTEndOfDayUTC(endDate)     : null;
+        return rows.filter((r: any) => {
+            if (q) {
+                const match = (
+                    r.studentName?.toLowerCase().includes(q) ||
+                    r.studentEmail?.toLowerCase().includes(q) ||
+                    r.propertyName?.toLowerCase().includes(q) ||
+                    r.ownerName?.toLowerCase().includes(q) ||
+                    r.rentpeBookingId?.toLowerCase().includes(q) ||
+                    r.razorpayOrderId?.toLowerCase().includes(q) ||
+                    r.razorpayPaymentId?.toLowerCase().includes(q) ||
+                    r.razorpayTransferId?.toLowerCase().includes(q)
+                );
+                if (!match) return false;
+            }
+            if (selectedProperty !== 'ALL' && r.propertyName !== selectedProperty) return false;
+            if (selectedOwner    !== 'ALL' && r.ownerName    !== selectedOwner)    return false;
+            if (startBoundary) {
+                if (new Date(r.date) < startBoundary) return false;
+            }
+            if (endBoundary) {
+                if (new Date(r.date) > endBoundary) return false;
+            }
+            return true;
+        });
+    }, [search, selectedProperty, selectedOwner, startDate, endDate]);
 
-    const cashCollected = filteredRows
-        .filter((r: any) => r.paymentMethod?.toUpperCase() === 'CASH')
-        .reduce((sum: number, r: any) => sum + (r.grossAmount || 0), 0);
-    const onlineCollected = filteredRows
-        .filter((r: any) => r.paymentMethod?.toUpperCase() !== 'CASH' && r.type !== 'PROPERTY_ONBOARDING')
-        .reduce((sum: number, r: any) => sum + (r.grossAmount || 0), 0);
-
-    const getExportDateRange = () => {
-        return getActiveDateRange(periodFilter);
-    };
-
-    const getExportFilename = (ext: string) => {
-        const fyYear = parseInt(periodFilter.financialYear || String(getCurrentFY(getISTDate(new Date()))), 10);
-        const fyLabel = `FY-${fyYear}-${fyYear + 1}`;
-        if (periodFilter.month === 'all') return `RentPe-FinancialLedger-${fyLabel}.${ext}`;
-        const range = getExportDateRange();
-        const monthName = range.from.toLocaleString('default', { month: 'short', year: 'numeric' }).replace(/\s/g, '-');
-        return `RentPe-FinancialLedger-${monthName}.${ext}`;
-    };
+    // Derived display values — use the shared filter helper
+    const filteredRows   = applyRowFilters(ledger?.rows || []);
+    const cashCollected  = filteredRows.filter((r: any) => r.paymentMethod?.toUpperCase() === 'CASH').reduce((s: number, r: any) => s + (r.grossAmount || 0), 0);
+    const onlineCollected = filteredRows.filter((r: any) => r.paymentMethod?.toUpperCase() !== 'CASH' && r.type !== 'PROPERTY_ONBOARDING').reduce((s: number, r: any) => s + (r.grossAmount || 0), 0);
 
     const handleExportCSV = async () => {
         setExporting('csv');
         try {
-            const range = getExportDateRange();
-            toast.loading(`Fetching ledger for ${periodFilter.month === 'all' ? 'Full Year' : range.from.toLocaleString('default', { month: 'long', year: 'numeric' })}...`, { id: 'export-csv' });
+            const range = getActiveDateRange(periodFilter);
+            const fyYear = parseInt(periodFilter.financialYear || String(getCurrentFY(getISTDate(new Date()))), 10);
+            const fyLabel = `FY-${fyYear}-${fyYear + 1}`;
+            const getExportFilename = (ext: string) => {
+                if (periodFilter.month === 'all') return `RentPe-FinancialLedger-${fyLabel}.${ext}`;
+                const monthName = range.from.toLocaleString('default', { month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }).replace(/\s/g, '-');
+                return `RentPe-FinancialLedger-${monthName}.${ext}`;
+            };
+            toast.loading(`Fetching ledger for ${periodFilter.month === 'all' ? `Full Year (${fyLabel})` : range.from.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' })}...`, { id: 'export-csv' });
             const fullLedger = await getAdminFinancialLedger(range.from, range.to);
-            const rowsToExport = (fullLedger?.rows || []).filter((r: any) => {
-                const q = search.toLowerCase();
-                if (q) {
-                    const match = (
-                        r.studentName?.toLowerCase().includes(q) ||
-                        r.studentEmail?.toLowerCase().includes(q) ||
-                        r.propertyName?.toLowerCase().includes(q) ||
-                        r.ownerName?.toLowerCase().includes(q) ||
-                        r.rentpeBookingId?.toLowerCase().includes(q) ||
-                        r.razorpayOrderId?.toLowerCase().includes(q) ||
-                        r.razorpayPaymentId?.toLowerCase().includes(q) ||
-                        r.razorpayTransferId?.toLowerCase().includes(q)
-                    );
-                    if (!match) return false;
-                }
-                if (selectedProperty !== 'ALL' && r.propertyName !== selectedProperty) return false;
-                if (selectedOwner !== 'ALL' && r.ownerName !== selectedOwner) return false;
-                if (startDate) {
-                    const d = new Date(r.date);
-                    const s = new Date(startDate);
-                    s.setHours(0,0,0,0);
-                    if (d < s) return false;
-                }
-                if (endDate) {
-                    const d = new Date(r.date);
-                    const e = new Date(endDate);
-                    e.setHours(23,59,59,999);
-                    if (d > e) return false;
-                }
-                return true;
-            });
+            const rowsToExport = applyRowFilters(fullLedger?.rows || []);
 
             if (!rowsToExport.length) {
                 toast.error('No transactions to export', { id: 'export-csv' });
@@ -303,40 +269,17 @@ export default function AdminFinancialLedgerPage() {
     const handleExportPDF = async () => {
         setExporting('pdf');
         try {
-            const range = getExportDateRange();
-            toast.loading(`Fetching ledger for ${periodFilter.month === 'all' ? 'Full Year' : range.from.toLocaleString('default', { month: 'long', year: 'numeric' })}...`, { id: 'export-pdf' });
+            const range = getActiveDateRange(periodFilter);
+            const fyYear = parseInt(periodFilter.financialYear || String(getCurrentFY(getISTDate(new Date()))), 10);
+            const fyLabel = `FY-${fyYear}-${fyYear + 1}`;
+            const getExportFilename = (ext: string) => {
+                if (periodFilter.month === 'all') return `RentPe-FinancialLedger-${fyLabel}.${ext}`;
+                const monthName = range.from.toLocaleString('default', { month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }).replace(/\s/g, '-');
+                return `RentPe-FinancialLedger-${monthName}.${ext}`;
+            };
+            toast.loading(`Fetching ledger for ${periodFilter.month === 'all' ? `Full Year (${fyLabel})` : range.from.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' })}...`, { id: 'export-pdf' });
             const fullLedger = await getAdminFinancialLedger(range.from, range.to);
-            const rowsToExport = (fullLedger?.rows || []).filter((r: any) => {
-                const q = search.toLowerCase();
-                if (q) {
-                    const match = (
-                        r.studentName?.toLowerCase().includes(q) ||
-                        r.studentEmail?.toLowerCase().includes(q) ||
-                        r.propertyName?.toLowerCase().includes(q) ||
-                        r.ownerName?.toLowerCase().includes(q) ||
-                        r.rentpeBookingId?.toLowerCase().includes(q) ||
-                        r.razorpayOrderId?.toLowerCase().includes(q) ||
-                        r.razorpayPaymentId?.toLowerCase().includes(q) ||
-                        r.razorpayTransferId?.toLowerCase().includes(q)
-                    );
-                    if (!match) return false;
-                }
-                if (selectedProperty !== 'ALL' && r.propertyName !== selectedProperty) return false;
-                if (selectedOwner !== 'ALL' && r.ownerName !== selectedOwner) return false;
-                if (startDate) {
-                    const d = new Date(r.date);
-                    const s = new Date(startDate);
-                    s.setHours(0,0,0,0);
-                    if (d < s) return false;
-                }
-                if (endDate) {
-                    const d = new Date(r.date);
-                    const e = new Date(endDate);
-                    e.setHours(23,59,59,999);
-                    if (d > e) return false;
-                }
-                return true;
-            });
+            const rowsToExport = applyRowFilters(fullLedger?.rows || []);
 
             const { jsPDF } = await import('jspdf');
             const autoTable = (await import('jspdf-autotable')).default;
@@ -350,9 +293,7 @@ export default function AdminFinancialLedgerPage() {
             doc.text('RentPe', 14, 16);
             doc.setFontSize(10); doc.setFont('helvetica', 'normal');
             doc.text('Financial Ledger & Tax Report', 14, 23);
-            const fyYear = parseInt(periodFilter.financialYear || String(getCurrentFY(getISTDate(new Date()))), 10);
-            const fyLabel = `FY ${fyYear}-${fyYear + 1}`;
-            doc.text(`${fyLabel}  |  Generated: ${new Date().toLocaleString('en-IN')}`, 14, 30);
+            doc.text(`FY ${fyYear}-${fyYear + 1}  |  Generated: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`, 14, 30);
 
             // Totals Summary
             doc.setFontSize(12); doc.setTextColor(30, 41, 59); doc.setFont('helvetica', 'bold');
@@ -449,6 +390,7 @@ export default function AdminFinancialLedgerPage() {
                                 value={periodFilter}
                                 onChange={setPeriodFilter}
                                 showLabels={false}
+                                theme="dark"
                             />
                             
                             <button onClick={() => fetchAll(getActiveDateRange(periodFilter).from, getActiveDateRange(periodFilter).to)} disabled={loading}
@@ -679,9 +621,10 @@ export default function AdminFinancialLedgerPage() {
                                 {(startDate || endDate) && (
                                     <button 
                                         onClick={() => { setStartDate(''); setEndDate(''); }}
-                                        className="text-[10px] bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold px-1.5 py-0.5 rounded ml-1"
+                                        aria-label="Clear date filter"
+                                        className="text-xs bg-slate-200 hover:bg-red-100 hover:text-red-700 text-slate-600 font-bold px-3 py-1 rounded-lg ml-1 transition-colors"
                                     >
-                                        Clear
+                                        ✕ Clear
                                     </button>
                                 )}
                             </div>
