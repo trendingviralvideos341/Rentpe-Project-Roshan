@@ -1172,13 +1172,13 @@ export default function StudentDashboardPage() {
             {/* Main Tabs Segment */}
             <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
                 <TabsList className="flex w-full mb-6 bg-white border border-slate-200 rounded-2xl p-1 h-auto gap-1 shadow-sm">
-                    <TabsTrigger value="active-stay" className="flex-1 font-bold py-2.5 text-sm rounded-xl transition-all data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:text-slate-700">
+                    <TabsTrigger value="active-stay" className="flex-1 font-bold py-2.5 text-sm rounded-lg transition-all data-[state=active]:rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:text-slate-700">
                         <Building2 className="h-4 w-4 mr-2 hidden sm:block" /> Active Stay
                     </TabsTrigger>
-                    <TabsTrigger value="bookings" className="flex-1 font-bold py-2.5 text-sm rounded-xl transition-all data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:text-slate-700">
+                    <TabsTrigger value="bookings" className="flex-1 font-bold py-2.5 text-sm rounded-lg transition-all data-[state=active]:rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:text-slate-700">
                         <Calendar className="h-4 w-4 mr-2 hidden sm:block" /> Bookings & Status
                     </TabsTrigger>
-                    <TabsTrigger value="profile" className="flex-1 font-bold py-2.5 text-sm rounded-xl transition-all data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:text-slate-700">
+                    <TabsTrigger value="profile" className="flex-1 font-bold py-2.5 text-sm rounded-lg transition-all data-[state=active]:rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:text-slate-700">
                         <User className="h-4 w-4 mr-2 hidden sm:block" /> My Profile
                     </TabsTrigger>
                 </TabsList>
@@ -1526,19 +1526,12 @@ export default function StudentDashboardPage() {
                                                 </div>
                                                 <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Personal info</p>
                                             </div>
-                                            <div className="divide-y divide-slate-100">
-                                                {[
-                                                    { label: "Date of birth", value: profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('en-GB') : profile?.dob || "—" },
-                                                    { label: "Gender", value: profile?.gender || "—" },
-                                                    { label: "Nationality", value: profile?.nationality || "Indian" },
-                                                    { label: "Occupation", value: profile?.occupationType || "Student" },
-                                                    { label: "Institution / company", value: profile?.occupationDetail || profile?.institution || "—" },
-                                                ].map(row => (
-                                                    <div key={row.label} className="flex items-center justify-between px-4 py-2.5">
-                                                        <span className="text-xs text-slate-400 w-32 shrink-0">{row.label}</span>
-                                                        <span className="text-sm font-medium text-slate-800 text-right flex-1">{row.value}</span>
-                                                    </div>
-                                                ))}
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-4 py-4">
+                                                <div><p className="text-[10px] text-slate-400">Date of birth</p><p className="text-sm font-medium text-slate-800">{profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('en-GB') : profile?.dob || "—"}</p></div>
+                                                <div><p className="text-[10px] text-slate-400">Gender</p><p className="text-sm font-medium text-slate-800">{profile?.gender || "—"}</p></div>
+                                                <div><p className="text-[10px] text-slate-400">Nationality</p><p className="text-sm font-medium text-slate-800">{profile?.nationality || "Indian"}</p></div>
+                                                <div><p className="text-[10px] text-slate-400">Occupation</p><p className="text-sm font-medium text-slate-800">{profile?.occupationType || "Student"}</p></div>
+                                                <div className="col-span-2"><p className="text-[10px] text-slate-400">Institution / company</p><p className="text-sm font-medium text-slate-800">{profile?.occupationDetail || profile?.institution || "—"}</p></div>
                                             </div>
                                         </div>
 
@@ -1553,9 +1546,10 @@ export default function StudentDashboardPage() {
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="border-2 border-dashed rounded-xl p-6 text-center text-slate-400">
-                                                <p className="text-sm">No active stay</p>
-                                                <p className="text-xs mt-1">Book a PG to see stay details</p>
+                                            <div className="border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center h-full min-h-[180px] gap-2 text-center p-6">
+                                                <span className="text-3xl">🏠</span>
+                                                <p className="text-sm font-bold text-slate-500">No active stay</p>
+                                                <p className="text-xs text-slate-400">Book a PG to see stay details</p>
                                             </div>
                                         )}
                                     </div>
