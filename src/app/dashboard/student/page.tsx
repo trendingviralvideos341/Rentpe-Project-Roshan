@@ -98,16 +98,17 @@ function TokenCountdownBanner({
     roomAssigned,
     tokenAmount = 1000,
 }: {
-    deadline: string | Date;
+    deadline?: string | Date | null;
     bookingId: string;
     roomAssigned: string;
     tokenAmount?: number;
 }) {
-    const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0, expired: false });
+    const [timeLeft, setTimeLeft] = useState({ h: 48, m: 0, s: 0, expired: false });
     const router = typeof window !== 'undefined' ? undefined : null; // SSR guard handled below
 
-    function calcRemaining() {
-        const diffMs = new Date(deadline).getTime() - Date.now();
+    const calcRemaining = useCallback(() => {
+        const targetMs = deadline ? new Date(deadline).getTime() : Date.now() + 48 * 60 * 60 * 1000;
+        const diffMs = targetMs - Date.now();
         if (diffMs <= 0) return { h: 0, m: 0, s: 0, expired: true };
         const totalSec = Math.floor(diffMs / 1000);
         return {
@@ -116,13 +117,18 @@ function TokenCountdownBanner({
             s: totalSec % 60,
             expired: false,
         };
-    }
+    }, [deadline]);
 
     useEffect(() => {
-        setTimeLeft(calcRemaining());
+        const timer = setTimeout(() => {
+            setTimeLeft(calcRemaining());
+        }, 0);
         const id = setInterval(() => setTimeLeft(calcRemaining()), 1000);
-        return () => clearInterval(id);
-    }, [deadline]);
+        return () => {
+            clearTimeout(timer);
+            clearInterval(id);
+        };
+    }, [calcRemaining]);
 
     const totalHoursLeft = timeLeft.h + timeLeft.m / 60;
     const isCritical = totalHoursLeft < 6;
@@ -404,7 +410,7 @@ function BookingCard({
                 {/* ── Payment Cards ── */}
                 {isTokenPending && booking.roomAssigned && (
                     <TokenCountdownBanner
-                        deadline={booking.tokenDeadline || new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()}
+                        deadline={booking.tokenDeadline}
                         bookingId={booking.id}
                         roomAssigned={booking.roomAssigned}
                         tokenAmount={booking.tokenAmount || 1000}
@@ -925,7 +931,7 @@ export default function StudentDashboardPage() {
             setPaymentHistory(pData);
             setProfile(profData);
             if (profData) {
-                let contacts = [{ name: '', relation: '', phone: '' }, { name: '', relation: '', phone: '' }];
+                const contacts = [{ name: '', relation: '', phone: '' }, { name: '', relation: '', phone: '' }];
                 try {
                     if (profData.emergencyContact) {
                         const parsed = JSON.parse(profData.emergencyContact);
