@@ -1171,14 +1171,14 @@ export default function StudentDashboardPage() {
 
             {/* Main Tabs Segment */}
             <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-                <TabsList className="flex w-full mb-6 bg-white border border-slate-200 rounded-2xl p-1 h-auto gap-1 shadow-sm">
-                    <TabsTrigger value="active-stay" className="flex-1 font-bold py-2.5 text-sm rounded-lg transition-all data-[state=active]:rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:text-slate-700">
+                <TabsList className="flex w-full mb-6 bg-white border border-slate-200 rounded-lg p-1 h-auto gap-1 shadow-sm">
+                    <TabsTrigger value="active-stay" className="flex-1 font-bold py-2.5 text-sm rounded-md transition-all data-[state=active]:rounded-md data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:text-slate-700">
                         <Building2 className="h-4 w-4 mr-2 hidden sm:block" /> Active Stay
                     </TabsTrigger>
-                    <TabsTrigger value="bookings" className="flex-1 font-bold py-2.5 text-sm rounded-lg transition-all data-[state=active]:rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:text-slate-700">
+                    <TabsTrigger value="bookings" className="flex-1 font-bold py-2.5 text-sm rounded-md transition-all data-[state=active]:rounded-md data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:text-slate-700">
                         <Calendar className="h-4 w-4 mr-2 hidden sm:block" /> Bookings & Status
                     </TabsTrigger>
-                    <TabsTrigger value="profile" className="flex-1 font-bold py-2.5 text-sm rounded-lg transition-all data-[state=active]:rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:text-slate-700">
+                    <TabsTrigger value="profile" className="flex-1 font-bold py-2.5 text-sm rounded-md transition-all data-[state=active]:rounded-md data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:text-slate-700">
                         <User className="h-4 w-4 mr-2 hidden sm:block" /> My Profile
                     </TabsTrigger>
                 </TabsList>
@@ -1526,30 +1526,48 @@ export default function StudentDashboardPage() {
                                                 </div>
                                                 <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Personal info</p>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-4 py-4">
-                                                <div><p className="text-[10px] text-slate-400">Date of birth</p><p className="text-sm font-medium text-slate-800">{profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('en-GB') : profile?.dob || "—"}</p></div>
-                                                <div><p className="text-[10px] text-slate-400">Gender</p><p className="text-sm font-medium text-slate-800">{profile?.gender || "—"}</p></div>
-                                                <div><p className="text-[10px] text-slate-400">Nationality</p><p className="text-sm font-medium text-slate-800">{profile?.nationality || "Indian"}</p></div>
-                                                <div><p className="text-[10px] text-slate-400">Occupation</p><p className="text-sm font-medium text-slate-800">{profile?.occupationType || "Student"}</p></div>
-                                                <div className="col-span-2"><p className="text-[10px] text-slate-400">Institution / company</p><p className="text-sm font-medium text-slate-800">{profile?.occupationDetail || profile?.institution || "—"}</p></div>
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-4 px-4 py-4">
+                                                <div><p className="text-xs text-slate-500 mb-1">Date of birth</p><p className="font-medium text-slate-800">{profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('en-GB') : profile?.dob}</p></div>
+                                                <div><p className="text-xs text-slate-500 mb-1">Gender</p><p className="font-medium text-slate-800">{profile?.gender}</p></div>
+                                                <div><p className="text-xs text-slate-500 mb-1">Nationality</p><p className="font-medium text-slate-800">{profile?.nationality || "Indian"}</p></div>
+                                                <div><p className="text-xs text-slate-500 mb-1">Occupation</p><p className="font-medium text-slate-800">{profile?.occupationType || "Student"}</p></div>
+                                                <div className="col-span-2 border-t border-slate-100 pt-3 mt-1">
+                                                    <p className="text-xs text-slate-500 mb-1">Institution / company</p>
+                                                    <p className="font-medium text-slate-800">{profile?.occupationDetail || profile?.institution}</p>
+                                                </div>
                                             </div>
                                         </div>
 
                                         {/* Current stay card */}
                                         {profile?.activeTenant ? (
-                                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
-                                                <p className="text-xs font-black text-blue-400 uppercase tracking-widest">Current stay</p>
-                                                <div className="text-sm font-bold text-blue-900">{profile?.activeTenant?.property?.name || profile?.activeTenant?.booking?.propertyName || "Property Name Unavailable"}</div>
-                                                <div className="text-xs text-blue-700">{profile?.activeTenant?.property?.address || profile?.activeTenant?.booking?.propertyAddress || "Address Unavailable"}</div>
-                                                <div className="flex gap-2 mt-2">
-                                                    <Badge variant="outline" className="bg-white text-blue-700 border-blue-200 font-mono text-[10px] font-black">{profile?.activeTenant?.displayId}</Badge>
+                                            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col h-full">
+                                                <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                                                    <div className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center">
+                                                        <Building2 className="h-3.5 w-3.5 text-blue-600" />
+                                                    </div>
+                                                    <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Current stay</p>
+                                                </div>
+                                                <div className="p-4 space-y-2 flex-1">
+                                                    <div className="text-sm font-bold text-slate-900">{profile?.activeTenant?.property?.name || profile?.activeTenant?.booking?.propertyName || "Property Name Unavailable"}</div>
+                                                    <div className="text-xs text-slate-500">{profile?.activeTenant?.property?.address || profile?.activeTenant?.booking?.propertyAddress || "Address Unavailable"}</div>
+                                                    <div className="flex gap-2 mt-2">
+                                                        <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 font-mono text-[10px] font-black">{profile?.activeTenant?.displayId}</Badge>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center h-full min-h-[180px] gap-2 text-center p-6">
-                                                <span className="text-3xl">🏠</span>
-                                                <p className="text-sm font-bold text-slate-500">No active stay</p>
-                                                <p className="text-xs text-slate-400">Book a PG to see stay details</p>
+                                            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col h-full">
+                                                <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                                                    <div className="w-6 h-6 bg-slate-50 rounded-lg flex items-center justify-center">
+                                                        <Building2 className="h-3.5 w-3.5 text-slate-500" />
+                                                    </div>
+                                                    <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Current stay</p>
+                                                </div>
+                                                <div className="flex flex-col items-center justify-center p-6 text-center flex-1 gap-2 min-h-[140px]">
+                                                    <span className="text-3xl">🏠</span>
+                                                    <p className="text-sm font-bold text-slate-500">No active stay</p>
+                                                    <p className="text-xs text-slate-400">Book a PG to see stay details</p>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
