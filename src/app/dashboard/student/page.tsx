@@ -1503,15 +1503,15 @@ export default function StudentDashboardPage() {
                                         </div>
                                         <div className="relative z-10 flex-1 min-w-0">
                                             <h2 className="text-xl font-black text-white truncate">{profile?.name}</h2>
-                                            <p className="text-white/50 text-xs mt-0.5">Student / Tenant</p>
-                                            <div className="mt-2 flex items-center gap-2 flex-wrap">
-                                                <span className="inline-flex items-center gap-1.5 bg-white/10 border border-white/20 text-white/80 text-[10px] font-mono font-bold px-3 py-1 rounded-full">
+                                            <p className="text-white/90 text-sm mt-0.5">User</p>
+                                            <div className="mt-3 flex items-center gap-2 flex-wrap">
+                                                <span className="inline-flex items-center gap-1.5 bg-white/20 border border-white/30 text-white text-xs font-mono font-bold px-3 py-1.5 rounded-full shadow-sm tracking-wide">
                                                     🪪 {profile?.permanentId || profile?.displayId || "RP-U-XXXXXX"}
                                                 </span>
                                             </div>
                                         </div>
                                         <Button size="sm" onClick={() => setIsEditingProfile(true)}
-                                            className="relative z-10 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold rounded-xl shrink-0 backdrop-blur-sm">
+                                            className="relative z-10 bg-white text-indigo-700 hover:bg-slate-50 hover:text-indigo-800 border-none shadow-sm text-xs font-bold rounded-xl shrink-0 transition-colors">
                                             <Edit2 className="h-3.5 w-3.5 mr-1.5" /> Edit profile
                                         </Button>
                                     </div>
