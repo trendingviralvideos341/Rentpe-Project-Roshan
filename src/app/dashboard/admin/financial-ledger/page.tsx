@@ -119,7 +119,7 @@ export default function AdminFinancialLedgerPage() {
     const getActiveDateRange = useCallback((filter: PeriodFilter) => {
         const fyYear = parseInt(filter.financialYear || String(getCurrentFY(getISTDate(new Date()))), 10);
         const range = getFYDateRange(fyYear, filter.month);
-        return { from: range.gte, to: range.lt };
+        return { from: range.gte, to: new Date(range.lt.getTime() - 1) };
     }, []);
 
     const fetchAll = useCallback(async (from: Date, to: Date) => {
