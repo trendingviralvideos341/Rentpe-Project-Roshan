@@ -971,8 +971,12 @@ export default function StudentDashboardPage() {
 
     const handleSaveProfile = async () => {
         // Strict Validation
-        if (!profileForm.dateOfBirth || !profileForm.gender || !profileForm.occupationType || !profileForm.occupationDetail) {
+        if (!profileForm.dateOfBirth || !profileForm.gender || !profileForm.occupationType) {
             toast.error("Please fill in all mandatory fields before saving.");
+            return;
+        }
+        if (profileForm.occupationType !== 'Others' && !profileForm.occupationDetail) {
+            toast.error("Please specify your college/university or company name.");
             return;
         }
         if (profileForm.nationality === 'Others' && !profileForm.nationalityOther) {
@@ -1012,7 +1016,7 @@ export default function StudentDashboardPage() {
                 nationality: finalNationality,
                 emergencyContact: finalEmergency,
                 occupationType: finalOccupation,
-                occupationDetail: profileForm.occupationDetail
+                occupationDetail: profileForm.occupationType === 'Others' ? '' : profileForm.occupationDetail
             });
             toast.success("Profile updated successfully!", { id: toastId });
             setIsEditingProfile(false);
@@ -1322,37 +1326,17 @@ export default function StudentDashboardPage() {
                                 <div className="space-y-0 rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white">
 
                                     {/* ── Hero header ── */}
-                                    <div className="relative bg-gradient-to-br from-slate-900 via-indigo-950 to-violet-900 px-6 py-5 flex items-center gap-4">
+                                    <div className="relative bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 px-6 py-5 flex items-center gap-4">
                                         {/* glow blobs */}
-                                        <div className="absolute -top-8 -right-8 w-40 h-40 bg-violet-500/20 rounded-full blur-2xl pointer-events-none" />
-                                        <div className="absolute -bottom-8 left-1/4 w-32 h-32 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none" />
+                                        <div className="absolute -top-8 -right-8 w-40 h-40 bg-white/20 rounded-full blur-2xl pointer-events-none" />
+                                        <div className="absolute -bottom-8 left-1/4 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" />
                                         <div className="relative z-10 w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-sm shrink-0">
                                             <User className="h-7 w-7 text-white" />
                                         </div>
                                         <div className="relative z-10">
                                             <h2 className="text-xl font-black text-white">Edit profile</h2>
-                                            <p className="text-white/50 text-xs mt-0.5">Update your personal details and emergency contacts</p>
-                                            <div className="mt-2 flex flex-wrap gap-2">
-                                                <span className="inline-flex items-center gap-1 bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-full">
-                                                    🔒 Personal info is locked after first save
-                                                </span>
-                                                {isProfileLocked && (
-                                                    <span className="inline-flex items-center gap-1 bg-red-400/20 border border-red-400/40 text-red-300 text-[10px] font-bold px-2.5 py-1 rounded-full">
-                                                        🛡 Profile locked — contact support to change
-                                                    </span>
-                                                )}
-                                            </div>
+                                            <p className="text-white/85 text-xs mt-0.5">Update your personal details and emergency contacts</p>
                                         </div>
-                                    </div>
-
-                                    {/* ── Notice bar — legal / security ── */}
-                                    <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-start gap-3">
-                                        <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                                        <p className="text-xs text-amber-800 leading-relaxed">
-                                            <strong>Legal notice:</strong> By saving this profile you confirm that all information provided is accurate and matches your government-issued ID.
-                                            Providing false information may result in account suspension and legal action under applicable Indian law.
-                                            Your data is stored securely and used only for tenancy management purposes as per our Privacy Policy.
-                                        </p>
                                     </div>
 
                                     {/* ── Form body ── */}
@@ -1486,23 +1470,25 @@ export default function StudentDashboardPage() {
                                                         </div>
                                                     )}
 
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-600 mb-1.5">
-                                                            {profileForm.occupationType === 'Student' ? 'College / university name' : 'Company / employer name'}
-                                                            <span className="text-red-500"> *</span>
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            disabled={isProfileLocked}
-                                                            value={profileForm.occupationDetail || ''}
-                                                            onChange={e => setProfileForm({ ...profileForm, occupationDetail: e.target.value })}
-                                                            placeholder={profileForm.occupationType === 'Student' ? "e.g. Delhi University, IIT Bombay" : "e.g. Infosys, Accenture"}
-                                                            className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none disabled:bg-slate-50 disabled:cursor-not-allowed transition-all"
-                                                        />
-                                                        <p className="text-[10px] text-slate-400 mt-1">
-                                                            Required for tenancy verification and address proof.
-                                                        </p>
-                                                    </div>
+                                                    {profileForm.occupationType !== 'Others' && (
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                                                                {profileForm.occupationType === 'Student' ? 'College / university name' : 'Company / employer name'}
+                                                                <span className="text-red-500"> *</span>
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                disabled={isProfileLocked}
+                                                                value={profileForm.occupationDetail || ''}
+                                                                onChange={e => setProfileForm({ ...profileForm, occupationDetail: e.target.value })}
+                                                                placeholder={profileForm.occupationType === 'Student' ? "e.g. Delhi University, IIT Bombay" : "e.g. Infosys, Accenture"}
+                                                                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none disabled:bg-slate-50 disabled:cursor-not-allowed transition-all"
+                                                            />
+                                                            <p className="text-[10px] text-slate-400 mt-1">
+                                                                Required for tenancy verification and address proof.
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
 
@@ -1563,13 +1549,6 @@ export default function StudentDashboardPage() {
                                                         </div>
                                                     </div>
 
-                                                    <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-xl p-3">
-                                                        <Shield className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
-                                                        <p className="text-[11px] text-blue-700 leading-relaxed">
-                                                            Changing your email or phone requires OTP verification on both old and new contacts.
-                                                            This protects your account from unauthorized changes.
-                                                        </p>
-                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1726,34 +1705,18 @@ export default function StudentDashboardPage() {
                                                     </div>
                                                 </div>
 
-                                                {/* Legal note */}
-                                                <div className="mt-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
-                                                    <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                                                    <p className="text-[11px] text-amber-800 leading-relaxed">
-                                                        Emergency contacts are used only in genuine emergencies (accidents, health issues, property incidents).
-                                                        This is a standard requirement under Indian tenancy best practices and RERA guidelines.
-                                                        Data is protected under the IT Act 2000 and will never be shared with third parties.
-                                                    </p>
-                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* ── Footer — action bar ── */}
-                                    <div className="border-t border-slate-100 bg-slate-50 px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                                        <div className="flex items-start gap-2">
-                                            <CheckCircle className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
-                                            <p className="text-[11px] text-slate-400 leading-relaxed max-w-sm">
-                                                All data is encrypted in transit and at rest. Your profile is used only for tenancy management
-                                                and will not be sold to third parties. See our <span className="underline cursor-pointer">Privacy Policy</span>.
-                                            </p>
-                                        </div>
+                                    <div className="border-t border-slate-100 bg-slate-50 px-6 py-4 flex items-center justify-end gap-3">
                                         <div className="flex items-center gap-3 shrink-0">
                                             <Button
                                                 type="button"
                                                 variant="outline"
                                                 onClick={() => setIsEditingProfile(false)}
-                                                className="rounded-xl border-slate-300 text-slate-600 font-bold px-5"
+                                                className="rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-bold px-5"
                                             >
                                                 Cancel
                                             </Button>
