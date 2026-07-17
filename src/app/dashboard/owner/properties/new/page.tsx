@@ -433,12 +433,12 @@ export default function AddPropertyPage() {
                 {!entry.uploading && !entry.error && (
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-all flex flex-col items-center justify-center gap-2 backdrop-blur-[1px]">
                         <button type="button" onClick={() => setViewImage(entry.previewUrl)} 
-                            className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[9px] font-black shadow-lg">
-                            <Eye className="h-3 w-3" /> VIEW
+                            className="flex items-center justify-center gap-1.5 w-[85%] min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black shadow-lg">
+                            <Eye className="h-4 w-4" /> VIEW
                         </button>
                         <button type="button" onClick={() => removeDoc(category, i)} 
-                            className="flex items-center gap-1 px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[9px] font-black shadow-lg">
-                            <X className="h-3 w-3" /> DELETE
+                            className="flex items-center justify-center gap-1.5 w-[85%] min-h-[44px] bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-black shadow-lg">
+                            <X className="h-4 w-4" /> DELETE
                         </button>
                     </div>
                 )}
@@ -509,12 +509,12 @@ export default function AddPropertyPage() {
                                 {!entries[0].uploading && !entries[0].error && (
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center gap-2 backdrop-blur-sm">
                                         <button type="button" onClick={() => setViewImage(entries[0].previewUrl)} 
-                                            className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black shadow-xl">
-                                            <Eye className="h-3 w-3" /> VIEW PHOTO
+                                            className="flex items-center justify-center gap-2 w-[70%] min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black shadow-xl">
+                                            <Eye className="h-4 w-4" /> VIEW PHOTO
                                         </button>
                                         <button type="button" onClick={() => removeDoc(category)} 
-                                            className="flex items-center gap-2 px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-black shadow-xl">
-                                            <X className="h-3 w-3" /> DELETE PHOTO
+                                            className="flex items-center justify-center gap-2 w-[70%] min-h-[44px] bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-black shadow-xl">
+                                            <X className="h-4 w-4" /> DELETE PHOTO
                                         </button>
                                     </div>
                                 )}

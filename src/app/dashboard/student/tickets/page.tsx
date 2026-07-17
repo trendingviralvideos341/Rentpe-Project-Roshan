@@ -531,8 +531,12 @@ export default function StudentTicketsPage() {
                                         <div key={i} className="relative group">
                                             <img src={img.preview} alt="" className="h-20 w-20 object-cover rounded-xl border-2 border-indigo-100" />
                                             <button onClick={() => setUploadedImages(prev => prev.filter((_, idx) => idx !== i))}
-                                                className="absolute -top-1.5 -right-1.5 h-5 w-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <X className="h-3 w-3" />
+                                                className="absolute -top-3 -right-3 h-11 w-11 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
+                                                aria-label="Remove image"
+                                            >
+                                                <div className="h-6 w-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md">
+                                                    <X className="h-3 w-3" />
+                                                </div>
                                             </button>
                                         </div>
                                     ))}

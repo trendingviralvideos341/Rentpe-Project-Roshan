@@ -64,42 +64,46 @@ export async function GET(req: Request) {
         errors: [] as string[],
     };
 
-    for (const tenant of activeTenants) {
-        try {
-            if (!tenant.billingProfile) {
-                results.skipped++;
-                results.errors.push(`${tenant.displayId}: no billing profile`);
-                continue;
+    const CHUNK_SIZE = 50;
+    for (let i = 0; i < activeTenants.length; i += CHUNK_SIZE) {
+        const chunk = activeTenants.slice(i, i + CHUNK_SIZE);
+        await Promise.allSettled(chunk.map(async (tenant) => {
+            try {
+                if (!tenant.billingProfile) {
+                    results.skipped++;
+                    results.errors.push(`${tenant.displayId}: no billing profile`);
+                    return;
+                }
+
+                // internalGenerateInvoice is idempotent — skips if already exists
+                const result = await internalGenerateInvoice(tenant.id, billingMonth, "SYSTEM");
+
+                if ((result as any).skipped) {
+                    results.skipped++;
+                    return;
+                }
+
+                // ── Notify tenant: rent invoice generated ──
+                if (tenant.booking?.userId) {
+                    await prisma.notification.create({
+                        data: {
+                            userId: tenant.booking.userId,
+                            type: "RENT_DUE",
+                            category: "INVOICE_GENERATED",
+                            message: `📄 Your rent invoice for ${monthLabel} has been generated. Due by the 5th. Please pay on time to avoid late fees.`,
+                            isPersistent: false,
+                            targetRole: "USER",
+                        },
+                    }).catch(() => {}); // non-fatal
+                }
+
+                results.created++;
+            } catch (err: any) {
+                console.error(`[CRON] Invoice generation failed for tenant ${tenant.id}:`, err?.message);
+                results.failed++;
+                results.errors.push(`${tenant.displayId}: ${err?.message}`);
             }
-
-            // internalGenerateInvoice is idempotent — skips if already exists
-            const result = await internalGenerateInvoice(tenant.id, billingMonth, "SYSTEM");
-
-            if ((result as any).skipped) {
-                results.skipped++;
-                continue;
-            }
-
-            // ── Notify tenant: rent invoice generated ──
-            if (tenant.booking?.userId) {
-                await prisma.notification.create({
-                    data: {
-                        userId: tenant.booking.userId,
-                        type: "RENT_DUE",
-                        category: "INVOICE_GENERATED",
-                        message: `📄 Your rent invoice for ${monthLabel} has been generated. Due by the 5th. Please pay on time to avoid late fees.`,
-                        isPersistent: false,
-                        targetRole: "USER",
-                    },
-                }).catch(() => {}); // non-fatal
-            }
-
-            results.created++;
-        } catch (err: any) {
-            console.error(`[CRON] Invoice generation failed for tenant ${tenant.id}:`, err?.message);
-            results.failed++;
-            results.errors.push(`${tenant.displayId}: ${err?.message}`);
-        }
+        }));
     }
 
     console.log(`[CRON generate-invoices] ${billingMonth}:`, results);

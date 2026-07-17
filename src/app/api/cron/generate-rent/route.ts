@@ -56,47 +56,51 @@ export async function GET(request: Request) {
         failed: 0,
     };
 
-    for (const tenant of activeTenants) {
-        try {
-            // Idempotent: skip if already created for this month
-            const existing = await prisma.rentRecord.findFirst({
-                where: { tenantId: tenant.id, month: monthLabel },
-            });
+    const CHUNK_SIZE = 50;
+    for (let i = 0; i < activeTenants.length; i += CHUNK_SIZE) {
+        const chunk = activeTenants.slice(i, i + CHUNK_SIZE);
+        await Promise.allSettled(chunk.map(async (tenant) => {
+            try {
+                // Idempotent: skip if already created for this month
+                const existing = await prisma.rentRecord.findFirst({
+                    where: { tenantId: tenant.id, month: monthLabel },
+                });
 
-            if (existing) {
-                results.skipped++;
-                continue;
-            }
+                if (existing) {
+                    results.skipped++;
+                    return;
+                }
 
-            // Full-month rent record (first month proration handled at move-in)
-            await prisma.rentRecord.create({
-                data: {
-                    tenantId: tenant.id,
-                    month: monthLabel,
-                    amount: tenant.rent,
-                    paid: false,
-                },
-            });
-
-            // ── In-app notification ──────────────────────────────────────────
-            if (tenant.booking?.userId) {
-                await prisma.notification.create({
+                // Full-month rent record (first month proration handled at move-in)
+                await prisma.rentRecord.create({
                     data: {
-                        userId: tenant.booking.userId,
-                        type: "RENT_DUE",
-                        category: "RENT_REMINDER",
-                        message: `🏠 Rent for ${monthLabel} (₹${Number(tenant.rent).toLocaleString("en-IN")}) is due. Please pay by the 5th to avoid late fees.`,
-                        isPersistent: false,
-                        targetRole: "USER",
+                        tenantId: tenant.id,
+                        month: monthLabel,
+                        amount: tenant.rent,
+                        paid: false,
                     },
-                }).catch(() => {}); // non-fatal: notification failure must never block billing
-            }
+                });
 
-            results.created++;
-        } catch (err: any) {
-            console.error(`[CRON generate-rent] Failed for tenant ${tenant.id}:`, err?.message);
-            results.failed++;
-        }
+                // ── In-app notification ──────────────────────────────────────────
+                if (tenant.booking?.userId) {
+                    await prisma.notification.create({
+                        data: {
+                            userId: tenant.booking.userId,
+                            type: "RENT_DUE",
+                            category: "RENT_REMINDER",
+                            message: `🏠 Rent for ${monthLabel} (₹${Number(tenant.rent).toLocaleString("en-IN")}) is due. Please pay by the 5th to avoid late fees.`,
+                            isPersistent: false,
+                            targetRole: "USER",
+                        },
+                    }).catch(() => {}); // non-fatal: notification failure must never block billing
+                }
+
+                results.created++;
+            } catch (err: any) {
+                console.error(`[CRON generate-rent] Failed for tenant ${tenant.id}:`, err?.message);
+                results.failed++;
+            }
+        }));
     }
 
     console.log(`[CRON generate-rent] ${monthLabel}:`, results);

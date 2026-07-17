@@ -455,94 +455,96 @@ export async function approveBooking(id: string, data: {
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
-    const existingBooking = await prisma.booking.findUnique({ where: { id } });
-
     // When a bed is allocated (bedId present) → advance to APPROVED_PENDING_TOKEN
     // so student knows to pay ₹1,000 token. Otherwise just APPROVED (room not yet set).
     const newStatus = data.bedId ? 'APPROVED_PENDING_TOKEN' : 'APPROVED';
 
-    const booking = await prisma.booking.update({
-        where: { id },
-        data: {
-            status: newStatus,
-            approvedAt: new Date(),
-            // ── 48-Hour Token Deadline (Note 4) ──────────────────────────────────
-            // When a bed is allocated, the student has exactly 48 hours to pay the
-            // ₹1,000 token. After that, the cron job auto-rejects and releases the bed.
-            tokenDeadline: newStatus === 'APPROVED_PENDING_TOKEN'
-                ? new Date(Date.now() + 48 * 60 * 60 * 1000)
-                : undefined,
-            // ─────────────────────────────────────────────────────────────────────
-            roomId: data.roomId,
-            amount: data.amount,
-            occupancy: data.occupancy,
-            roomAssigned: data.roomAssigned,
-            guestName: data.guestName,
-            guestEmail: data.guestEmail,
-            guestPhone: data.guestPhone,
-            guestAddress: data.guestAddress,
-            guestCity: data.guestCity,
-            guestPincode: data.guestPincode,
-            guestCountry: data.guestCountry || 'India',
-            occupationType: data.occupationType,
-            occupationDetail: data.occupationDetail,
-            onboardingDate: data.onboardingDate,
-            pendingAmount: data.pendingAmount || null,
-            depositAmount: data.depositAmount || null,
-            depositMonths: data.depositMonths || null,
-            platformFeeAmount: data.platformFeeAmount ?? null,
-            // Section 5 â€” Lock food price at approval time (SECTION 8 â€” Billing: price immutable post-approval)
-            foodSelected: data.foodSelected ?? false,
-            foodPriceApplied: data.foodPriceApplied ?? 0,
-        } as any
-    });
+    const [booking, existingBooking] = await prisma.$transaction(async (tx) => {
+        const existing = await tx.booking.findUnique({ where: { id } });
+        if (!existing) throw new Error("Booking not found");
 
-    // Handle bed availability changes if the room assignment has changed
-    if (existingBooking && data.roomId !== existingBooking.roomId) {
-        if (existingBooking.roomId) {
-            const oldRoom = await prisma.room.findUnique({ 
-                where: { id: existingBooking.roomId },
-                include: { beds: { select: { status: true } } }
+        // 1. Lock the new bed (with STATUS CHECK to prevent race conditions)
+        if (data.bedId) {
+            // Find existing bed for this booking first, so we don't throw if re-approving the same bed
+            const oldBedForThisBooking = await tx.bed.findFirst({ where: { lockedByBookingId: id } });
+            
+            if (!oldBedForThisBooking || oldBedForThisBooking.id !== data.bedId) {
+                // We are locking a new bed. Ensure it's actually AVAILABLE.
+                const checkBed = await tx.bed.findUnique({ where: { id: data.bedId } });
+                if (!checkBed || checkBed.status !== 'AVAILABLE') {
+                    throw new Error("This bed is no longer available. It may have been booked by someone else just now.");
+                }
+            }
+
+            await tx.bed.update({
+                where: { id: data.bedId },
+                data: { status: 'LOCKED', lockedByBookingId: id, lockedAt: new Date() }
             });
-            if (oldRoom) {
-                const realAvail = oldRoom.beds.filter(b => b.status === 'AVAILABLE').length;
-                await prisma.room.update({
-                    where: { id: oldRoom.id },
-                    data: { availability: realAvail }
-                });
+        }
+
+        // 2. Free old bed if changed
+        const oldBed = await tx.bed.findFirst({ where: { lockedByBookingId: id } });
+        if (oldBed && oldBed.id !== data.bedId) {
+            await tx.bed.update({
+                where: { id: oldBed.id },
+                data: { status: 'AVAILABLE', lockedByBookingId: null, lockedAt: null, tenantId: null }
+            });
+        }
+
+        // 3. Update the booking itself
+        const updatedBooking = await tx.booking.update({
+            where: { id },
+            data: {
+                status: newStatus,
+                approvedAt: new Date(),
+                // ── 48-Hour Token Deadline (Note 4) ──────────────────────────────────
+                tokenDeadline: newStatus === 'APPROVED_PENDING_TOKEN'
+                    ? new Date(Date.now() + 48 * 60 * 60 * 1000)
+                    : undefined,
+                // ─────────────────────────────────────────────────────────────────────
+                roomId: data.roomId,
+                amount: data.amount,
+                occupancy: data.occupancy,
+                roomAssigned: data.roomAssigned,
+                guestName: data.guestName,
+                guestEmail: data.guestEmail,
+                guestPhone: data.guestPhone,
+                guestAddress: data.guestAddress,
+                guestCity: data.guestCity,
+                guestPincode: data.guestPincode,
+                guestCountry: data.guestCountry || 'India',
+                occupationType: data.occupationType,
+                occupationDetail: data.occupationDetail,
+                onboardingDate: data.onboardingDate,
+                pendingAmount: data.pendingAmount || null,
+                depositAmount: data.depositAmount || null,
+                depositMonths: data.depositMonths || null,
+                platformFeeAmount: data.platformFeeAmount ?? null,
+                foodSelected: data.foodSelected ?? false,
+                foodPriceApplied: data.foodPriceApplied ?? 0,
+            } as any
+        });
+
+        // 4. Update room availability counts if room changed
+        if (data.roomId !== existing.roomId) {
+            if (existing.roomId) {
+                const oldRoom = await tx.room.findUnique({ where: { id: existing.roomId }, include: { beds: { select: { status: true } } } });
+                if (oldRoom) {
+                    const realAvail = oldRoom.beds.filter(b => b.status === 'AVAILABLE').length;
+                    await tx.room.update({ where: { id: oldRoom.id }, data: { availability: realAvail } });
+                }
+            }
+            if (data.roomId) {
+                const newRoom = await tx.room.findUnique({ where: { id: data.roomId }, include: { beds: { select: { status: true } } } });
+                if (newRoom) {
+                    const realAvail = newRoom.beds.filter(b => b.status === 'AVAILABLE').length;
+                    await tx.room.update({ where: { id: newRoom.id }, data: { availability: realAvail } });
+                }
             }
         }
-        if (data.roomId) {
-            const newRoom = await prisma.room.findUnique({ 
-                where: { id: data.roomId },
-                include: { beds: { select: { status: true } } }
-            });
-            if (newRoom) {
-                const realAvail = newRoom.beds.filter(b => b.status === 'AVAILABLE').length;
-                await prisma.room.update({
-                    where: { id: newRoom.id },
-                    data: { availability: realAvail }
-                });
-            }
-        }
-    }
 
-    // Free old bed â€” find by lockedByBookingId (Booking has no bedId field)
-    const oldBed = await prisma.bed.findFirst({ where: { lockedByBookingId: id } }).catch(() => null);
-    if (oldBed && oldBed.id !== data.bedId) {
-        await prisma.bed.update({
-            where: { id: oldBed.id },
-            data: { status: 'AVAILABLE', lockedByBookingId: null, lockedAt: null, tenantId: null }
-        }).catch(() => {});
-    }
-
-    // Lock the new bed to this booking
-    if (data.bedId) {
-        await prisma.bed.update({
-            where: { id: data.bedId },
-            data: { status: 'LOCKED', lockedByBookingId: id, lockedAt: new Date() }
-        }).catch(() => {});
-    }
+        return [updatedBooking, existing];
+    }, { isolationLevel: 'Serializable' });
 
     logAuditEvent({
         actorId: session.userId,

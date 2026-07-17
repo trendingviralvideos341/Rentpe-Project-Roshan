@@ -401,7 +401,25 @@ export default function PropertyDetailPage() {
                         <CardHeader>
                             <CardTitle>Book your stay</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-5">
+                        <CardContent className="space-y-5 relative">
+                            {!currentUser && (
+                                <div className="absolute inset-0 z-50 rounded-b-xl overflow-hidden">
+                                    <div className="absolute inset-0 bg-white/60 backdrop-blur-md"></div>
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+                                        <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                                            <Shield className="w-8 h-8 text-indigo-600" />
+                                        </div>
+                                        <h3 className="text-xl font-black text-slate-900 mb-2 tracking-tight">Unlock Booking Options</h3>
+                                        <p className="text-sm text-slate-600 mb-6 font-medium">Join RentPe to see room availability, choose food plans, and secure your bed.</p>
+                                        <Button 
+                                            className="w-full text-lg h-12 font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-xl hover:shadow-2xl transition-all"
+                                            onClick={() => router.push("/login?redirect=" + encodeURIComponent(window.location.pathname))}
+                                        >
+                                            🔒 Sign In to Book
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
                             {/* Room prices */}
                             <div>
                                 {Object.values(

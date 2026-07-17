@@ -198,9 +198,12 @@ export function TicketsContainer() {
                                         <button
                                             type="button"
                                             onClick={() => removeImage(idx)}
-                                            className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                            className="absolute -top-3 -right-3 h-11 w-11 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
+                                            aria-label="Remove image"
                                         >
-                                            <X className="h-3 w-3" />
+                                            <div className="h-6 w-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md">
+                                                <X className="h-3 w-3" />
+                                            </div>
                                         </button>
                                     </div>
                                 ))}

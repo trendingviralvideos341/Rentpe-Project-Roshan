@@ -78,6 +78,7 @@ const PeriodSelector: React.FC<PeriodSelectorProps> = ({
                     value={value.financialYear ?? String(currentFY)}
                     onChange={handleYearChange}
                     className={selectClass}
+                    style={{ colorScheme: theme }}
                 >
                     {fyOptions.map(opt => (
                         <option key={opt.value} value={opt.value}>
@@ -98,6 +99,7 @@ const PeriodSelector: React.FC<PeriodSelectorProps> = ({
                     value={value.month ?? 'all'}
                     onChange={handleMonthChange}
                     className={selectClass}
+                    style={{ colorScheme: theme }}
                 >
                     <option value="all">All Months (FY)</option>
                     {monthOptions.map(m => (

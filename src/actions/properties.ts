@@ -503,11 +503,14 @@ export async function addRoomToProperty(propertyId: string, roomData: any) {
             data: { ...roomData, displayId: roomDisplayId, propertyId, totalBeds: roomData.availability, status: 'AVAILABLE' }
         });
 
-        for (let i = 0; i < room.availability; i++) {
-            const bedDisplayId = bedIdsList[i];
-            await tx.bed.create({
-                data: { displayId: bedDisplayId, roomId: room.id, bedNumber: `${room.roomNumber}-${String.fromCharCode(64 + i + 1)}`, status: 'AVAILABLE' }
-            });
+        if (room.availability > 0) {
+            const bedsData = Array(room.availability).fill(0).map((_, i) => ({
+                displayId: bedIdsList[i],
+                roomId: room.id,
+                bedNumber: `${room.roomNumber}-${String.fromCharCode(64 + i + 1)}`,
+                status: 'AVAILABLE'
+            }));
+            await tx.bed.createMany({ data: bedsData });
         }
         return room;
     });
@@ -547,17 +550,13 @@ export async function editRoom(roomId: string, roomData: any) {
             const bedsToAdd = newAvailability - oldAvailability;
             const bedIdsList = await Promise.all(Array(bedsToAdd).fill(0).map(() => generateSequentialId('BED')));
             
-            for (let i = 0; i < bedsToAdd; i++) {
-                const bedDisplayId = bedIdsList[i];
-                await tx.bed.create({
-                    data: {
-                        displayId: bedDisplayId,
-                        roomId: roomId,
-                        bedNumber: `${updated.roomNumber}-${String.fromCharCode(64 + oldAvailability + i + 1)}`,
-                        status: 'AVAILABLE'
-                    }
-                });
-            }
+            const bedsData = Array(bedsToAdd).fill(0).map((_, i) => ({
+                displayId: bedIdsList[i],
+                roomId: roomId,
+                bedNumber: `${updated.roomNumber}-${String.fromCharCode(64 + oldAvailability + i + 1)}`,
+                status: 'AVAILABLE'
+            }));
+            await tx.bed.createMany({ data: bedsData });
         }
 
         await tx.auditLog.create({
