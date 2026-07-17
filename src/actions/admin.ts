@@ -358,31 +358,56 @@ export async function getTransactions() {
             take: 200,
         });
 
-        const payoutRows = await Promise.all(ownerPayouts.map(async (p: any) => {
-            // Get owner info
-            const owner = await prisma.user.findUnique({
-                where: { id: p.ownerId },
+        // ── BULK FETCH FOR PAYOUTS (Fix N+1) ──
+        const payoutOwnerIds = [...new Set(ownerPayouts.map(p => p.ownerId).filter(Boolean))] as string[];
+        const payoutPropertyIds = [...new Set(ownerPayouts.map(p => p.propertyId).filter(Boolean))] as string[];
+        let allPayoutBookingIds: string[] = [];
+        ownerPayouts.forEach(p => {
+            try {
+                const ids = JSON.parse(p.bookingIds || '[]');
+                allPayoutBookingIds.push(...ids);
+            } catch {}
+        });
+
+        const [payoutOwners, payoutProperties, payoutFees] = await Promise.all([
+            prisma.user.findMany({
+                where: { id: { in: payoutOwnerIds } },
                 select: { id: true, name: true, email: true, displayId: true, phone: true }
-            });
-            
-            // Get property info
-            const property = p.propertyId ? await prisma.property.findUnique({
-                where: { id: p.propertyId },
+            }),
+            prisma.property.findMany({
+                where: { id: { in: payoutPropertyIds } },
                 select: { id: true, name: true, displayId: true, city: true }
-            }) : null;
+            }),
+            allPayoutBookingIds.length > 0 
+                ? prisma.platformFee.findMany({ where: { bookingId: { in: allPayoutBookingIds } } })
+                : Promise.resolve([])
+        ]);
+
+        const payoutOwnerMap = new Map(payoutOwners.map(u => [u.id, u]));
+        const payoutPropertyMap = new Map(payoutProperties.map(pr => [pr.id, pr]));
+        
+        // Group fees by booking ID for quick lookup
+        const feeByBookingId = new Map<string, any[]>();
+        payoutFees.forEach(f => {
+            if (!feeByBookingId.has(f.bookingId)) feeByBookingId.set(f.bookingId, []);
+            feeByBookingId.get(f.bookingId)!.push(f);
+        });
+
+        const payoutRows = ownerPayouts.map((p: any) => {
+            const owner = payoutOwnerMap.get(p.ownerId);
+            const property = p.propertyId ? payoutPropertyMap.get(p.propertyId) : null;
             
-            // Parse bookingIds and aggregate PlatformFee records
             let bookingIds: string[] = [];
-            try { bookingIds = JSON.parse(p.bookingIds || '[]'); } catch { bookingIds = []; }
+            try { bookingIds = JSON.parse(p.bookingIds || '[]'); } catch {}
             
             let gstOnOwnerFeeTotal = 0;
             let tdsTotal = 0;
             if (bookingIds.length > 0) {
-                const fees = await prisma.platformFee.findMany({
-                    where: { bookingId: { in: bookingIds } }
+                bookingIds.forEach(bid => {
+                    const fees = feeByBookingId.get(bid) || [];
+                    gstOnOwnerFeeTotal += fees.reduce((s: number, f: any) => s + Number(f.gstOnOwnerFee || 0), 0);
+                    tdsTotal += fees.reduce((s: number, f: any) => s + Number(f.tdsAmount || 0), 0);
                 });
-                gstOnOwnerFeeTotal = fees.reduce((s: number, f: any) => s + Number(f.gstOnOwnerFee || 0), 0);
-                tdsTotal = fees.reduce((s: number, f: any) => s + Number(f.tdsAmount || 0), 0);
             }
             
             return {
@@ -407,7 +432,7 @@ export async function getTransactions() {
                 owner: owner ? { id: owner.id, name: owner.name, email: owner.email, displayId: owner.displayId, phone: owner.phone } : null,
                 property: property ? { id: property.id, name: property.name, displayId: property.displayId, city: property.city } : null,
             };
-        }));
+        });
 
         // ─────────────────────────────────────────────────────────────────────
         // TAB C — REFUNDS
@@ -418,15 +443,20 @@ export async function getTransactions() {
             take: 200,
         });
 
-        const refundRows = await Promise.all(processedRefunds.map(async (r: any) => {
-            const booking = r.bookingId ? await prisma.booking.findUnique({
-                where: { id: r.bookingId },
-                include: {
-                    user: { select: { id: true, name: true, email: true, displayId: true, phone: true } },
-                    tenant: true,
-                    property: { select: { id: true, name: true, displayId: true, city: true } }
-                }
-            }) : null;
+        // ── BULK FETCH FOR REFUNDS (Fix N+1) ──
+        const refundBookingIds = [...new Set(processedRefunds.map(r => r.bookingId).filter(Boolean))] as string[];
+        const refundBookings = await prisma.booking.findMany({
+            where: { id: { in: refundBookingIds } },
+            include: {
+                user: { select: { id: true, name: true, email: true, displayId: true, phone: true } },
+                tenant: true,
+                property: { select: { id: true, name: true, displayId: true, city: true } }
+            }
+        });
+        const refundBookingMap = new Map(refundBookings.map(b => [b.id, b]));
+
+        const refundRows = processedRefunds.map((r: any) => {
+            const booking = r.bookingId ? refundBookingMap.get(r.bookingId) : null;
             
             // Determine refund type
             let refundType = 'CANCELLATION_REFUND';
@@ -467,7 +497,7 @@ export async function getTransactions() {
                     displayId: booking.property.displayId
                 } : null,
             };
-        }));
+        });
 
         // Also add offline settlement refunds (depositRefunded > 0)
         const settlementRefunds = settlements

@@ -92,13 +92,21 @@ export async function getTenants() {
         orderBy: { createdAt: 'desc' }
     });
 
-    // Attach action notes for each tenant
-    const withNotes = await Promise.all(tenants.map(async (t) => {
-        const notes = await prisma.actionNote.findMany({
-            where: { targetId: t.id, targetType: 'TENANT' },
-            orderBy: { timestamp: 'desc' }
-        });
-        return { ...t, actionNotes: notes };
+    // ── BULK FETCH FOR ACTION NOTES (Fix N+1) ──
+    const tenantIds = tenants.map(t => t.id);
+    const allNotes = await prisma.actionNote.findMany({
+        where: { targetId: { in: tenantIds }, targetType: 'TENANT' },
+        orderBy: { timestamp: 'desc' }
+    });
+    const notesByTenant = new Map<string, any[]>();
+    allNotes.forEach(n => {
+        if (!notesByTenant.has(n.targetId!)) notesByTenant.set(n.targetId!, []);
+        notesByTenant.get(n.targetId!)!.push(n);
+    });
+
+    const withNotes = tenants.map(t => ({
+        ...t,
+        actionNotes: notesByTenant.get(t.id) || []
     }));
 
     return withNotes;
@@ -203,12 +211,21 @@ export async function getTenantsPaginated(params: {
         take: params.limit
     });
 
-    const withNotes = await Promise.all(tenants.map(async (t) => {
-        const notes = await prisma.actionNote.findMany({
-            where: { targetId: t.id, targetType: 'TENANT' },
-            orderBy: { timestamp: 'desc' }
-        });
-        return { ...t, actionNotes: notes };
+    // ── BULK FETCH FOR ACTION NOTES (Fix N+1) ──
+    const tenantIds = tenants.map(t => t.id);
+    const allNotes = await prisma.actionNote.findMany({
+        where: { targetId: { in: tenantIds }, targetType: 'TENANT' },
+        orderBy: { timestamp: 'desc' }
+    });
+    const notesByTenant = new Map<string, any[]>();
+    allNotes.forEach(n => {
+        if (!notesByTenant.has(n.targetId!)) notesByTenant.set(n.targetId!, []);
+        notesByTenant.get(n.targetId!)!.push(n);
+    });
+
+    const withNotes = tenants.map(t => ({
+        ...t,
+        actionNotes: notesByTenant.get(t.id) || []
     }));
 
     return { data: withNotes, total };
