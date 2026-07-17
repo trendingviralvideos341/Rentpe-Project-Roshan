@@ -1171,14 +1171,14 @@ export default function StudentDashboardPage() {
 
             {/* Main Tabs Segment */}
             <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-                <TabsList className="flex w-full mb-0 p-1.5 bg-slate-100 rounded-2xl h-auto gap-0">
-                    <TabsTrigger value="active-stay" className="flex-1 font-bold py-3 text-sm whitespace-nowrap rounded-xl relative data-[state=active]:bg-gradient-to-br data-[state=active]:from-violet-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-200 data-[state=inactive]:after:content-[''] data-[state=inactive]:after:absolute data-[state=inactive]:after:right-0 data-[state=inactive]:after:top-[20%] data-[state=inactive]:after:h-[60%] data-[state=inactive]:after:w-px data-[state=inactive]:after:bg-slate-300">
+                <TabsList className="flex w-full mb-6 bg-white border border-slate-200 rounded-2xl p-1 h-auto gap-1 shadow-sm">
+                    <TabsTrigger value="active-stay" className="flex-1 font-bold py-2.5 text-sm rounded-xl transition-all data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:text-slate-700">
                         <Building2 className="h-4 w-4 mr-2 hidden sm:block" /> Active Stay
                     </TabsTrigger>
-                    <TabsTrigger value="bookings" className="flex-1 font-bold py-3 text-sm whitespace-nowrap rounded-xl relative data-[state=active]:bg-gradient-to-br data-[state=active]:from-violet-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-200 data-[state=inactive]:after:content-[''] data-[state=inactive]:after:absolute data-[state=inactive]:after:right-0 data-[state=inactive]:after:top-[20%] data-[state=inactive]:after:h-[60%] data-[state=inactive]:after:w-px data-[state=inactive]:after:bg-slate-300">
+                    <TabsTrigger value="bookings" className="flex-1 font-bold py-2.5 text-sm rounded-xl transition-all data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:text-slate-700">
                         <Calendar className="h-4 w-4 mr-2 hidden sm:block" /> Bookings & Status
                     </TabsTrigger>
-                    <TabsTrigger value="profile" className="flex-1 font-bold py-3 text-sm whitespace-nowrap rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-violet-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-200">
+                    <TabsTrigger value="profile" className="flex-1 font-bold py-2.5 text-sm rounded-xl transition-all data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:text-slate-700">
                         <User className="h-4 w-4 mr-2 hidden sm:block" /> My Profile
                     </TabsTrigger>
                 </TabsList>
@@ -1189,13 +1189,16 @@ export default function StudentDashboardPage() {
                         const activeStay = bookings.find((b: any) => ['ACTIVE', 'CHECKED_IN', 'CHECKIN_CONFIRMED'].includes(b.status));
                         if (!activeStay) {
                             return (
-                                <Card className="border-2 border-dashed p-12 text-center space-y-4">
-                                    <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-2xl">🏠</div>
+                                <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50 gap-4 text-center">
+                                    <div className="w-16 h-16 bg-white border border-slate-200 rounded-2xl flex items-center justify-center shadow-sm text-2xl">🏠</div>
                                     <div>
-                                        <p className="font-bold text-slate-800">No active stay details found</p>
-                                        <p className="text-xs text-muted-foreground">Complete your onboarding bookings to activate your stay details.</p>
+                                        <p className="font-bold text-slate-700">No active stay</p>
+                                        <p className="text-xs text-slate-400 mt-1 max-w-xs">Complete your booking and onboarding to activate your stay details here.</p>
                                     </div>
-                                </Card>
+                                    <Button variant="outline" size="sm" className="rounded-xl text-xs" asChild>
+                                        <Link href="/search">Find a PG →</Link>
+                                    </Button>
+                                </div>
                             );
                         }
                         return (
@@ -1491,34 +1494,52 @@ export default function StudentDashboardPage() {
                             ) : (
                                 <div className="space-y-4">
                                     {/* Hero row */}
-                                    <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-teal-600 rounded-b-2xl rounded-t-none p-5 border-t-0 flex items-center gap-4 relative">
-                                        <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
+                                    <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-5 flex items-center gap-4">
+                                        {/* bg glow blobs */}
+                                        <div className="absolute -top-10 -right-10 w-40 h-40 bg-violet-500/20 rounded-full blur-2xl pointer-events-none" />
+                                        <div className="absolute -bottom-10 left-1/3 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none" />
+                                        <div className="relative z-10 w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-sm shrink-0">
                                             <User className="h-8 w-8 text-white" />
                                         </div>
-                                        <div>
-                                            <h2 className="text-xl font-black text-white">{profile?.name}</h2>
-                                            <p className="text-white/70 text-xs">Student / Tenant</p>
-                                            <span className="bg-white/20 text-white text-xs px-3 py-1 rounded-full mt-1 inline-block font-mono">
-                                                {profile?.permanentId || profile?.displayId || "RP-U-XXXXXX"}
-                                            </span>
+                                        <div className="relative z-10 flex-1 min-w-0">
+                                            <h2 className="text-xl font-black text-white truncate">{profile?.name}</h2>
+                                            <p className="text-white/50 text-xs mt-0.5">Student / Tenant</p>
+                                            <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                                <span className="inline-flex items-center gap-1.5 bg-white/10 border border-white/20 text-white/80 text-[10px] font-mono font-bold px-3 py-1 rounded-full">
+                                                    🪪 {profile?.permanentId || profile?.displayId || "RP-U-XXXXXX"}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <Button size="sm" variant="outline" onClick={() => setIsEditingProfile(true)} className="absolute top-4 right-4 bg-white/10 border-white/30 text-white text-xs hover:bg-white/20">
-                                            Edit profile
+                                        <Button size="sm" onClick={() => setIsEditingProfile(true)}
+                                            className="relative z-10 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold rounded-xl shrink-0 backdrop-blur-sm">
+                                            <Edit2 className="h-3.5 w-3.5 mr-1.5" /> Edit profile
                                         </Button>
                                     </div>
 
                                     {/* 2-col row */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {/* Personal info card */}
-                                        <div className="bg-white border rounded-xl p-4 space-y-3">
-                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Personal info</p>
-                                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                                <div><p className="text-xs text-slate-400">Date of birth</p><p className="font-medium">{profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('en-GB') : profile?.dob || "—"}</p></div>
-                                                <div><p className="text-xs text-slate-400">Gender</p><p className="font-medium">{profile?.gender || "—"}</p></div>
-                                                <div><p className="text-xs text-slate-400">Nationality</p><p className="font-medium">{profile?.nationality || "Indian"}</p></div>
-                                                <div><p className="text-xs text-slate-400">Occupation</p><p className="font-medium">{profile?.occupationType || "Student"}</p></div>
+                                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                                            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                                                <div className="w-6 h-6 bg-indigo-50 rounded-lg flex items-center justify-center">
+                                                    <User className="h-3.5 w-3.5 text-indigo-600" />
+                                                </div>
+                                                <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Personal info</p>
                                             </div>
-                                            <div><p className="text-xs text-slate-400">Institution / company</p><p className="text-sm font-medium">{profile?.occupationDetail || profile?.institution || "—"}</p></div>
+                                            <div className="divide-y divide-slate-100">
+                                                {[
+                                                    { label: "Date of birth", value: profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('en-GB') : profile?.dob || "—" },
+                                                    { label: "Gender", value: profile?.gender || "—" },
+                                                    { label: "Nationality", value: profile?.nationality || "Indian" },
+                                                    { label: "Occupation", value: profile?.occupationType || "Student" },
+                                                    { label: "Institution / company", value: profile?.occupationDetail || profile?.institution || "—" },
+                                                ].map(row => (
+                                                    <div key={row.label} className="flex items-center justify-between px-4 py-2.5">
+                                                        <span className="text-xs text-slate-400 w-32 shrink-0">{row.label}</span>
+                                                        <span className="text-sm font-medium text-slate-800 text-right flex-1">{row.value}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
 
                                         {/* Current stay card */}
@@ -1542,57 +1563,81 @@ export default function StudentDashboardPage() {
                                     {/* 3-col row */}
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         {/* Contact */}
-                                        <div className="bg-white border rounded-xl p-4">
-                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Contact</p>
-                                            <div className="space-y-2">
-                                                <div className="flex items-center gap-3 bg-slate-50 rounded-lg p-2">
-                                                    <Mail className="h-4 w-4 text-blue-500 shrink-0" />
-                                                    <div className="min-w-0 flex-1"><p className="text-xs text-slate-400">Email</p><p className="text-sm font-medium truncate">{profile?.email}</p></div>
+                                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                                            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                                                <div className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center">
+                                                    <Phone className="h-3.5 w-3.5 text-blue-600" />
                                                 </div>
-                                                <div className="flex items-center gap-3 bg-slate-50 rounded-lg p-2">
-                                                    <Phone className="h-4 w-4 text-blue-500 shrink-0" />
-                                                    <div className="min-w-0 flex-1"><p className="text-xs text-slate-400">Mobile</p><p className="text-sm font-medium truncate">{profile?.phone}</p></div>
+                                                <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Contact</p>
+                                            </div>
+                                            <div className="divide-y divide-slate-100">
+                                                <div className="flex items-center gap-3 px-4 py-3">
+                                                    <Mail className="h-4 w-4 text-blue-400 shrink-0" />
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-[10px] text-slate-400">Email</p>
+                                                        <p className="text-sm font-medium text-slate-800 truncate">{profile?.email}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-3 px-4 py-3">
+                                                    <Phone className="h-4 w-4 text-blue-400 shrink-0" />
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-[10px] text-slate-400">Mobile</p>
+                                                        <p className="text-sm font-medium text-slate-800">{profile?.phone}</p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
 
                                         {/* Emergency contact */}
-                                        <div className="bg-white border rounded-xl p-4">
-                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Emergency contact</p>
+                                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                                            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                                                <div className="w-6 h-6 bg-rose-50 rounded-lg flex items-center justify-center">
+                                                    <Phone className="h-3.5 w-3.5 text-rose-500" />
+                                                </div>
+                                                <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Emergency contact</p>
+                                            </div>
                                             {profile?.emergencyContact ? (
-                                                <div>
-                                                    <div className="text-sm font-medium">{(() => {
+                                                <div className="divide-y divide-slate-100">
+                                                    {(() => {
                                                         try {
                                                             const parsed = JSON.parse(profile.emergencyContact);
-                                                            return Array.isArray(parsed) && parsed.length > 0 ? parsed[0].name : profile.emergencyContact;
-                                                        } catch(e) {
-                                                            return profile.emergencyContact;
-                                                        }
-                                                    })()}</div>
-                                                    <div className="text-xs text-slate-500 mt-1 font-mono">{(() => {
-                                                        try {
-                                                            const parsed = JSON.parse(profile.emergencyContact);
-                                                            return Array.isArray(parsed) && parsed.length > 0 ? parsed[0].phone : '';
-                                                        } catch(e) {
-                                                            return '';
-                                                        }
-                                                    })()}</div>
+                                                            const contacts = Array.isArray(parsed) ? parsed.filter((c: any) => c.name) : [];
+                                                            return contacts.length > 0 ? contacts.map((c: any, i: number) => (
+                                                                <div key={i} className="px-4 py-3">
+                                                                    <p className="text-sm font-bold text-slate-800">{c.name}</p>
+                                                                    <p className="text-xs text-slate-400 mt-0.5">{c.relation} · {c.phone}</p>
+                                                                </div>
+                                                            )) : (
+                                                                <div className="px-4 py-4 text-center text-slate-400 text-xs">No contact added</div>
+                                                            );
+                                                        } catch { return <div className="px-4 py-3 text-sm text-slate-600">{profile.emergencyContact}</div>; }
+                                                    })()}
                                                 </div>
                                             ) : (
-                                                <div className="border-2 border-dashed rounded-lg p-4 text-center text-slate-400">
-                                                    <p className="text-xs">Add emergency contact</p>
-                                                    <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={() => setIsEditingProfile(true)}>Add</Button>
+                                                <div className="p-4 text-center">
+                                                    <p className="text-xs text-slate-400 mb-2">No emergency contact added</p>
+                                                    <Button size="sm" variant="outline" className="text-xs rounded-xl" onClick={() => setIsEditingProfile(true)}>
+                                                        + Add contact
+                                                    </Button>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Security */}
-                                        <div className="bg-white border rounded-xl p-4">
-                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Security</p>
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                                                    <span className="text-sm flex items-center gap-2 text-slate-700"><Lock className="h-4 w-4" />Password</span>
-                                                    <Button size="sm" variant="ghost" className="text-xs text-blue-600 font-bold hover:text-blue-700 h-auto p-0"
+                                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                                            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                                                <div className="w-6 h-6 bg-emerald-50 rounded-lg flex items-center justify-center">
+                                                    <Shield className="h-3.5 w-3.5 text-emerald-600" />
+                                                </div>
+                                                <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">Security</p>
+                                            </div>
+                                            <div className="divide-y divide-slate-100">
+                                                <div className="flex items-center justify-between px-4 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <Lock className="h-4 w-4 text-slate-400" />
+                                                        <span className="text-sm text-slate-700">Password</span>
+                                                    </div>
+                                                    <Button size="sm" variant="ghost" className="text-xs text-indigo-600 font-bold h-auto p-0 hover:text-indigo-800"
                                                         onClick={async () => {
                                                             const fd = new FormData(); fd.append('email', profile?.email);
                                                             const { forgotPassword } = await import("@/actions/auth");
@@ -1601,13 +1646,23 @@ export default function StudentDashboardPage() {
                                                             else toast.error(result.error || "Failed to send reset link");
                                                         }}>Change</Button>
                                                 </div>
-                                                <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                                                    <span className="text-sm flex items-center gap-2 text-slate-700"><Mail className="h-4 w-4" />Email</span>
-                                                    <span className="text-xs text-green-600 flex items-center gap-1 font-bold"><CheckCircle className="h-3 w-3" />Verified</span>
+                                                <div className="flex items-center justify-between px-4 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <Mail className="h-4 w-4 text-slate-400" />
+                                                        <span className="text-sm text-slate-700">Email</span>
+                                                    </div>
+                                                    <span className="text-xs text-emerald-600 flex items-center gap-1 font-bold">
+                                                        <CheckCircle className="h-3.5 w-3.5" /> Verified
+                                                    </span>
                                                 </div>
-                                                <div className="flex justify-between items-center py-2">
-                                                    <span className="text-sm flex items-center gap-2 text-slate-700"><Phone className="h-4 w-4" />Phone</span>
-                                                    <span className="text-xs text-green-600 flex items-center gap-1 font-bold"><CheckCircle className="h-3 w-3" />Verified</span>
+                                                <div className="flex items-center justify-between px-4 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <Phone className="h-4 w-4 text-slate-400" />
+                                                        <span className="text-sm text-slate-700">Phone</span>
+                                                    </div>
+                                                    <span className="text-xs text-emerald-600 flex items-center gap-1 font-bold">
+                                                        <CheckCircle className="h-3.5 w-3.5" /> Verified
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
