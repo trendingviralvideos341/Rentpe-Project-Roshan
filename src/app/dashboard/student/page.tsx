@@ -1313,184 +1313,465 @@ export default function StudentDashboardPage() {
                         const isProfileLocked = !!profile?.dateOfBirth;
                         return (
                             isEditingProfile ? (
-                                <Card className="border-2 border-slate-100 shadow-sm bg-white overflow-hidden rounded-3xl rounded-t-none">
-                                    <CardHeader className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white p-5 md:p-6 relative shadow-md rounded-t-none">
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-16 w-16 md:h-20 md:w-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 text-white shadow-inner shadow-white/20">
-                                                <User className="h-8 w-8 md:h-10 md:w-10" />
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <CardTitle className="text-xl md:text-3xl font-black drop-shadow-md tracking-tight">Edit Profile</CardTitle>
-                                                <span className="text-white/90 font-bold text-[10px] mt-1 bg-black/20 backdrop-blur-sm px-2.5 py-1 rounded-md w-fit uppercase tracking-wider">
-                                                    CUSTOMER ACCOUNT
+                                <div className="space-y-0 rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white">
+
+                                    {/* ── Hero header ── */}
+                                    <div className="relative bg-gradient-to-br from-slate-900 via-indigo-950 to-violet-900 px-6 py-5 flex items-center gap-4">
+                                        {/* glow blobs */}
+                                        <div className="absolute -top-8 -right-8 w-40 h-40 bg-violet-500/20 rounded-full blur-2xl pointer-events-none" />
+                                        <div className="absolute -bottom-8 left-1/4 w-32 h-32 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none" />
+                                        <div className="relative z-10 w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-sm shrink-0">
+                                            <User className="h-7 w-7 text-white" />
+                                        </div>
+                                        <div className="relative z-10">
+                                            <h2 className="text-xl font-black text-white">Edit profile</h2>
+                                            <p className="text-white/50 text-xs mt-0.5">Update your personal details and emergency contacts</p>
+                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                <span className="inline-flex items-center gap-1 bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                                                    🔒 Personal info is locked after first save
                                                 </span>
+                                                {isProfileLocked && (
+                                                    <span className="inline-flex items-center gap-1 bg-red-400/20 border border-red-400/40 text-red-300 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                                                        🛡 Profile locked — contact support to change
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
-                                    </CardHeader>
-                                    <CardContent className="p-6 md:p-8 space-y-6 bg-slate-50">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {/* Column 1: Demographics & Occupation */}
-                                    <div className="space-y-4">
-                                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Demographics & Occupation</h4>
-                                        <div>
-                                            <label className="text-xs font-black text-slate-600 block mb-1">Date of Birth</label>
-                                            <input type="date" disabled={isProfileLocked} max={new Date().toISOString().split("T")[0]} value={profileForm.dateOfBirth || ''} onChange={e => setProfileForm({...profileForm, dateOfBirth: e.target.value})} className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed" />
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-black text-slate-600 block mb-1">Gender</label>
-                                            <select disabled={isProfileLocked} value={profileForm.gender || ''} onChange={e => setProfileForm({...profileForm, gender: e.target.value})} className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed">
-                                                <option value="">Select Gender</option>
-                                                <option value="Male">Male</option>
-                                                <option value="Female">Female</option>
-                                                <option value="Other">Other</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-black text-slate-600 block mb-1">Nationality</label>
-                                            <select disabled={isProfileLocked} value={profileForm.nationality || ''} onChange={e => setProfileForm({...profileForm, nationality: e.target.value})} className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed">
-                                                <option value="Indian">Indian</option>
-                                                <option value="Others">Others</option>
-                                            </select>
-                                        </div>
-                                        {profileForm.nationality === 'Others' && (
-                                            <div>
-                                                <label className="text-xs font-black text-slate-600 block mb-1">Specify Nationality</label>
-                                                <input type="text" disabled={isProfileLocked} value={profileForm.nationalityOther || ''} onChange={e => setProfileForm({...profileForm, nationalityOther: e.target.value})} placeholder="e.g. American" className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed" />
-                                            </div>
-                                        )}
-                                        <div>
-                                            <label className="text-xs font-black text-slate-600 block mb-1">Occupation Status</label>
-                                            <select disabled={isProfileLocked} value={profileForm.occupationType || ''} onChange={e => setProfileForm({...profileForm, occupationType: e.target.value})} className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed">
-                                                <option value="">Select</option>
-                                                <option value="Student">Student</option>
-                                                <option value="Working Professional">Working Professional</option>
-                                                <option value="Others">Others</option>
-                                            </select>
-                                        </div>
-                                        {profileForm.occupationType === 'Others' && (
-                                            <div>
-                                                <label className="text-xs font-black text-slate-600 block mb-1">Specify Occupation</label>
-                                                <input type="text" disabled={isProfileLocked} value={profileForm.occupationOther || ''} onChange={e => setProfileForm({...profileForm, occupationOther: e.target.value})} placeholder="e.g. Freelancer" className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed" />
-                                            </div>
-                                        )}
-                                        <div>
-                                            <label className="text-xs font-black text-slate-600 block mb-1">Institution / Company Name</label>
-                                            <input type="text" disabled={isProfileLocked} value={profileForm.occupationDetail || ''} onChange={e => setProfileForm({...profileForm, occupationDetail: e.target.value})} placeholder="e.g. Delhi University" className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed" />
-                                        </div>
+                                    </div>
 
-                                        {/* Credentials Change Section inside Edit Profile Mode */}
-                                        <div className="border-t border-slate-200 pt-4 mt-2 space-y-4">
-                                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Login & Contact Credentials</h4>
+                                    {/* ── Notice bar — legal / security ── */}
+                                    <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-start gap-3">
+                                        <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                                        <p className="text-xs text-amber-800 leading-relaxed">
+                                            <strong>Legal notice:</strong> By saving this profile you confirm that all information provided is accurate and matches your government-issued ID.
+                                            Providing false information may result in account suspension and legal action under applicable Indian law.
+                                            Your data is stored securely and used only for tenancy management purposes as per our Privacy Policy.
+                                        </p>
+                                    </div>
+
+                                    {/* ── Form body ── */}
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+
+                                        {/* ── LEFT COLUMN ── */}
+                                        <div className="p-6 space-y-6">
+
+                                            {/* Section A — Demographics */}
                                             <div>
-                                                <label className="text-xs font-black text-slate-600 block mb-1">Official Email</label>
-                                                <div className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
-                                                    <span className="text-sm font-bold text-slate-800">{profile?.email || '-'}</span>
-                                                    <Button 
-                                                        type="button" 
-                                                        onClick={() => handleStartSelfServiceChange('email')}
-                                                        className="h-8 bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-100 font-bold px-3 py-1 rounded-lg text-xs"
-                                                    >
-                                                        Change Email
-                                                    </Button>
+                                                <div className="flex items-center gap-2 mb-4">
+                                                    <div className="w-6 h-6 bg-indigo-50 rounded-lg flex items-center justify-center">
+                                                        <User className="h-3.5 w-3.5 text-indigo-600" />
+                                                    </div>
+                                                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Demographics</h3>
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                                                    {/* Date of Birth */}
+                                                    <div className="sm:col-span-2">
+                                                        <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                                                            Date of birth <span className="text-red-500">*</span>
+                                                            {isProfileLocked && <span className="ml-2 text-[10px] text-slate-400 font-normal">(locked)</span>}
+                                                        </label>
+                                                        <input
+                                                            type="date"
+                                                            disabled={isProfileLocked}
+                                                            max={new Date().toISOString().split("T")[0]}
+                                                            value={profileForm.dateOfBirth || ''}
+                                                            onChange={e => setProfileForm({ ...profileForm, dateOfBirth: e.target.value })}
+                                                            className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
+                                                        />
+                                                        <p className="text-[10px] text-slate-400 mt-1">Must match your Aadhaar / Passport date of birth exactly.</p>
+                                                    </div>
+
+                                                    {/* Gender */}
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                                                            Gender <span className="text-red-500">*</span>
+                                                        </label>
+                                                        <select
+                                                            disabled={isProfileLocked}
+                                                            value={profileForm.gender || ''}
+                                                            onChange={e => setProfileForm({ ...profileForm, gender: e.target.value })}
+                                                            className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
+                                                        >
+                                                            <option value="">Select gender</option>
+                                                            <option value="Male">Male</option>
+                                                            <option value="Female">Female</option>
+                                                            <option value="Other">Other / Prefer not to say</option>
+                                                        </select>
+                                                    </div>
+
+                                                    {/* Nationality */}
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                                                            Nationality <span className="text-red-500">*</span>
+                                                        </label>
+                                                        <select
+                                                            disabled={isProfileLocked}
+                                                            value={profileForm.nationality || 'Indian'}
+                                                            onChange={e => setProfileForm({ ...profileForm, nationality: e.target.value })}
+                                                            className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
+                                                        >
+                                                            <option value="Indian">Indian 🇮🇳</option>
+                                                            <option value="Others">Other nationality</option>
+                                                        </select>
+                                                    </div>
+
+                                                    {/* Specify nationality */}
+                                                    {profileForm.nationality === 'Others' && (
+                                                        <div className="sm:col-span-2">
+                                                            <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                                                                Specify nationality <span className="text-red-500">*</span>
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                disabled={isProfileLocked}
+                                                                value={profileForm.nationalityOther || ''}
+                                                                onChange={e => setProfileForm({ ...profileForm, nationalityOther: e.target.value })}
+                                                                placeholder="e.g. American, British, Nepali"
+                                                                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none disabled:bg-slate-50 disabled:cursor-not-allowed transition-all"
+                                                            />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
+
+                                            {/* Divider */}
+                                            <div className="border-t border-slate-100" />
+
+                                            {/* Section B — Occupation */}
                                             <div>
-                                                <label className="text-xs font-black text-slate-600 block mb-1">Registered Phone</label>
-                                                <div className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
-                                                    <span className="text-sm font-bold text-slate-800">{profile?.phone || '-'}</span>
-                                                    <Button 
-                                                        type="button" 
-                                                        onClick={() => handleStartSelfServiceChange('phone')}
-                                                        className="h-8 bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-100 font-bold px-3 py-1 rounded-lg text-xs"
-                                                    >
-                                                        Change Phone
-                                                    </Button>
+                                                <div className="flex items-center gap-2 mb-4">
+                                                    <div className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center">
+                                                        <FileText className="h-3.5 w-3.5 text-blue-600" />
+                                                    </div>
+                                                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Occupation</h3>
+                                                </div>
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                                                            Occupation status <span className="text-red-500">*</span>
+                                                        </label>
+                                                        <select
+                                                            disabled={isProfileLocked}
+                                                            value={profileForm.occupationType || ''}
+                                                            onChange={e => setProfileForm({ ...profileForm, occupationType: e.target.value })}
+                                                            className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
+                                                        >
+                                                            <option value="">Select status</option>
+                                                            <option value="Student">Student</option>
+                                                            <option value="Working Professional">Working professional</option>
+                                                            <option value="Others">Others</option>
+                                                        </select>
+                                                    </div>
+
+                                                    {profileForm.occupationType === 'Others' && (
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                                                                Specify occupation <span className="text-red-500">*</span>
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                disabled={isProfileLocked}
+                                                                value={profileForm.occupationOther || ''}
+                                                                onChange={e => setProfileForm({ ...profileForm, occupationOther: e.target.value })}
+                                                                placeholder="e.g. Freelancer, Business owner"
+                                                                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none disabled:bg-slate-50 disabled:cursor-not-allowed transition-all"
+                                                            />
+                                                        </div>
+                                                    )}
+
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                                                            {profileForm.occupationType === 'Student' ? 'College / university name' : 'Company / employer name'}
+                                                            <span className="text-red-500"> *</span>
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            disabled={isProfileLocked}
+                                                            value={profileForm.occupationDetail || ''}
+                                                            onChange={e => setProfileForm({ ...profileForm, occupationDetail: e.target.value })}
+                                                            placeholder={profileForm.occupationType === 'Student' ? "e.g. Delhi University, IIT Bombay" : "e.g. Infosys, Accenture"}
+                                                            className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none disabled:bg-slate-50 disabled:cursor-not-allowed transition-all"
+                                                        />
+                                                        <p className="text-[10px] text-slate-400 mt-1">
+                                                            Required for tenancy verification and address proof.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Divider */}
+                                            <div className="border-t border-slate-100" />
+
+                                            {/* Section C — Login & Contact Credentials */}
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-4">
+                                                    <div className="w-6 h-6 bg-emerald-50 rounded-lg flex items-center justify-center">
+                                                        <Shield className="h-3.5 w-3.5 text-emerald-600" />
+                                                    </div>
+                                                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Login & contact credentials</h3>
+                                                </div>
+
+                                                <div className="space-y-3">
+                                                    {/* Email */}
+                                                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex items-center gap-2 mb-0.5">
+                                                                    <Mail className="h-3.5 w-3.5 text-slate-400" />
+                                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Official email</p>
+                                                                </div>
+                                                                <p className="text-sm font-bold text-slate-800 truncate">{profile?.email || '—'}</p>
+                                                                <p className="text-[10px] text-slate-400 mt-0.5">Used for login and all official communications</p>
+                                                            </div>
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                onClick={() => handleStartSelfServiceChange('email')}
+                                                                className="shrink-0 bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold text-xs rounded-xl h-8 px-3"
+                                                            >
+                                                                Change email
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Phone */}
+                                                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex items-center gap-2 mb-0.5">
+                                                                    <Phone className="h-3.5 w-3.5 text-slate-400" />
+                                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Registered phone</p>
+                                                                </div>
+                                                                <p className="text-sm font-bold text-slate-800">{profile?.phone || '—'}</p>
+                                                                <p className="text-[10px] text-slate-400 mt-0.5">OTPs and urgent notifications sent here</p>
+                                                            </div>
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                onClick={() => handleStartSelfServiceChange('phone')}
+                                                                className="shrink-0 bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold text-xs rounded-xl h-8 px-3"
+                                                            >
+                                                                Change phone
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-xl p-3">
+                                                        <Shield className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                                                        <p className="text-[11px] text-blue-700 leading-relaxed">
+                                                            Changing your email or phone requires OTP verification on both old and new contacts.
+                                                            This protects your account from unauthorized changes.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* ── RIGHT COLUMN — Emergency Contacts ── */}
+                                        <div className="p-6 space-y-6">
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <div className="w-6 h-6 bg-rose-50 rounded-lg flex items-center justify-center">
+                                                        <Phone className="h-3.5 w-3.5 text-rose-500" />
+                                                    </div>
+                                                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Emergency contacts</h3>
+                                                </div>
+                                                <p className="text-[11px] text-slate-400 mb-4 ml-8">
+                                                    Required by law for tenant safety. Minimum 1 contact mandatory.
+                                                    Used only in emergencies by property management.
+                                                </p>
+
+                                                {/* Primary Contact */}
+                                                <div className="border border-slate-200 rounded-2xl overflow-hidden mb-4">
+                                                    <div className="flex items-center gap-2 px-4 py-3 bg-rose-50 border-b border-rose-100">
+                                                        <div className="w-5 h-5 bg-rose-500 rounded-full flex items-center justify-center">
+                                                            <span className="text-white text-[9px] font-black">1</span>
+                                                        </div>
+                                                        <p className="text-xs font-black text-rose-700 uppercase tracking-widest">Primary contact</p>
+                                                        <span className="ml-auto text-[10px] text-rose-600 font-bold bg-rose-100 px-2 py-0.5 rounded-full">Mandatory</span>
+                                                    </div>
+                                                    <div className="p-4 space-y-3">
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                                                                Full name <span className="text-red-500">*</span>
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                value={profileForm.emergencyContacts?.[0]?.name || ''}
+                                                                onChange={e => {
+                                                                    const updated = [...(profileForm.emergencyContacts || [{ name:'',relation:'',phone:'' },{ name:'',relation:'',phone:'' }])];
+                                                                    updated[0] = { ...updated[0], name: e.target.value };
+                                                                    setProfileForm({ ...profileForm, emergencyContacts: updated });
+                                                                }}
+                                                                placeholder="e.g. Ramesh Kumar"
+                                                                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none transition-all"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                                                                Relationship <span className="text-red-500">*</span>
+                                                            </label>
+                                                            <select
+                                                                value={profileForm.emergencyContacts?.[0]?.relation || ''}
+                                                                onChange={e => {
+                                                                    const updated = [...(profileForm.emergencyContacts || [{ name:'',relation:'',phone:'' },{ name:'',relation:'',phone:'' }])];
+                                                                    updated[0] = { ...updated[0], relation: e.target.value };
+                                                                    setProfileForm({ ...profileForm, emergencyContacts: updated });
+                                                                }}
+                                                                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none transition-all"
+                                                            >
+                                                                <option value="">Select relationship</option>
+                                                                <option value="Father">Father</option>
+                                                                <option value="Mother">Mother</option>
+                                                                <option value="Sibling">Sibling (Brother/Sister)</option>
+                                                                <option value="Spouse">Spouse</option>
+                                                                <option value="Guardian">Guardian</option>
+                                                                <option value="Relatives">Other relative</option>
+                                                                <option value="Friends">Friend</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                                                                Phone number <span className="text-red-500">*</span>
+                                                            </label>
+                                                            <div className="flex gap-2">
+                                                                <span className="flex items-center px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-500 font-bold shrink-0">+91</span>
+                                                                <input
+                                                                    type="tel"
+                                                                    value={profileForm.emergencyContacts?.[0]?.phone?.replace('+91','') || ''}
+                                                                    onChange={e => {
+                                                                        const updated = [...(profileForm.emergencyContacts || [{ name:'',relation:'',phone:'' },{ name:'',relation:'',phone:'' }])];
+                                                                        updated[0] = { ...updated[0], phone: '+91' + e.target.value.replace(/\D/g,'').slice(0,10) };
+                                                                        setProfileForm({ ...profileForm, emergencyContacts: updated });
+                                                                    }}
+                                                                    placeholder="10-digit mobile number"
+                                                                    maxLength={10}
+                                                                    className="flex-1 h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none transition-all"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Secondary Contact */}
+                                                <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                                                    <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-100">
+                                                        <div className="w-5 h-5 bg-slate-400 rounded-full flex items-center justify-center">
+                                                            <span className="text-white text-[9px] font-black">2</span>
+                                                        </div>
+                                                        <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Secondary contact</p>
+                                                        <span className="ml-auto text-[10px] text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-full">Optional</span>
+                                                    </div>
+                                                    <div className="p-4 space-y-3">
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-600 mb-1.5">Full name</label>
+                                                            <input
+                                                                type="text"
+                                                                value={profileForm.emergencyContacts?.[1]?.name || ''}
+                                                                onChange={e => {
+                                                                    const updated = [...(profileForm.emergencyContacts || [{ name:'',relation:'',phone:'' },{ name:'',relation:'',phone:'' }])];
+                                                                    updated[1] = { ...updated[1], name: e.target.value };
+                                                                    setProfileForm({ ...profileForm, emergencyContacts: updated });
+                                                                }}
+                                                                placeholder="e.g. Priya Sharma"
+                                                                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-slate-400 focus:ring-2 focus:ring-slate-100 outline-none transition-all"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-600 mb-1.5">Relationship</label>
+                                                            <select
+                                                                value={profileForm.emergencyContacts?.[1]?.relation || ''}
+                                                                onChange={e => {
+                                                                    const updated = [...(profileForm.emergencyContacts || [{ name:'',relation:'',phone:'' },{ name:'',relation:'',phone:'' }])];
+                                                                    updated[1] = { ...updated[1], relation: e.target.value };
+                                                                    setProfileForm({ ...profileForm, emergencyContacts: updated });
+                                                                }}
+                                                                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-slate-400 focus:ring-2 focus:ring-slate-100 outline-none transition-all"
+                                                            >
+                                                                <option value="">Select relationship</option>
+                                                                <option value="Father">Father</option>
+                                                                <option value="Mother">Mother</option>
+                                                                <option value="Sibling">Sibling (Brother/Sister)</option>
+                                                                <option value="Spouse">Spouse</option>
+                                                                <option value="Guardian">Guardian</option>
+                                                                <option value="Relatives">Other relative</option>
+                                                                <option value="Friends">Friend</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-600 mb-1.5">Phone number</label>
+                                                            <div className="flex gap-2">
+                                                                <span className="flex items-center px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-500 font-bold shrink-0">+91</span>
+                                                                <input
+                                                                    type="tel"
+                                                                    value={profileForm.emergencyContacts?.[1]?.phone?.replace('+91','') || ''}
+                                                                    onChange={e => {
+                                                                        const updated = [...(profileForm.emergencyContacts || [{ name:'',relation:'',phone:'' },{ name:'',relation:'',phone:'' }])];
+                                                                        updated[1] = { ...updated[1], phone: '+91' + e.target.value.replace(/\D/g,'').slice(0,10) };
+                                                                        setProfileForm({ ...profileForm, emergencyContacts: updated });
+                                                                    }}
+                                                                    placeholder="10-digit mobile number"
+                                                                    maxLength={10}
+                                                                    className="flex-1 h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-slate-400 focus:ring-2 focus:ring-slate-100 outline-none transition-all"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Legal note */}
+                                                <div className="mt-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                                                    <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                                                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                                                        Emergency contacts are used only in genuine emergencies (accidents, health issues, property incidents).
+                                                        This is a standard requirement under Indian tenancy best practices and RERA guidelines.
+                                                        Data is protected under the IT Act 2000 and will never be shared with third parties.
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Column 2: Emergency Contacts */}
-                                    <div className="space-y-4">
-                                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Emergency Contacts (Max 2)</h4>
-                                        
-                                        {/* Contact 1 */}
-                                        <div className="p-4 bg-white border border-slate-200 rounded-2xl space-y-3">
-                                            <p className="text-xs font-black text-indigo-600 uppercase tracking-wider">Primary Contact (Mandatory)</p>
-                                            <div>
-                                                <label className="text-[11px] font-bold text-slate-500 block mb-1">Full Name</label>
-                                                <input type="text" value={profileForm.emergencyContacts?.[0]?.name || ''} onChange={e => {
-                                                    const updated = [...(profileForm.emergencyContacts || [])];
-                                                    updated[0] = { ...updated[0], name: e.target.value };
-                                                    setProfileForm({ ...profileForm, emergencyContacts: updated });
-                                                }} placeholder="Contact name" className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 outline-none animate-none" />
-                                            </div>
-                                            <div>
-                                                <label className="text-[11px] font-bold text-slate-500 block mb-1">Relation</label>
-                                                <select value={profileForm.emergencyContacts?.[0]?.relation || ''} onChange={e => {
-                                                    const updated = [...(profileForm.emergencyContacts || [])];
-                                                    updated[0] = { ...updated[0], relation: e.target.value };
-                                                    setProfileForm({ ...profileForm, emergencyContacts: updated });
-                                                }} className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 outline-none">
-                                                    <option value="">Select Relation</option>
-                                                    <option value="Family">Family</option>
-                                                    <option value="Relatives">Relatives</option>
-                                                    <option value="Friends">Friends</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="text-[11px] font-bold text-slate-500 block mb-1">Phone Number</label>
-                                                <input type="tel" value={profileForm.emergencyContacts?.[0]?.phone || ''} onChange={e => {
-                                                    const updated = [...(profileForm.emergencyContacts || [])];
-                                                    updated[0] = { ...updated[0], phone: e.target.value };
-                                                    setProfileForm({ ...profileForm, emergencyContacts: updated });
-                                                }} placeholder="Phone number" className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 outline-none" />
-                                            </div>
+                                    {/* ── Footer — action bar ── */}
+                                    <div className="border-t border-slate-100 bg-slate-50 px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                        <div className="flex items-start gap-2">
+                                            <CheckCircle className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+                                            <p className="text-[11px] text-slate-400 leading-relaxed max-w-sm">
+                                                All data is encrypted in transit and at rest. Your profile is used only for tenancy management
+                                                and will not be sold to third parties. See our <span className="underline cursor-pointer">Privacy Policy</span>.
+                                            </p>
                                         </div>
-
-                                        {/* Contact 2 */}
-                                        <div className="p-4 bg-white border border-slate-200 rounded-2xl space-y-3">
-                                            <p className="text-xs font-black text-slate-500 uppercase tracking-wider">Secondary Contact (Optional)</p>
-                                            <div>
-                                                <label className="text-[11px] font-bold text-slate-500 block mb-1">Full Name</label>
-                                                <input type="text" value={profileForm.emergencyContacts?.[1]?.name || ''} onChange={e => {
-                                                    const updated = [...(profileForm.emergencyContacts || [])];
-                                                    updated[1] = { ...updated[1], name: e.target.value };
-                                                    setProfileForm({ ...profileForm, emergencyContacts: updated });
-                                                }} placeholder="Contact name" className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 outline-none animate-none" />
-                                            </div>
-                                            <div>
-                                                <label className="text-[11px] font-bold text-slate-500 block mb-1">Relation</label>
-                                                <select value={profileForm.emergencyContacts?.[1]?.relation || ''} onChange={e => {
-                                                    const updated = [...(profileForm.emergencyContacts || [])];
-                                                    updated[1] = { ...updated[1], relation: e.target.value };
-                                                    setProfileForm({ ...profileForm, emergencyContacts: updated });
-                                                }} className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 outline-none">
-                                                    <option value="">Select Relation</option>
-                                                    <option value="Family">Family</option>
-                                                    <option value="Relatives">Relatives</option>
-                                                    <option value="Friends">Friends</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="text-[11px] font-bold text-slate-500 block mb-1">Phone Number</label>
-                                                <input type="tel" value={profileForm.emergencyContacts?.[1]?.phone || ''} onChange={e => {
-                                                    const updated = [...(profileForm.emergencyContacts || [])];
-                                                    updated[1] = { ...updated[1], phone: e.target.value };
-                                                    setProfileForm({ ...profileForm, emergencyContacts: updated });
-                                                }} placeholder="Phone number" className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 outline-none" />
-                                            </div>
+                                        <div className="flex items-center gap-3 shrink-0">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => setIsEditingProfile(false)}
+                                                className="rounded-xl border-slate-300 text-slate-600 font-bold px-5"
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                onClick={handleSaveProfile}
+                                                disabled={savingProfile}
+                                                className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black px-6 shadow-md shadow-indigo-200 disabled:opacity-60"
+                                            >
+                                                {savingProfile ? (
+                                                    <span className="flex items-center gap-2">
+                                                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                        Saving...
+                                                    </span>
+                                                ) : (
+                                                    <span className="flex items-center gap-2">
+                                                        <CheckCircle className="h-4 w-4" />
+                                                        Save profile
+                                                    </span>
+                                                )}
+                                            </Button>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex gap-4 pt-4 border-t border-slate-200">
-                                    <Button onClick={() => setIsEditingProfile(false)} variant="outline" className="font-bold border-2 rounded-xl">Cancel</Button>
-                                    <Button onClick={handleSaveProfile} disabled={savingProfile} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl px-8 shadow-md">
-                                        {savingProfile ? "Saving..." : "Save Profile"}
-                                    </Button>
-                                </div>
-                            </CardContent>
-                                </Card>
                             ) : (
                                 <div className="space-y-4">
                                     {/* Hero row */}
