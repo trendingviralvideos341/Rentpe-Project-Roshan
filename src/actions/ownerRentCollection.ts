@@ -1365,13 +1365,13 @@ export async function getOwnerPayoutsForOwner(month?: string) {
         const commission = Number(p.commissionAmount ?? 0);
         const net = Number(p.netAmount ?? 0);
         const gstOnComm = commission > 0
-            ? 0 / 100
+            ? Math.round(((commission * 0.18 / 1.18) + Number.EPSILON) * 100) / 100
             : 0;
         const commBase = commission > 0
-            ? 0 / 100
+            ? Math.round(((commission - gstOnComm) + Number.EPSILON) * 100) / 100
             : 0;
-        const cgst = 0 / 100;
-        const sgst = 0 / 100;
+        const cgst = Math.round(((gstOnComm / 2) + Number.EPSILON) * 100) / 100;
+        const sgst = Math.round(((gstOnComm - cgst) + Number.EPSILON) * 100) / 100;
         const tds = Number((p as any).tdsAmount ?? 0);
 
         return {
