@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Bell, Check, CheckCheck } from "lucide-react";
 import { getNotifications, getUnreadCount, markNotificationRead, markAllNotificationsRead } from "@/actions/notifications";
+import { toast } from "sonner";
 
 export default function NotificationBell({ role = 'USER' }: { role?: string }) {
     const [notifications, setNotifications] = useState<any[]>([]);
@@ -18,7 +19,9 @@ export default function NotificationBell({ role = 'USER' }: { role?: string }) {
             ]);
             setNotifications(notifs.filter((n: any) => n.category !== 'TOKEN' && !n.message?.toLowerCase().includes('pay token')));
             setUnreadCount(count);
-        } catch (e) { }
+        } catch (e) { 
+            toast.error("Failed to fetch notifications");
+        }
     };
 
     useEffect(() => {
@@ -50,14 +53,18 @@ export default function NotificationBell({ role = 'USER' }: { role?: string }) {
         try {
             await markNotificationRead(id);
             fetchData();
-        } catch (e) { }
+        } catch (e) {
+            toast.error("Failed to mark notification as read");
+        }
     };
 
     const handleMarkAllRead = async () => {
         try {
             await markAllNotificationsRead();
             fetchData();
-        } catch (e) { }
+        } catch (e) {
+            toast.error("Failed to mark all as read");
+        }
     };
 
     const formatTime = (date: string) => {

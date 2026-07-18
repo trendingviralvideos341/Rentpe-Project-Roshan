@@ -122,7 +122,7 @@ export function useAutoSave({
             console.error("Auto-save failed", error);
             setStatus('ERROR');
         }
-    }, [entityType, entityId]); // Keep dependencies minimal
+    }, []); // Keep dependencies minimal
 
     // Stable debounced function ref
     const debouncedSaveRef = useRef<ReturnType<typeof debounce> | null>(null);
