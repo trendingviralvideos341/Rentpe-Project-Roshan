@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useRef } from "react";
 import {
     getOwnerTickets, getOwnerRaisedTickets, createOwnerTicket,
     replyToTicket, updateTicketStatus, escalateTicketToAdmin
@@ -8,7 +8,7 @@ import {
 import {
     Wrench, CreditCard, Building, ShieldCheck, Plus, Send, Clock,
     CheckCircle2, Activity, AlertCircle, Loader2, MessageCircle,
-    ChevronDown, ChevronRight, ArrowUpRight, X, Users
+    ChevronDown, ChevronRight, ArrowUpRight, X, Users, ImagePlus
 } from "lucide-react";
 
 const OWNER_ISSUE_CATEGORIES = [
@@ -42,6 +42,8 @@ export default function OwnerTicketsPage() {
     const [showCreate, setShowCreate] = useState(false);
     const [newCategory, setNewCategory] = useState("");
     const [newDescription, setNewDescription] = useState("");
+    const [uploadedImages, setUploadedImages] = useState<{ file: File; preview: string }[]>([]);
+    const imgInputRef = useRef<HTMLInputElement>(null);
     const [creating, setCreating] = useState(false);
     const [_, startTransition] = useTransition();
     const [sendingReply, setSendingReply] = useState<Record<string, boolean>>({});
@@ -85,6 +87,8 @@ export default function OwnerTicketsPage() {
             try {
                 await createOwnerTicket({ category: newCategory, description: newDescription });
                 setNewCategory(""); setNewDescription(""); setShowCreate(false);
+                uploadedImages.forEach((img) => URL.revokeObjectURL(img.preview));
+                setUploadedImages([]);
                 fetchAll();
             } catch { alert("Failed to create ticket."); }
             finally { setCreating(false); }
@@ -365,6 +369,41 @@ export default function OwnerTicketsPage() {
                                                 placeholder="Describe your issue in detail..."
                                                 rows={4}
                                                 className="w-full border rounded-xl px-4 py-3 text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold mb-2">Screenshots / Photos <span className="text-muted-foreground font-normal">(optional, max 3)</span></label>
+                                            <div className="flex gap-3 flex-wrap">
+                                                {uploadedImages.map((img, i) => (
+                                                    <div key={i} className="relative h-20 w-20 rounded-xl overflow-hidden border">
+                                                        <img src={img.preview} className="h-full w-full object-cover" alt="upload" />
+                                                        <button onClick={() => setUploadedImages(p => p.filter((_, idx) => idx !== i))}
+                                                            className="absolute top-1 right-1 bg-black/50 hover:bg-red-500 text-white rounded-full p-1 transition-all">
+                                                            <X className="h-3 w-3" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                {uploadedImages.length < 3 && (
+                                                    <div onClick={() => imgInputRef.current?.click()}
+                                                        className="h-20 w-20 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-indigo-400 hover:text-indigo-500 hover:bg-indigo-50 transition-all cursor-pointer">
+                                                        <ImagePlus className="h-5 w-5 mb-1" />
+                                                        <span className="text-[10px] font-bold">{uploadedImages.length}/3</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <input type="file" multiple accept="image/jpeg, image/png, image/webp"
+                                                className="hidden" ref={imgInputRef} onChange={(e) => {
+                                                    const files = Array.from(e.target.files || []);
+                                                    const validFiles = files.filter(f => {
+                                                        const isValidType = ['image/jpeg', 'image/png', 'image/webp'].includes(f.type);
+                                                        const isValidSize = f.size <= 5 * 1024 * 1024;
+                                                        if (!isValidType) alert(`${f.name} is not a valid image format (only JPG, PNG, WEBP).`);
+                                                        else if (!isValidSize) alert(`${f.name} is too large (max 5MB).`);
+                                                        return isValidType && isValidSize;
+                                                    });
+                                                    const filesToAdd = validFiles.slice(0, 3 - uploadedImages.length);
+                                                    setUploadedImages(prev => [...prev, ...filesToAdd.map(f => ({ file: f, preview: URL.createObjectURL(f) }))]);
+                                                    e.target.value = "";
+                                                }} />
                                         </div>
                                         <div className="flex gap-2 pt-2 border-t">
                                             <button onClick={handleCreateOwn} disabled={creating || !newCategory || !newDescription.trim()}

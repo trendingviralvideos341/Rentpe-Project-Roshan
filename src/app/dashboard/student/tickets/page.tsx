@@ -107,8 +107,6 @@ export default function StudentTicketsPage() {
     const [tickets, setTickets] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState<string>("");
-    const [selectedSubcategory, setSelectedSubcategory] = useState<string>("");
-    const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [creating, setCreating] = useState(false);
     const [replyText, setReplyText] = useState<Record<string, string>>({});
@@ -133,21 +131,27 @@ export default function StudentTicketsPage() {
     useEffect(() => { fetchTickets(); }, []);
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(e.target.files || []).slice(0, 3 - uploadedImages.length);
-        setUploadedImages((prev) => [...prev, ...files.map((f) => ({ file: f, preview: URL.createObjectURL(f) }))]);
+        const files = Array.from(e.target.files || []);
+        const validFiles = files.filter(f => {
+            const isValidType = ['image/jpeg', 'image/png', 'image/webp'].includes(f.type);
+            const isValidSize = f.size <= 5 * 1024 * 1024;
+            if (!isValidType) alert(`${f.name} is not a valid image format (only JPG, PNG, WEBP).`);
+            else if (!isValidSize) alert(`${f.name} is too large (max 5MB).`);
+            return isValidType && isValidSize;
+        });
+        const filesToAdd = validFiles.slice(0, 3 - uploadedImages.length);
+        setUploadedImages((prev) => [...prev, ...filesToAdd.map((f) => ({ file: f, preview: URL.createObjectURL(f) }))]);
         e.target.value = "";
     };
 
     const handleCreate = () => {
-        if (!description.trim() || !selectedCategory || !title.trim()) return;
+        if (!description.trim() || !selectedCategory) return;
         setCreating(true);
         startTransition(async () => {
             try {
-                const fullDescription = selectedSubcategory
-                    ? `[${selectedSubcategory}] ${description.trim()}`
-                    : description.trim();
+                const fullDescription = description.trim();
                 await createStudentTicket({ category: selectedCategory, description: fullDescription });
-                setTitle(""); setDescription(""); setSelectedCategory(""); setSelectedSubcategory("");
+                setDescription(""); setSelectedCategory("");
                 uploadedImages.forEach((img) => URL.revokeObjectURL(img.preview));
                 setUploadedImages([]);
                 setTab("my");
@@ -417,7 +421,7 @@ export default function StudentTicketsPage() {
                                         </p>
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
                                             {STUDENT_CATEGORIES.filter(c => c.routesTo === "OWNER").map(cat => (
-                                                <button key={cat.key} onClick={() => { setSelectedCategory(cat.key); setSelectedSubcategory(""); }}
+                                                <button key={cat.key} onClick={() => { setSelectedCategory(cat.key); }}
                                                     className={`p-3 rounded-xl border-2 text-left transition-all ${selectedCategory === cat.key ? "border-orange-500 bg-orange-50" : "border-slate-200 hover:border-orange-200 hover:bg-orange-50/50"}`}>
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <span className="text-xl">{cat.emoji}</span>
@@ -450,38 +454,11 @@ export default function StudentTicketsPage() {
                             </div>
                         </div>
 
-                        {/* Subcategory */}
-                        {activeCat && activeCat.subcategories.length > 0 && (
-                            <div>
-                                <label className="block text-sm font-bold mb-2">2. Specify the issue type <span className="text-muted-foreground font-normal">(optional)</span></label>
-                                <div className="flex flex-wrap gap-2">
-                                    {activeCat.subcategories.map(sub => (
-                                        <button key={sub} onClick={() => setSelectedSubcategory(selectedSubcategory === sub ? "" : sub)}
-                                            className={`px-3 py-1.5 rounded-full text-xs border font-medium transition-all ${selectedSubcategory === sub ? (activeCat.color === "orange" ? "bg-orange-500 text-white border-orange-500" : "bg-blue-500 text-white border-blue-500") : "border-slate-200 hover:border-slate-300"}`}>
-                                            {sub}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Title */}
-                        {selectedCategory && (
-                            <div>
-                                <label className="block text-sm font-bold mb-2">{activeCat?.subcategories.length ? "3" : "2"}. Brief title *</label>
-                                <input
-                                    value={title}
-                                    onChange={e => setTitle(e.target.value)}
-                                    placeholder={`e.g. ${activeCat?.key === "Maintenance" ? "Water tap leaking in bathroom" : activeCat?.key === "Billing" ? "Charged extra ₹500 in invoice" : "Describe the issue in one line"}`}
-                                    className="w-full border rounded-xl px-4 py-3 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                                />
-                            </div>
-                        )}
 
                         {/* Description */}
                         {selectedCategory && (
                             <div>
-                                <label className="block text-sm font-bold mb-2">{activeCat?.subcategories.length ? "4" : "3"}. Describe in detail *</label>
+                                <label className="block text-sm font-bold mb-2">2. Describe in detail *</label>
                                 <textarea
                                     value={description}
                                     onChange={e => setDescription(e.target.value)}
