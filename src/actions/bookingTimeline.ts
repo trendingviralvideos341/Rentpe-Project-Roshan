@@ -59,7 +59,7 @@ export async function getBookingTimeline(bookingId: string) {
 // ── Auto-add timeline events for key booking lifecycle actions ──
 // These are utility wrappers used by bookings.ts actions
 
-export const BOOKING_EVENTS = {
+const BOOKING_EVENTS = {
     REQUEST_SUBMITTED:   (userId: string) => ({ type: 'REQUEST_SUBMITTED', title: 'Booking Request Submitted', role: 'USER', by: userId }),
     OWNER_ACCEPTED:      (ownerId: string) => ({ type: 'OWNER_ACCEPTED', title: 'Owner Accepted Request', role: 'OWNER', by: ownerId }),
     OWNER_REJECTED:      (ownerId: string) => ({ type: 'OWNER_REJECTED', title: 'Owner Rejected Request', role: 'OWNER', by: ownerId }),
