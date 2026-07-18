@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { requirePermission } from "@/actions/rbac";
 import { revalidatePath } from "next/cache";
 import { createNotification } from "@/actions/notifications";
 
@@ -46,6 +47,7 @@ export async function raiseDispute(data: {
 export async function resolveDispute(disputeId: string, resolution: string, adminNotes?: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Only Admins can resolve disputes");
+    await requirePermission('RESOLVE_DISPUTE');
     const adminId = (session as any).userId;
 
     const dispute = await (prisma.dispute as any).update({

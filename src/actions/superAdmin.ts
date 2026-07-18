@@ -535,6 +535,7 @@ export async function generateMasterBusinessReport() {
 export async function getOwnersWithProperties() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+    await requirePermission('VIEW_PROPERTIES');
 
     const owners = await prisma.user.findMany({
         where: { role: 'OWNER', deletedAt: null },
@@ -570,6 +571,7 @@ export async function getOwnersWithProperties() {
 export async function getAdminPropertyDashboard(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+    await requirePermission('VIEW_REPORTS');
     if (!propertyId) throw new Error('Property ID required');
 
     // Fetch core property data
@@ -722,6 +724,7 @@ export async function getAdminPropertyDashboard(propertyId: string) {
 export async function getRecentPlatformActivity(limit: number = 25) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+    await requirePermission('VIEW_AUDIT_LOGS');
 
     const logs = await prisma.auditLog.findMany({
         orderBy: { createdAt: 'desc' },

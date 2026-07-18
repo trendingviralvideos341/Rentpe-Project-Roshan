@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { requirePermission } from "@/actions/rbac";
 
 // ── System Event Logger ─────────────────────────────────────────────────────
 
@@ -41,6 +42,7 @@ export async function getSystemEvents(filters?: {
 }) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VIEW_SYSTEM_EVENTS');
 
     const where: any = {};
     if (filters?.severity) where.severity = filters.severity;
@@ -88,6 +90,7 @@ export async function logLoginAttempt(data: {
 export async function getLoginHistory(userId?: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VIEW_AUDIT_LOGS');
 
     return (prisma as any).loginLog.findMany({
         where: userId ? { userId } : {},
@@ -181,6 +184,7 @@ export async function checkRateLimit(action: string, identifier: string): Promis
 export async function getAdminDashboardStats() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VIEW_SYSTEM_EVENTS');
 
     const [
         totalUsers, totalOwners, totalStudents,

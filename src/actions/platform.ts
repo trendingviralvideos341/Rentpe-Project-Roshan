@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
+import { requirePermission } from "@/actions/rbac";
 import { getISTDate } from "@/lib/date";
 
 // Decimal serialization helper
@@ -42,6 +43,7 @@ export async function updatePlatformSettings(data: {
 }) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_SETTINGS');
 
     const settings = await prisma.platformSettings.upsert({
         where: { id: "singleton" },
@@ -468,6 +470,7 @@ export async function recordPlatformFee(paymentId: string, bookingId: string, am
 export async function getPlatformWalletBalance() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VIEW_REPORTS');
 
     const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
     return settings?.platformWalletBalance ?? 0;
@@ -477,6 +480,7 @@ export async function getPlatformWalletBalance() {
 export async function getPlatformFees() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VIEW_REPORTS');
 
     const fees = await (prisma as any).platformFee.findMany({
         orderBy: { createdAt: 'desc' },
@@ -505,6 +509,7 @@ export async function getPlatformFees() {
 export async function getPlatformChangeLogs() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VIEW_AUDIT_LOGS');
 
     return await prisma.auditLog.findMany({
         where: { entityType: 'ADMIN' },
@@ -517,6 +522,7 @@ export async function getPlatformChangeLogs() {
 export async function getFeeExemptions() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_COMMISSION');
 
     return await (prisma as any).feeExemption.findMany({
         where: { status: 'ACTIVE' },
@@ -544,6 +550,7 @@ export async function addFeeExemption(data: {
 }) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_COMMISSION');
 
     if (!data.reason?.trim()) throw new Error("Reason is required.");
 
@@ -576,6 +583,7 @@ export async function addFeeExemption(data: {
 export async function removeFeeExemption(id: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_COMMISSION');
 
     await (prisma as any).feeExemption.update({
         where: { id },
@@ -599,6 +607,7 @@ export async function removeFeeExemption(id: string) {
 export async function getRegisteredPropertiesForExemption() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_COMMISSION');
 
     const properties = await prisma.property.findMany({
         where: {
@@ -623,6 +632,7 @@ export async function getRegisteredPropertiesForExemption() {
 export async function getActiveStudentsForExemption() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_COMMISSION');
 
     const bookings = await prisma.booking.findMany({
         where: { status: { in: ['ACTIVE', 'CONFIRMED', 'CHECKED_IN'] } },
@@ -657,6 +667,7 @@ export async function updateOwnerRazorpayAccount(accountId: string | null) {
 export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date, limit?: number) {
 const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+    await requirePermission('VIEW_REPORTS');
 
     const n = (val: any) => Number(val || 0);
 
@@ -1012,6 +1023,7 @@ const session = await getSession();
 export async function getAdminTaxLiability(fromDate?: Date, toDate?: Date) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+    await requirePermission('VIEW_REPORTS');
 
     const now = getISTDate(new Date()); // IST-aware: avoids 5.5h crossover error on April 1 UTC
     const currentYear = now.getFullYear();
@@ -1108,6 +1120,7 @@ export async function getAdminTaxLiability(fromDate?: Date, toDate?: Date) {
 export async function getAdminPropertyUnitEconomics(fromDate?: Date, toDate?: Date) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+    await requirePermission('VIEW_REPORTS');
 
     const now = getISTDate(new Date()); // IST-aware: avoids 5.5h crossover error on April 1 UTC
     const fyStartYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;

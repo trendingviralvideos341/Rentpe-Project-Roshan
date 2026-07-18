@@ -1,6 +1,7 @@
 'use server';
 
 import prisma from "@/lib/prisma";
+import { requirePermission } from "@/actions/rbac";
 import { getSession } from "@/lib/auth";
 
 /**
@@ -172,6 +173,7 @@ async function createFraudAlert(data: {
 export async function getFraudAlerts(status?: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VIEW_FRAUD_ALERTS');
 
     return await prisma.fraudAlert.findMany({
         where: status ? { status } : {},
@@ -182,6 +184,7 @@ export async function getFraudAlerts(status?: string) {
 export async function investigateFraudAlert(alertId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VIEW_FRAUD_ALERTS');
 
     const userId = session.userId;
 
@@ -194,6 +197,7 @@ export async function investigateFraudAlert(alertId: string) {
 export async function resolveFraudAlert(alertId: string, resolution: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('RESOLVE_FRAUD');
 
     const userId = session.userId;
 
@@ -206,6 +210,7 @@ export async function resolveFraudAlert(alertId: string, resolution: string) {
 export async function dismissFraudAlert(alertId: string, reason: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('RESOLVE_FRAUD');
 
     return await prisma.fraudAlert.update({
         where: { id: alertId },

@@ -56,21 +56,26 @@ async function autoProvisionAdminUser(emp: any, sessionUserId: string) {
 }
 
 // ── GET ──────────────────────────────────────────────────
+import { requirePermission } from "@/actions/rbac";
+
 export async function getEmployees() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS');
     return prisma.employee.findMany({ orderBy: { addedOn: 'desc' } });
 }
 
 export async function getEmployee(id: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS');
     return prisma.employee.findUnique({ where: { id } });
 }
 
 export async function getActiveEmployees() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS');
     return prisma.employee.findMany({
         where: { status: 'ACTIVE' },
         select: { id: true, displayId: true, empCode: true, name: true, email: true, phone: true, department: true, designation: true, permissions: true },
@@ -90,6 +95,7 @@ export async function addEmployee(data: {
 }) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS');
 
     const auditTrail = appendAudit("[]", "EMPLOYEE_ADDED", (session as any).userId, (session as any).name || "Admin", "Employee record created");
 
@@ -136,6 +142,7 @@ export async function addEmployee(data: {
 export async function updateEmployeeStatus(id: string, status: 'ACTIVE' | 'SUSPENDED' | 'TERMINATED' | 'REJECTED', reason: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS');
 
     const existing = await prisma.employee.findUnique({ where: { id } });
     if (!existing) throw new Error("Employee not found");
@@ -174,6 +181,7 @@ export async function updateEmployeeStatus(id: string, status: 'ACTIVE' | 'SUSPE
 export async function activateEmployee(id: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS');
 
     const existing = await prisma.employee.findUnique({ where: { id } });
     if (!existing) throw new Error("Employee not found");
@@ -206,6 +214,7 @@ const DOC_FIELD_MAP: Record<string, { dataField: string; nameField: string }> = 
 export async function uploadEmployeeDoc(id: string, docField: string, docData: string | File, docName: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS');
 
     const existing = await prisma.employee.findUnique({ where: { id } });
     if (!existing) throw new Error("Employee not found");
@@ -240,6 +249,7 @@ export async function uploadEmployeeDoc(id: string, docField: string, docData: s
 export async function verifyEmployeeDoc(id: string, docType: 'aadhaar' | 'pan' | 'education' | 'address' | 'police') {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS');
 
     const existing = await prisma.employee.findUnique({ where: { id } });
     if (!existing) throw new Error("Employee not found");
@@ -270,6 +280,7 @@ export async function verifyEmployeeDoc(id: string, docType: 'aadhaar' | 'pan' |
 export async function updateBackgroundCheck(id: string, status: 'IN_PROGRESS' | 'CLEARED' | 'FLAGGED', notes: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS');
 
     const existing = await prisma.employee.findUnique({ where: { id } });
     if (!existing) throw new Error("Employee not found");
@@ -297,6 +308,7 @@ export async function updateBackgroundCheck(id: string, status: 'IN_PROGRESS' | 
 export async function updateEmployeePermissions(id: string, permissions: string[], department: string, designation: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS');
 
     const existing = await prisma.employee.findUnique({ where: { id } });
     if (!existing) throw new Error("Employee not found");
@@ -315,6 +327,7 @@ export async function updateEmployeePermissions(id: string, permissions: string[
 export async function generateEmpCode(id: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS');
 
     const existing = await prisma.employee.findUnique({ where: { id } });
     if (!existing) throw new Error("Employee not found");
@@ -351,6 +364,7 @@ export async function generateEmpCode(id: string) {
 export async function editEmpCode(id: string, newCode: string, notes: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS');
     if (!notes.trim()) throw new Error("Notes are mandatory when manually editing employee code");
     if (!/^EMP\d{3,}$/.test(newCode.trim())) throw new Error("Code must be in format EMP101, EMP102 etc.");
 
@@ -377,6 +391,7 @@ export async function editEmpCode(id: string, newCode: string, notes: string) {
 export async function unsuspendEmployee(id: string, reason: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS');
     if (!reason.trim()) throw new Error("Reason is mandatory to unsuspend");
 
     const existing = await prisma.employee.findUnique({ where: { id } });

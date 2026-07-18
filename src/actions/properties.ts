@@ -20,6 +20,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { requirePermission } from "@/actions/rbac";
 import { uploadToCloudinary, batchUploadToCloudinary } from "@/lib/upload";
 import { encryptIfPresent, decryptIfPresent, maskBankAccount, maskBeneficiaryName, maskIfscCode } from '@/lib/crypto';
 import { logAuditEvent } from "@/lib/audit";
@@ -640,6 +641,7 @@ export async function deletePropertyDocument(propertyId: string, docType: string
 export async function togglePropertyDocumentVerification(propertyId: string, docKey: string, verified: boolean) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VERIFY_KYC');
 
     const property = await prisma.property.findUnique({ where: { id: propertyId }, select: { verifiedDocs: true } });
     if (!property) throw new Error("Not found");
@@ -666,6 +668,7 @@ export async function togglePropertyDocumentVerification(propertyId: string, doc
 export async function requestDocumentReupload(propertyId: string, docType: string, note: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VERIFY_KYC');
 
     const property = await prisma.property.findUnique({
         where: { id: propertyId },
@@ -776,6 +779,7 @@ export async function payOnboardingFee(propertyId: string, method: string) {
 export async function activateProperty(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('APPROVE_PROPERTY');
 
     const property = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!property) throw new Error("Property not found");
@@ -1000,6 +1004,7 @@ export async function requestPropertyDeactivation(propertyId: string, reason: st
 export async function approvePropertyDeactivation(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('APPROVE_PROPERTY');
 
     const property = await prisma.property.findUnique({
         where: { id: propertyId },
@@ -1071,6 +1076,7 @@ export async function approvePropertyDeactivation(propertyId: string) {
 export async function rejectPropertyDeactivation(propertyId: string, rejectionReason: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('APPROVE_PROPERTY');
 
     if (!rejectionReason?.trim()) throw new Error("A rejection reason is required.");
 
@@ -1147,6 +1153,7 @@ export async function requestPropertyReactivation(propertyId: string, reason: st
 export async function approvePropertyReactivation(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('APPROVE_PROPERTY');
     const property = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!property) throw new Error("Property not found.");
     if (property.status !== 'REACTIVATION_REQUESTED') throw new Error("No pending reactivation request for this property.");
@@ -1164,6 +1171,7 @@ export async function approvePropertyReactivation(propertyId: string) {
 export async function rejectPropertyReactivation(propertyId: string, rejectionReason: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('APPROVE_PROPERTY');
     if (!rejectionReason?.trim()) throw new Error("A rejection reason is required.");
     const property = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!property) throw new Error("Property not found.");
@@ -1354,7 +1362,8 @@ export async function getOwnerOnboardingFeeStatus() {
 
 export async function adminGetAllOnboardingFees() {
     const session = await getSession();
-    if (!session || (session as any).role !== 'ADMIN') throw new Error('Unauthorized — Admin only');
+    if (!session || (session as any).role !== 'ADMIN') throw new Error('Unauthorized - Admin only');
+    await requirePermission('VIEW_REPORTS');
 
     const properties = await (prisma.property as any).findMany({
         select: {
@@ -1383,6 +1392,7 @@ export async function adminGetAllOnboardingFees() {
 export async function requestBankDetails(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+    await requirePermission('VERIFY_KYC');
 
     const property = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!property) throw new Error('Property not found');
@@ -1538,6 +1548,7 @@ export const submitBankDetails = withSafeAction(_submitBankDetails);
 export async function manualMakePropertyLive(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+    await requirePermission('APPROVE_PROPERTY');
 
     const property = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!property) throw new Error('Property not found');
@@ -1582,6 +1593,7 @@ export async function manualMakePropertyLive(propertyId: string) {
 export async function requestBankDetailsCorrection(propertyId: string, note: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+    await requirePermission('VERIFY_KYC');
 
     const property = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!property) throw new Error('Property not found');
@@ -1630,6 +1642,7 @@ export async function requestBankDetailsCorrection(propertyId: string, note: str
 export async function approveBankDetails(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+    await requirePermission('VERIFY_KYC');
 
     const property = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!property) throw new Error('Property not found');

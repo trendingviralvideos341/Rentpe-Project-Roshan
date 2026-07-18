@@ -9,11 +9,14 @@ import { logAuditEvent } from "@/lib/audit";
 // Admin team management now uses the Employee model (admin_employees table).
 // Field mapping: TeamMember.role → Employee.designation, TeamMember.permissions → Employee.permissions
 
+import { requirePermission } from "@/actions/rbac";
+
 export async function getTeamMembers() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') {
         throw new Error("Unauthorized");
     }
+    await requirePermission('MANAGE_ADMINS');
 
     return prisma.employee.findMany({
         orderBy: { joiningDate: 'desc' },
@@ -37,6 +40,7 @@ export async function addTeamMember(data: { name: string, email: string, phone: 
     if (!session || session.role !== 'ADMIN') {
         throw new Error("Unauthorized");
     }
+    await requirePermission('MANAGE_ADMINS');
 
     const member = await prisma.employee.create({
         data: {
@@ -70,6 +74,7 @@ export async function updateTeamMemberStatus(id: string, status: 'ACTIVE' | 'REV
     if (!session || session.role !== 'ADMIN') {
         throw new Error("Unauthorized");
     }
+    await requirePermission('MANAGE_ADMINS');
 
     const employeeStatus = status === 'REVOKED' ? 'INACTIVE' : 'ACTIVE';
 
@@ -107,6 +112,7 @@ export async function updateTeamMemberPermissions(id: string, permissions: strin
     if (!session || session.role !== 'ADMIN') {
         throw new Error("Unauthorized");
     }
+    await requirePermission('MANAGE_ADMINS');
 
     const member = await prisma.employee.update({
         where: { id },

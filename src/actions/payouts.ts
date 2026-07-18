@@ -2,6 +2,8 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { withSafeAction } from "@/lib/safe-action";
+import { requirePermission } from "@/actions/rbac";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { encryptIfPresent, decryptIfPresent, maskBankAccount } from "@/lib/crypto";
@@ -22,6 +24,7 @@ export async function createPayoutBatch(data: {
 }) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_PAYOUTS');
 
     const netAmount = data.grossAmount - data.commissionAmount;
 
@@ -74,6 +77,7 @@ export async function createPayoutBatch(data: {
 export async function approvePayoutBatch(payoutId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_PAYOUTS');
 
     const payout = await prisma.ownerPayout.update({
         where: { id: payoutId },
@@ -100,6 +104,7 @@ export async function approvePayoutBatch(payoutId: string) {
 export async function markPayoutPaid(payoutId: string, txnReference: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_PAYOUTS');
 
     const payout = await prisma.ownerPayout.update({
         where: { id: payoutId },
@@ -127,6 +132,7 @@ export async function markPayoutPaid(payoutId: string, txnReference: string) {
 export async function getAllPayouts(status?: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VIEW_REPORTS');
 
     return prisma.ownerPayout.findMany({
         where: status ? { status } : {},
@@ -168,6 +174,7 @@ export async function getMyPayouts() {
 export async function calculateOwnerEarnings(ownerId: string, period: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_PAYOUTS');
 
     const owner = await prisma.user.findUnique({ where: { id: ownerId } });
     const settings = await prisma.platformSettings.findUnique({ where: { id: 'singleton' } });

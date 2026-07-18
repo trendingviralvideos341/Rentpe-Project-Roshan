@@ -18,15 +18,18 @@ async function ensureSuperAdmin() {
     }
 
     if (session.role !== 'ADMIN') {
-         const user = await prisma.user.findUnique({
-             where: { id: session.userId },
-             select: { adminRole: true }
-         });
-         
-         if (user?.adminRole !== 'SUPER_ADMIN') {
-             throw new Error("Unauthorized: Only Super Admin can manage admin employees");
-         }
+        throw new Error("Unauthorized: Must be an ADMIN");
     }
+    
+    const user = await prisma.user.findUnique({
+        where: { id: session.userId },
+        select: { adminRole: true }
+    });
+    
+    if (user?.adminRole !== 'SUPER_ADMIN') {
+        throw new Error("Unauthorized: Only Super Admin can manage admin employees");
+    }
+    
     return session;
 }
 
