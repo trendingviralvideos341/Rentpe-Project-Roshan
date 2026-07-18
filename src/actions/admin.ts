@@ -11,12 +11,14 @@ import { stripImmutableFields } from "@/lib/sanitize";
 import { decryptIfPresent, maskBankAccount, maskBeneficiaryName, maskIfscCode } from '@/lib/crypto';
 import { runOnDemandExpiry } from "@/actions/expiry";
 import { NotificationService } from "@/lib/notifications";
+import { requirePermission } from "@/actions/rbac";
 
 export async function getAdminStats() {
     await runOnDemandExpiry();
     try {
         const session = await getSession();
         if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+        await requirePermission('VIEW_REPORTS');
 
         const [totalUsers, totalBookings, openTickets, totalProperties] = await Promise.all([
             prisma.user.count(),
@@ -84,6 +86,7 @@ export async function getAuditLogs() {
     try {
         const session = await getSession();
         if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+        await requirePermission('VIEW_AUDIT_LOGS');
 
         return await prisma.auditLog.findMany({
             orderBy: { createdAt: 'desc' },
@@ -108,6 +111,7 @@ export async function getUsers() {
     try {
         const session = await getSession();
         if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+        await requirePermission('VIEW_USERS');
 
         return await prisma.user.findMany({
             orderBy: { createdAt: 'desc' },
@@ -149,6 +153,10 @@ export async function getUsers() {
 async function _updateUserStatus(userId: string, status: string, reason: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    // BAN requires BAN_USER, SUSPEND requires SUSPEND_USER, all else requires VIEW_USERS
+    if (status === 'BANNED') await requirePermission('BAN_USER');
+    else if (status === 'SUSPENDED') await requirePermission('SUSPEND_USER');
+    else await requirePermission('BAN_USER'); // Unbanning also requires same level
 
     const user = await prisma.user.update({
         where: { id: userId },
@@ -184,6 +192,7 @@ async function _updateUserStatus(userId: string, status: string, reason: string)
 async function _adminUpdateUserProfile(userId: string, data: { name?: string; email?: string; phone?: string; role?: string }) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('BAN_USER'); // Profile editing is a high-trust action
 
     const oldUser = await prisma.user.findUnique({ where: { id: userId } });
     if (!oldUser) throw new Error("User not found");
@@ -218,6 +227,7 @@ export async function getTransactions() {
     try {
         const session = await getSession();
         if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+        await requirePermission('VIEW_REPORTS');
 
         // ── Helpers ───────────────────────────────────────────────────────────
         const n = (v: any): number => { const x = Number(v); return isNaN(x) ? 0 : x; };
@@ -557,6 +567,7 @@ export async function getUserById(userId: string) {
     try {
         const session = await getSession();
         if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+        await requirePermission('VIEW_USERS');
 
         return await prisma.user.findUnique({
             where: { id: userId },
@@ -595,6 +606,7 @@ export async function getUserById(userId: string) {
 async function _adminDeleteUser(userId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('BAN_USER'); // Archive requires BAN_USER level
 
     // Soft delete — set deletedAt timestamp
     await prisma.user.update({
@@ -618,6 +630,7 @@ async function _adminDeleteUser(userId: string) {
 async function _adminRestoreUser(userId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('BAN_USER'); // Restore requires same level as archive
 
     await prisma.user.update({
         where: { id: userId },
@@ -640,6 +653,7 @@ async function _adminRestoreUser(userId: string) {
 async function _adminPurgeUser(userId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS'); // PURGE is irreversible — Super Admin only
 
     // Permanent delete is now a "Hard Soft Delete"
     await prisma.$transaction(async (tx) => {
@@ -665,6 +679,7 @@ async function _adminPurgeUser(userId: string) {
 async function _adminDeleteBooking(bookingId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('CANCEL_BOOKING'); // Soft-deleting a booking requires CANCEL_BOOKING
 
     // Soft delete
     await prisma.booking.update({
@@ -688,6 +703,7 @@ async function _adminDeleteBooking(bookingId: string) {
 async function _adminRestoreBooking(bookingId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('CANCEL_BOOKING'); // Restoring requires same level
 
     await prisma.booking.update({
         where: { id: bookingId },
@@ -710,6 +726,7 @@ async function _adminRestoreBooking(bookingId: string) {
 async function _adminPurgeBooking(bookingId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS'); // PURGE is irreversible — Super Admin only
 
     await prisma.$transaction(async (tx) => {
         await tx.payment.updateMany({ where: { bookingId }, data: { status: 'PURGED' } });
@@ -733,6 +750,7 @@ async function _adminPurgeBooking(bookingId: string) {
 async function _adminDeleteTenant(tenantId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('CANCEL_BOOKING'); // Tenant deletion requires CANCEL_BOOKING
 
     const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { status: true } });
     if (tenant?.status === 'Active' || tenant?.status === 'ACTIVE') {
@@ -759,6 +777,7 @@ async function _adminDeleteTenant(tenantId: string) {
 async function _adminDeleteProperty(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS'); // Property deletion is irreversible — Super Admin only
 
     await prisma.$transaction(async (tx) => {
         await tx.room.updateMany({ where: { propertyId }, data: { status: 'CANCELLED' } });
@@ -784,6 +803,7 @@ async function _adminDeleteProperty(propertyId: string) {
 export async function getTeamMembers() {
     const session = await getSession();
     if (!session || (session as any).role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS');
 
     const members = await prisma.user.findMany({
         where: { role: { in: ['ONBOARDER', 'VERIFIER', 'ADMIN'] } },
@@ -806,6 +826,7 @@ export async function getTeamMembers() {
 async function _assignRole(targetUserId: string, newRole: "ONBOARDER" | "VERIFIER" | "ADMIN") {
     const session = await getSession();
     if (!session || (session as any).role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS'); // Role assignment is Super Admin only
 
     const prefixMap: Record<string, string> = { ONBOARDER: 'ONB', VERIFIER: 'VER', ADMIN: 'ADM' };
     const target = await prisma.user.findUnique({ where: { id: targetUserId } });
@@ -839,6 +860,7 @@ async function _assignRole(targetUserId: string, newRole: "ONBOARDER" | "VERIFIE
 async function _revokeRole(targetUserId: string) {
     const session = await getSession();
     if (!session || (session as any).role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS'); // Role revocation is Super Admin only
 
     const target = await prisma.user.findUnique({ where: { id: targetUserId } });
     if (!target) throw new Error("User not found");
@@ -865,6 +887,7 @@ async function _revokeRole(targetUserId: string) {
 export async function searchUserByEmail(email: string) {
     const session = await getSession();
     if (!session || (session as any).role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VIEW_USERS');
 
     return prisma.user.findUnique({
         where: { email },
@@ -876,6 +899,7 @@ export async function searchUserByEmail(email: string) {
 async function _upgradeUserToOwner(userId: string) {
     const session = await getSession();
     if (!session || (session as any).role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('APPROVE_OWNER'); // Owner upgrade requires APPROVE_OWNER
 
     const adminId = (session as any).userId as string;
 
@@ -933,6 +957,7 @@ async function _upgradeUserToOwner(userId: string) {
 export async function getAllPropertiesForAdmin(statusFilter?: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VIEW_PROPERTIES');
 
     const where: any = {};
     if (statusFilter && statusFilter !== 'ALL') {
@@ -969,6 +994,7 @@ export async function getAllPropertiesForAdmin(statusFilter?: string) {
 export async function getPropertyByIdForAdmin(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VIEW_PROPERTIES');
 
     const property = await prisma.property.findUnique({
         where: { id: propertyId },
@@ -1027,6 +1053,7 @@ export async function getPropertyByIdForAdmin(propertyId: string) {
 async function _adminAddRoomToProperty(propertyId: string, roomData: any) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('APPROVE_PROPERTY'); // Adding rooms requires APPROVE_PROPERTY
 
     const property = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!property) throw new Error("Property not found");
@@ -1087,6 +1114,7 @@ async function _adminAddRoomToProperty(propertyId: string, roomData: any) {
 async function _adminEditRoom(roomId: string, roomData: any) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('APPROVE_PROPERTY'); // Editing rooms requires APPROVE_PROPERTY
 
     const room = await prisma.room.findUnique({ where: { id: roomId }, include: { property: true } });
     if (!room) throw new Error("Room not found");
@@ -1145,6 +1173,7 @@ async function _adminEditRoom(roomId: string, roomData: any) {
 async function _adminDeleteRoom(roomId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('APPROVE_PROPERTY'); // Deleting rooms requires APPROVE_PROPERTY
 
     const room = await prisma.room.findUnique({ where: { id: roomId }, include: { property: true } });
     if (!room) throw new Error("Room not found");
@@ -1175,6 +1204,7 @@ export async function getAdminPropertyAnalytics() {
     try {
         const session = await getSession();
         if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+        await requirePermission('VIEW_REPORTS');
 
         const [pending, approved, rejected] = await Promise.all([
             prisma.property.count({ where: { status: { in: ['PENDING_VERIFICATION', 'VERIFYING_DOCUMENTS', 'UNDER_REVIEW', 'NEEDS_CORRECTION', 'CORRECTED', 'APPROVED_PAYMENT_VERIFIED'] } } }),
@@ -1192,6 +1222,7 @@ export async function getAdminPropertyStatusCounts() {
     try {
         const session = await getSession();
         if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+        await requirePermission('VIEW_REPORTS');
 
         const counts = await prisma.property.groupBy({
             by: ['status'],
@@ -1240,6 +1271,7 @@ export async function getDeactivationRequestCount() {
 export async function getDeactivationRequests() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+    await requirePermission('VIEW_PROPERTIES');
 
     return (prisma.property as any).findMany({
         where: { status: { in: ['DEACTIVATION_REQUESTED', 'REACTIVATION_REQUESTED'] } },
@@ -1256,6 +1288,7 @@ export async function getDeactivationRequests() {
 async function _startPropertyVerification(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('APPROVE_PROPERTY'); // Starting verification requires APPROVE_PROPERTY
 
     const result = await prisma.$transaction(async (tx) => {
         // Admin can start or resume verification from PENDING, UNDER_REVIEW, or CORRECTED states
@@ -1310,6 +1343,7 @@ async function _startPropertyVerification(propertyId: string) {
 async function _verifyPropertyDocuments(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VERIFY_KYC'); // Document verification requires VERIFY_KYC
 
     const result = await prisma.$transaction(async (tx) => {
         const property = await tx.property.update({
@@ -1364,6 +1398,7 @@ async function _verifyPropertyDocuments(propertyId: string) {
 async function _requirePropertyPayment(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('APPROVE_PROPERTY'); // Requiring payment is an approval action
 
     const result = await prisma.$transaction(async (tx) => {
         const property = await tx.property.update({
@@ -1427,6 +1462,7 @@ async function _requirePropertyPayment(propertyId: string) {
 async function _exemptPropertyFee(propertyId: string, reason: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_COMMISSION'); // Fee exemption is financial — Super Admin only
 
     if (!reason) throw new Error("Exemption reason is required");
 
@@ -1525,6 +1561,7 @@ async function _exemptPropertyFee(propertyId: string, reason: string) {
 async function _rejectProperty(propertyId: string, notes: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('APPROVE_PROPERTY'); // Rejecting a property requires APPROVE_PROPERTY
 
     const result = await prisma.$transaction(async (tx) => {
         const property = await tx.property.update({
@@ -1587,6 +1624,7 @@ async function _rejectProperty(propertyId: string, notes: string) {
 async function _requestPropertyCorrections(propertyId: string, notes: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('APPROVE_PROPERTY'); // Requesting corrections is an approval action
 
     const result = await prisma.$transaction(async (tx) => {
         const property = await tx.property.update({
@@ -1649,6 +1687,7 @@ async function _requestPropertyCorrections(propertyId: string, notes: string) {
 async function _moveToReview(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('APPROVE_PROPERTY'); // Moving to review requires APPROVE_PROPERTY
 
     const result = await prisma.property.update({
         where: { id: propertyId },
@@ -1677,6 +1716,7 @@ async function _moveToReview(propertyId: string) {
 async function _suspendProperty(propertyId: string, notes: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('SUSPEND_PROPERTY'); // Suspending requires SUSPEND_PROPERTY
 
     const result = await prisma.$transaction(async (tx) => {
         const existingProperty = await tx.property.findUnique({ where: { id: propertyId } });
@@ -1743,6 +1783,7 @@ async function _suspendProperty(propertyId: string, notes: string) {
 async function _activateProperty(propertyId: string, notes?: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('APPROVE_PROPERTY'); // Activating a property requires APPROVE_PROPERTY
 
     const property = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!property) throw new Error("Property not found");
@@ -1827,12 +1868,16 @@ async function _activateProperty(propertyId: string, notes?: string) {
 }
 
 async function _unsuspendProperty(propertyId: string, notes?: string) {
-    return activateProperty(propertyId, notes);
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('SUSPEND_PROPERTY'); // Unsuspending requires same level as suspending
+    return _activateProperty(propertyId, notes);
 }
 
 async function _rollbackPropertyStatus(propertyId: string, notes: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('MANAGE_ADMINS'); // Status rollback is irreversible — Super Admin only
 
     const property = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!property) throw new Error("Property not found");
@@ -1892,6 +1937,7 @@ async function _rollbackPropertyStatus(propertyId: string, notes: string) {
 async function _adminUpdateProperty(propertyId: string, data: any) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('APPROVE_PROPERTY'); // Editing property data requires APPROVE_PROPERTY
 
     const oldProperty = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!oldProperty) throw new Error("Property not found");
@@ -1957,6 +2003,7 @@ async function _adminUpdateProperty(propertyId: string, data: any) {
 async function _adminUpdateRoom(roomId: string, data: any) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('APPROVE_PROPERTY'); // Editing room data requires APPROVE_PROPERTY
 
     const oldRoom = await prisma.room.findUnique({ 
         where: { id: roomId },
@@ -2027,6 +2074,7 @@ async function _adminUpdateRoom(roomId: string, data: any) {
 async function _adminAddRoom(propertyId: string, data: any) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('APPROVE_PROPERTY'); // Adding rooms requires APPROVE_PROPERTY
 
     const property = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!property) throw new Error("Property not found");
@@ -2083,7 +2131,8 @@ async function _adminAddRoom(propertyId: string, data: any) {
 
 async function _logCorrectionView(propertyId: string) {
     const session = await getSession();
-    if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VIEW_PROPERTIES'); // Logging a view is a read-level action
 
     const property = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!property) throw new Error('Property not found');
@@ -2109,6 +2158,7 @@ async function _logCorrectionView(propertyId: string) {
 async function _requestBankCorrections(propertyId: string, notes: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VERIFY_KYC'); // Bank corrections require KYC-level verification
 
     const result = await prisma.$transaction(async (tx) => {
         const property = await tx.property.update({
@@ -2144,6 +2194,7 @@ async function _requestBankCorrections(propertyId: string, notes: string) {
 async function _verifyBankDetails(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VERIFY_KYC'); // Bank verification requires VERIFY_KYC
 
     const result = await prisma.$transaction(async (tx) => {
         const property = await tx.property.update({
@@ -2179,6 +2230,7 @@ async function _verifyBankDetails(propertyId: string) {
 async function _verifyBankUpdate(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VERIFY_KYC'); // Bank update verification requires VERIFY_KYC
 
     const property = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!property) throw new Error("Property not found");
@@ -2233,6 +2285,7 @@ async function _verifyBankUpdate(propertyId: string) {
 async function _rejectBankUpdate(propertyId: string, reason: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    await requirePermission('VERIFY_KYC'); // Rejecting bank updates requires VERIFY_KYC
 
     const result = await prisma.$transaction(async (tx) => {
         const property = await tx.property.update({
@@ -2278,6 +2331,7 @@ async function _rejectBankUpdate(propertyId: string, reason: string) {
 async function _bypassOnboardingPayment(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+    await requirePermission('MANAGE_COMMISSION'); // Bypassing payment is financial — Super Admin only
 
     const property = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!property) throw new Error('Property not found');
@@ -2369,6 +2423,10 @@ export async function reconcileSinglePayment(paymentId: string): Promise<{ succe
     const role = (session as any)?.role as string | undefined;
     if (!session || (role !== 'ADMIN' && role !== 'SUPERADMIN')) {
         return { success: false, message: 'Unauthorized. Only ADMIN or SUPERADMIN can perform this action.' };
+    }
+    // RBAC: Only admins with MANAGE_PAYOUTS permission can manually reconcile payments
+    try { await requirePermission('MANAGE_PAYOUTS'); } catch {
+        return { success: false, message: 'Access denied. Your admin role does not have the MANAGE_PAYOUTS permission.' };
     }
     const adminId = (session as any).userId as string;
 

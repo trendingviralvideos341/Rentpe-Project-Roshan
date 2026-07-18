@@ -25,6 +25,8 @@ export const ADMIN_ROLE_PERMISSIONS: Record<string, string[]> = {
         'BAN_USER', 'SUSPEND_USER',
         'VIEW_REPORTS', 'MANAGE_COMMISSION',
         'REASSIGN_BED', 'APPROVE_OWNER', 'REJECT_OWNER',
+        // Read-level permissions (SUPER_ADMIN has everything)
+        'VIEW_PROPERTIES', 'VIEW_USERS', 'VIEW_BOOKINGS', 'VIEW_DISPUTES',
     ],
     OPERATIONS: [
         'CANCEL_BOOKING', 'OVERRIDE_BOOKING',
@@ -35,6 +37,8 @@ export const ADMIN_ROLE_PERMISSIONS: Record<string, string[]> = {
         'VIEW_AUDIT_LOGS',
         'APPROVE_OWNER', 'REJECT_OWNER',
         'REASSIGN_BED',
+        // Operations can read all data to do their job
+        'VIEW_PROPERTIES', 'VIEW_USERS', 'VIEW_BOOKINGS', 'VIEW_REPORTS',
     ],
     SUPPORT: [
         'VIEW_BOOKINGS', 'VIEW_USERS', 'VIEW_PROPERTIES',
@@ -46,12 +50,16 @@ export const ADMIN_ROLE_PERMISSIONS: Record<string, string[]> = {
         'VIEW_FRAUD_ALERTS', 'RESOLVE_FRAUD',
         'VIEW_AUDIT_LOGS',
         'BAN_USER',
+        // Moderation needs to view content to moderate it
+        'VIEW_PROPERTIES', 'VIEW_USERS', 'VIEW_REPORTS',
     ],
     COMPLIANCE: [
         'VIEW_KYC', 'VERIFY_KYC', 'REJECT_KYC',
         'APPROVE_OWNER', 'REJECT_OWNER',
         'VIEW_AUDIT_LOGS',
         'VIEW_USERS',
+        // Compliance needs to see properties for KYC verification
+        'VIEW_PROPERTIES', 'VIEW_BOOKINGS',
     ],
 };
 
