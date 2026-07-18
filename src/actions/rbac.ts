@@ -12,7 +12,7 @@ import { logAuditEvent } from "@/lib/audit";
  * MODERATION  → review listings, flag fraud
  * COMPLIANCE  → KYC verification, documents
  */
-export const ADMIN_ROLE_PERMISSIONS: Record<string, string[]> = {
+const ADMIN_ROLE_PERMISSIONS: Record<string, string[]> = {
     SUPER_ADMIN: [
         'MANAGE_ADMINS', 'MANAGE_SETTINGS',
         'CANCEL_BOOKING', 'OVERRIDE_BOOKING',
