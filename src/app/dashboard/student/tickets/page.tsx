@@ -202,7 +202,7 @@ export default function StudentTicketsPage() {
             <div className="flex gap-1 bg-muted rounded-xl p-1 w-fit">
                 {[{ key: "my", label: `My Tickets (${tickets.length})` }, { key: "raise", label: "＋ Raise Ticket" }].map((t) => (
                     <button key={t.key} onClick={() => setTab(t.key as any)}
-                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === t.key ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === t.key ? "bg-indigo-600 shadow-md text-white" : "text-muted-foreground hover:text-foreground"}`}>
                         {t.label}
                     </button>
                 ))}

@@ -116,11 +116,11 @@ export default function OwnerTicketsPage() {
             {/* Tabs */}
             <div className="flex gap-1 bg-muted rounded-xl p-1 w-fit">
                 <button onClick={() => setTab("tenant")}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 ${tab === "tenant" ? "bg-background shadow text-foreground" : "text-muted-foreground"}`}>
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 ${tab === "tenant" ? "bg-indigo-600 shadow-md text-white" : "text-muted-foreground hover:text-foreground"}`}>
                     <Users className="h-4 w-4" /> Tenant Tickets {openTenantCount > 0 && <span className="px-1.5 py-0.5 bg-orange-500 text-white text-[10px] font-bold rounded-full">{openTenantCount}</span>}
                 </button>
                 <button onClick={() => setTab("myissues")}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 ${tab === "myissues" ? "bg-background shadow text-foreground" : "text-muted-foreground"}`}>
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 ${tab === "myissues" ? "bg-indigo-600 shadow-md text-white" : "text-muted-foreground hover:text-foreground"}`}>
                     <ShieldCheck className="h-4 w-4" /> My Issues {openOwnCount > 0 && <span className="px-1.5 py-0.5 bg-blue-500 text-white text-[10px] font-bold rounded-full">{openOwnCount}</span>}
                 </button>
             </div>

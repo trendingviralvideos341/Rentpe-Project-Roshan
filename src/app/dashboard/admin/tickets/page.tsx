@@ -340,7 +340,7 @@ export default function AdminTicketsPage() {
                         { key: "owner", label: `Owners (${ownerTickets.length})` },
                     ].map(t => (
                         <button key={t.key} onClick={() => { setTab(t.key as any); setStatusFilter("ALL"); setPriorityFilter("ALL"); }}
-                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === t.key ? "bg-background shadow text-foreground" : "text-muted-foreground"}`}>
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === t.key ? "bg-indigo-600 shadow-md text-white" : "text-muted-foreground hover:text-foreground"}`}>
                             {t.label}
                         </button>
                     ))}
