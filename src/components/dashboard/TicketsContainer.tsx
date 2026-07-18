@@ -260,10 +260,6 @@ export function TicketsContainer() {
                                                     ticket.status === 'ESCALATED' ? 'bg-purple-100 text-purple-800' :
                                                         'bg-gray-100 text-gray-800'
                                                 }`}>{ticket.status}</span>
-                                            {isIncoming && (
-                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${ticket.priority === 'HIGH' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
-                                                    }`}>{ticket.priority}</span>
-                                            )}
                                         </div>
                                         <CardDescription className="text-xs">
                                             <span className="font-mono">{ticket.displayId}</span> •

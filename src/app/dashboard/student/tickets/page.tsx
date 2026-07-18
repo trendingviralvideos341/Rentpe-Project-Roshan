@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition, useRef } from "react";
-import { getStudentTickets, createStudentTicket, replyToTicket } from "@/actions/ops";
+import { getStudentTickets, createStudentTicket, replyToTicket, checkStudentHasActiveProperty } from "@/actions/ops";
 import {
     ChevronDown, ChevronRight,
     Plus, Send, X, Building, AlertCircle,
@@ -16,7 +16,7 @@ const STUDENT_CATEGORIES = [
         label: "Maintenance",
         emoji: "🔧",
         routesTo: "OWNER",
-        routeLabel: "→ PG Owner",
+        routeLabel: "→ Property Management",
         color: "orange",
         description: "Room/property repair issues",
         subcategories: ["Electrical", "Plumbing", "Furniture", "Cleanliness", "WiFi / Internet", "Water / Electricity", "Security", "Noise", "Other Maintenance"],
@@ -26,7 +26,7 @@ const STUDENT_CATEGORIES = [
         label: "Booking Issue",
         emoji: "📅",
         routesTo: "OWNER",
-        routeLabel: "→ PG Owner",
+        routeLabel: "→ Property Management",
         color: "orange",
         description: "Room assignment, check-in, date issues",
         subcategories: ["Wrong Room Assigned", "Check-in Date Issue", "Booking Not Updated", "Room Not Ready", "Other Booking Issue"],
@@ -36,7 +36,7 @@ const STUDENT_CATEGORIES = [
         label: "Room / Facility",
         emoji: "🏠",
         routesTo: "OWNER",
-        routeLabel: "→ PG Owner",
+        routeLabel: "→ Property Management",
         color: "orange",
         description: "Room condition, amenities, common areas",
         subcategories: ["Bed / Mattress", "Bathroom", "Locker / Storage", "Common Area", "Parking", "Other Room Issue"],
@@ -46,7 +46,7 @@ const STUDENT_CATEGORIES = [
         label: "Billing",
         emoji: "💳",
         routesTo: "ADMIN",
-        routeLabel: "→ RentPe Admin",
+        routeLabel: "→ RentPe Support Team",
         color: "blue",
         description: "Invoice, payment, overcharge issues",
         subcategories: ["Incorrect Invoice", "Overcharged", "Missing Payment Record", "Receipt Issue", "Other Billing Issue"],
@@ -56,7 +56,7 @@ const STUDENT_CATEGORIES = [
         label: "Refund Request",
         emoji: "💸",
         routesTo: "ADMIN",
-        routeLabel: "→ RentPe Admin",
+        routeLabel: "→ RentPe Support Team",
         color: "blue",
         description: "Request for money back",
         subcategories: ["Deposit Refund", "Cancellation Refund", "Overcharge Refund", "Token Refund", "Other Refund"],
@@ -66,7 +66,7 @@ const STUDENT_CATEGORIES = [
         label: "KYC Issue",
         emoji: "🪪",
         routesTo: "ADMIN",
-        routeLabel: "→ RentPe Admin",
+        routeLabel: "→ RentPe Support Team",
         color: "blue",
         description: "Document verification issue",
         subcategories: ["Document Rejected", "Verification Pending", "Wrong Status", "Re-upload Issue", "Other KYC Issue"],
@@ -76,7 +76,7 @@ const STUDENT_CATEGORIES = [
         label: "Platform / App",
         emoji: "📱",
         routesTo: "ADMIN",
-        routeLabel: "→ RentPe Admin",
+        routeLabel: "→ RentPe Support Team",
         color: "blue",
         description: "App bugs, login, account problems",
         subcategories: ["Can't Login", "App Crashing", "Feature Not Working", "Data Incorrect", "Other Platform Issue"],
@@ -86,19 +86,12 @@ const STUDENT_CATEGORIES = [
         label: "Other",
         emoji: "📦",
         routesTo: "ADMIN",
-        routeLabel: "→ RentPe Admin",
+        routeLabel: "→ RentPe Support Team",
         color: "blue",
         description: "Anything else",
         subcategories: [],
     },
 ];
-
-const SLA_HOURS: Record<string, { hours: number; label: string; color: string }> = {
-    URGENT: { hours: 4, label: "4 hrs SLA", color: "text-red-600 bg-red-50 border-red-200" },
-    HIGH: { hours: 24, label: "24 hrs SLA", color: "text-orange-600 bg-orange-50 border-orange-200" },
-    MEDIUM: { hours: 72, label: "72 hrs SLA", color: "text-amber-600 bg-amber-50 border-amber-200" },
-    LOW: { hours: 168, label: "7 days SLA", color: "text-slate-600 bg-slate-50 border-slate-200" },
-};
 
 const STATUS_STYLES: Record<string, string> = {
     OPEN: "bg-green-100 text-green-800",
@@ -117,7 +110,6 @@ export default function StudentTicketsPage() {
     const [selectedSubcategory, setSelectedSubcategory] = useState<string>("");
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
-    const [priority, setPriority] = useState("MEDIUM");
     const [creating, setCreating] = useState(false);
     const [replyText, setReplyText] = useState<Record<string, string>>({});
     const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
@@ -125,12 +117,16 @@ export default function StudentTicketsPage() {
     const imgInputRef = useRef<HTMLInputElement>(null);
     const [isPending, startTransition] = useTransition();
     const [sendingReply, setSendingReply] = useState<Record<string, boolean>>({});
+    const [hasActiveProperty, setHasActiveProperty] = useState(false);
 
     const activeCat = STUDENT_CATEGORIES.find((c) => c.key === selectedCategory);
 
     const fetchTickets = async () => {
         setLoading(true);
-        try { setTickets(await getStudentTickets()); } catch { }
+        try { 
+            setTickets(await getStudentTickets());
+            setHasActiveProperty(await checkStudentHasActiveProperty());
+        } catch { }
         finally { setLoading(false); }
     };
 
@@ -150,9 +146,8 @@ export default function StudentTicketsPage() {
                 const fullDescription = selectedSubcategory
                     ? `[${selectedSubcategory}] ${description.trim()}`
                     : description.trim();
-                await createStudentTicket({ category: selectedCategory, description: fullDescription, priority });
+                await createStudentTicket({ category: selectedCategory, description: fullDescription });
                 setTitle(""); setDescription(""); setSelectedCategory(""); setSelectedSubcategory("");
-                setPriority("MEDIUM");
                 uploadedImages.forEach((img) => URL.revokeObjectURL(img.preview));
                 setUploadedImages([]);
                 setTab("my");
@@ -175,14 +170,7 @@ export default function StudentTicketsPage() {
     };
 
     const getSLAStatus = (ticket: any) => {
-        if (ticket.status === "RESOLVED" || ticket.status === "CLOSED") return null;
-        const sla = SLA_HOURS[ticket.priority];
-        if (!sla) return null;
-        const deadlineMs = new Date(ticket.createdAt).getTime() + sla.hours * 3600000;
-        const remainingHours = (deadlineMs - Date.now()) / 3600000;
-        if (remainingHours < 0) return { label: "BREACHED", color: "text-red-700 bg-red-100 border-red-300" };
-        if (remainingHours < sla.hours * 0.3) return { label: "WARNING", color: "text-orange-700 bg-orange-100 border-orange-300" };
-        return { label: "ON TIME", color: "text-green-700 bg-green-100 border-green-300" };
+        return null;
     };
 
     const openCount = tickets.filter((t) => t.status === "OPEN" || t.status === "IN_PROGRESS" || t.status === "ACKNOWLEDGED").length;
@@ -288,7 +276,6 @@ export default function StudentTicketsPage() {
                                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${cat?.color === "orange" ? "bg-orange-50 text-orange-700 border-orange-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
                                                     {cat?.routeLabel || ""}
                                                 </span>
-                                                {sla && <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${sla.color}`}>{sla.label}</span>}
                                                 {(() => {
                                                     const parsedReplies = JSON.parse(ticket.replies || "[]");
                                                     const lastReply = parsedReplies[parsedReplies.length - 1];
@@ -328,7 +315,7 @@ export default function StudentTicketsPage() {
                                                 {replies.map((r: any, idx: number) => (
                                                     <div key={idx} className={`p-3 rounded-xl text-xs ${r.sender === "USER" ? "bg-indigo-50 border border-indigo-100 ml-4" : r.sender === "OWNER" ? "bg-orange-50 border border-orange-100 mr-4" : "bg-blue-50 border border-blue-100 mr-4"}`}>
                                                         <div className="flex justify-between mb-1">
-                                                            <span className="font-bold">{r.sender === "USER" ? "You" : r.senderName || (r.sender === "OWNER" ? "PG Owner" : "RentPe Admin")}</span>
+                                                            <span className="font-bold">{r.sender === "USER" ? "You" : r.senderName || (r.sender === "OWNER" ? "Property Management" : "RentPe Support Team")}</span>
                                                             <span className="opacity-60">{new Date(r.timestamp).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
                                                         </div>
                                                         <p>{r.message}</p>
@@ -342,13 +329,13 @@ export default function StudentTicketsPage() {
                                             <div className="space-y-2">
                                                 {ticket.ownerNote && (
                                                     <div className="p-3 rounded-xl bg-orange-50 border border-orange-100 text-xs">
-                                                        <p className="font-bold text-orange-700 uppercase mb-1">Owner Note</p>
+                                                        <p className="font-bold text-orange-700 uppercase mb-1">Property Management Note</p>
                                                         <p>{ticket.ownerNote}</p>
                                                     </div>
                                                 )}
                                                 {ticket.adminNote && (
                                                     <div className="p-3 rounded-xl bg-blue-50 border border-blue-100 text-xs">
-                                                        <p className="font-bold text-blue-700 uppercase mb-1">Admin Note</p>
+                                                        <p className="font-bold text-blue-700 uppercase mb-1">Support Team Note</p>
                                                         <p>{ticket.adminNote}</p>
                                                     </div>
                                                 )}
@@ -423,25 +410,29 @@ export default function StudentTicketsPage() {
                             <label className="block text-sm font-bold mb-3">1. What&apos;s your issue about?</label>
 
                             <div className="mb-2">
-                                <p className="text-xs font-semibold text-orange-700 flex items-center gap-1 mb-2">
-                                    <Building className="h-3 w-3" /> Property Issues — routed to your PG Owner
-                                </p>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
-                                    {STUDENT_CATEGORIES.filter(c => c.routesTo === "OWNER").map(cat => (
-                                        <button key={cat.key} onClick={() => { setSelectedCategory(cat.key); setSelectedSubcategory(""); }}
-                                            className={`p-3 rounded-xl border-2 text-left transition-all ${selectedCategory === cat.key ? "border-orange-500 bg-orange-50" : "border-slate-200 hover:border-orange-200 hover:bg-orange-50/50"}`}>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-xl">{cat.emoji}</span>
-                                                <span className="font-bold text-sm">{cat.label}</span>
-                                            </div>
-                                            <p className="text-[11px] text-muted-foreground">{cat.description}</p>
-                                            <span className="inline-block mt-1.5 px-2 py-0.5 bg-orange-100 text-orange-700 text-[10px] font-bold rounded-full">{cat.routeLabel}</span>
-                                        </button>
-                                    ))}
-                                </div>
+                                {hasActiveProperty && (
+                                    <>
+                                        <p className="text-xs font-semibold text-orange-700 flex items-center gap-1 mb-2">
+                                            <Building className="h-3 w-3" /> Property Issues — routed to Property Management
+                                        </p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+                                            {STUDENT_CATEGORIES.filter(c => c.routesTo === "OWNER").map(cat => (
+                                                <button key={cat.key} onClick={() => { setSelectedCategory(cat.key); setSelectedSubcategory(""); }}
+                                                    className={`p-3 rounded-xl border-2 text-left transition-all ${selectedCategory === cat.key ? "border-orange-500 bg-orange-50" : "border-slate-200 hover:border-orange-200 hover:bg-orange-50/50"}`}>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="text-xl">{cat.emoji}</span>
+                                                        <span className="font-bold text-sm">{cat.label}</span>
+                                                    </div>
+                                                    <p className="text-[11px] text-muted-foreground">{cat.description}</p>
+                                                    <span className="inline-block mt-1.5 px-2 py-0.5 bg-orange-100 text-orange-700 text-[10px] font-bold rounded-full">{cat.routeLabel}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
 
                                 <p className="text-xs font-semibold text-blue-700 flex items-center gap-1 mb-2">
-                                    <Shield className="h-3 w-3" /> Platform Issues — routed to RentPe Admin
+                                    <Shield className="h-3 w-3" /> Platform Issues — routed to RentPe Support Team
                                 </p>
                                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                                     {STUDENT_CATEGORIES.filter(c => c.routesTo === "ADMIN").map(cat => (
@@ -498,27 +489,6 @@ export default function StudentTicketsPage() {
                                     rows={4}
                                     className="w-full border rounded-xl px-4 py-3 text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400"
                                 />
-                            </div>
-                        )}
-
-                        {/* Priority */}
-                        {selectedCategory && (
-                            <div>
-                                <label className="block text-sm font-bold mb-2">Priority</label>
-                                <div className="flex gap-2 flex-wrap">
-                                    {["LOW", "MEDIUM", "HIGH", "URGENT"].map(p => (
-                                        <button key={p} onClick={() => setPriority(p)}
-                                            className={`px-4 py-2 rounded-xl border-2 text-xs font-bold transition-all ${priority === p ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-200 text-slate-600"}`}>
-                                            <span>{p}</span>
-                                            <span className="block text-[9px] font-normal opacity-60">{SLA_HOURS[p].label}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                                {priority === "URGENT" && (
-                                    <p className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
-                                        ⚠️ URGENT tickets notify the team immediately and require action within 4 hours.
-                                    </p>
-                                )}
                             </div>
                         )}
 

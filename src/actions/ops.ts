@@ -82,6 +82,21 @@ export async function getStudentTickets() {
     });
 }
 
+// Check if student has an active property (for UI conditionals)
+export async function checkStudentHasActiveProperty() {
+    const session = await getSession();
+    if (!session) return false;
+
+    const activeBooking = await prisma.booking.findFirst({
+        where: {
+            userId: (session as any).userId,
+            status: 'ACTIVE',
+        }
+    });
+
+    return !!activeBooking;
+}
+
 // Student: create a ticket
 export async function createStudentTicket(data: {
     category: string;
@@ -157,7 +172,7 @@ export async function createStudentTicket(data: {
             bookingId,
             category: data.category,
             description: data.description,
-            priority: data.priority || 'MEDIUM',
+            priority: 'UNASSIGNED',
             status: 'OPEN',
             replies: '[]',
             targetTeam,
@@ -296,7 +311,7 @@ export async function createOwnerTicket(data: {
             propertyId: data.propertyId || null,
             category: data.category,
             description: data.description,
-            priority: data.priority || 'MEDIUM',
+            priority: 'UNASSIGNED',
             status: 'OPEN',
             replies: '[]',
             targetTeam: 'ADMIN',
@@ -543,4 +558,30 @@ export async function adminRouteTicket(id: string, targetTeam: 'ADMIN' | 'OWNER'
     return updated;
 }
 
+// Server action: admin manually update ticket priority
+export async function updateTicketPriority(id: string, priority: 'UNASSIGNED' | 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT') {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const ticket = await prisma.ticket.findUnique({ where: { id } });
+    if (!ticket) throw new Error("Ticket not found");
+
+    const updated = await prisma.ticket.update({
+        where: { id },
+        data: { priority }
+    });
+
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: session.role,
+        actorName: (session as any).name || session.role,
+        actionType: 'UPDATE',
+        entityType: 'TICKET',
+        entityId: id,
+        description: `Admin manually updated ticket ${ticket.displayId} priority to ${priority}.`,
+    });
+
+    revalidatePath('/dashboard/admin/tickets');
+    return updated;
+}
 

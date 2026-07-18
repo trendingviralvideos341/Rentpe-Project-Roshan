@@ -31,13 +31,6 @@ const STATUS_STYLES: Record<string, string> = {
 
 const STATUS_FLOW = ["OPEN", "ACKNOWLEDGED", "IN_PROGRESS", "RESOLVED"] as const;
 
-const PRIORITY_BADGE: Record<string, string> = {
-    URGENT: "bg-red-100 text-red-700",
-    HIGH: "bg-orange-100 text-orange-700",
-    MEDIUM: "bg-amber-100 text-amber-700",
-    LOW: "bg-slate-100 text-slate-600",
-};
-
 export default function OwnerTicketsPage() {
     const [tab, setTab] = useState<"tenant" | "myissues">("tenant");
     const [tenantTickets, setTenantTickets] = useState<any[]>([]);
@@ -49,7 +42,6 @@ export default function OwnerTicketsPage() {
     const [showCreate, setShowCreate] = useState(false);
     const [newCategory, setNewCategory] = useState("");
     const [newDescription, setNewDescription] = useState("");
-    const [newPriority, setNewPriority] = useState("MEDIUM");
     const [creating, setCreating] = useState(false);
     const [_, startTransition] = useTransition();
     const [sendingReply, setSendingReply] = useState<Record<string, boolean>>({});
@@ -91,8 +83,8 @@ export default function OwnerTicketsPage() {
         setCreating(true);
         startTransition(async () => {
             try {
-                await createOwnerTicket({ category: newCategory, description: newDescription, priority: newPriority });
-                setNewCategory(""); setNewDescription(""); setNewPriority("MEDIUM"); setShowCreate(false);
+                await createOwnerTicket({ category: newCategory, description: newDescription });
+                setNewCategory(""); setNewDescription(""); setShowCreate(false);
                 fetchAll();
             } catch { alert("Failed to create ticket."); }
             finally { setCreating(false); }
@@ -149,7 +141,7 @@ export default function OwnerTicketsPage() {
                                 const nextStatus = currentIdx >= 0 && currentIdx < STATUS_FLOW.length - 1 ? STATUS_FLOW[currentIdx + 1] : null;
 
                                 return (
-                                    <div key={ticket.id} className={`border rounded-2xl overflow-hidden bg-card ${ticket.priority === "URGENT" ? "border-red-300" : ""}`}>
+                                    <div key={ticket.id} className={`border rounded-2xl overflow-hidden bg-card`}>
                                         <div className="p-4 cursor-pointer hover:bg-muted/30" onClick={() => setExpanded(isExpanded ? null : ticket.id)}>
                                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                                 {/* Left Column: Ticket Info */}
@@ -203,9 +195,6 @@ export default function OwnerTicketsPage() {
                                                     <div className="flex items-center gap-1.5 flex-wrap">
                                                         <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${STATUS_STYLES[ticket.status] || "bg-gray-100 text-gray-700"}`}>
                                                             {ticket.status.replace("_", " ")}
-                                                        </span>
-                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${PRIORITY_BADGE[ticket.priority] || "bg-gray-100 text-gray-600"}`}>
-                                                            {ticket.priority}
                                                         </span>
                                                         {(() => {
                                                             const parsedReplies = JSON.parse(ticket.replies || "[]");
@@ -376,17 +365,6 @@ export default function OwnerTicketsPage() {
                                                 placeholder="Describe your issue in detail..."
                                                 rows={4}
                                                 className="w-full border rounded-xl px-4 py-3 text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-bold mb-2">Priority</label>
-                                            <div className="flex gap-2">
-                                                {["LOW", "MEDIUM", "HIGH", "URGENT"].map(p => (
-                                                    <button key={p} onClick={() => setNewPriority(p)}
-                                                        className={`px-3 py-1.5 text-xs rounded-lg border-2 font-bold transition-all ${newPriority === p ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-200"}`}>
-                                                        {p}
-                                                    </button>
-                                                ))}
-                                            </div>
                                         </div>
                                         <div className="flex gap-2 pt-2 border-t">
                                             <button onClick={handleCreateOwn} disabled={creating || !newCategory || !newDescription.trim()}

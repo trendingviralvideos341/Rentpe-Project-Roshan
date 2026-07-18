@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAllTickets, replyToTicket, updateTicketStatus, resolveTicket, adminRouteTicket } from "@/actions/ops";
+import { getAllTickets, replyToTicket, updateTicketStatus, resolveTicket, adminRouteTicket, updateTicketPriority } from "@/actions/ops";
 import { createRefundFromTicket } from "@/actions/adminPhase2";
 import {
     CheckCircle2, Clock, AlertCircle, Send, Filter, Users, Building,
@@ -23,6 +23,7 @@ const PRIORITY_BADGE: Record<string, string> = {
     HIGH: "bg-orange-100 text-orange-700 border-orange-200",
     MEDIUM: "bg-amber-100 text-amber-700 border-amber-200",
     LOW: "bg-slate-100 text-slate-600 border-slate-200",
+    UNASSIGNED: "bg-slate-100 text-slate-500 border-slate-200",
 };
 
 const SLA_HOURS: Record<string, number> = { URGENT: 4, HIGH: 24, MEDIUM: 72, LOW: 168 };
@@ -357,7 +358,7 @@ export default function AdminTicketsPage() {
                     <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)}
                         className="border rounded-lg px-2 py-1.5 text-xs bg-background font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400">
                         <option value="ALL">All Priority</option>
-                        {["URGENT", "HIGH", "MEDIUM", "LOW"].map(p => (
+                        {["UNASSIGNED", "URGENT", "HIGH", "MEDIUM", "LOW"].map(p => (
                             <option key={p} value={p}>{p}</option>
                         ))}
                     </select>
@@ -489,6 +490,18 @@ export default function AdminTicketsPage() {
                                                         <button key={s} onClick={() => handleStatus(ticket.id, s)}
                                                             className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all ${ticket.status === s ? "bg-indigo-600 text-white border-indigo-600" : "bg-background hover:bg-muted"}`}>
                                                             {s.replace("_", " ")}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <p className="text-xs font-bold uppercase text-muted-foreground mt-2">Set Priority</p>
+                                                <div className="flex gap-2 flex-wrap">
+                                                    {["UNASSIGNED", "LOW", "MEDIUM", "HIGH", "URGENT"].map(p => (
+                                                        <button key={p} onClick={async () => {
+                                                            await updateTicketPriority(ticket.id, p as any);
+                                                            fetchAll();
+                                                        }}
+                                                            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all ${ticket.priority === p ? "bg-indigo-600 text-white border-indigo-600" : "bg-background hover:bg-muted"}`}>
+                                                            {p}
                                                         </button>
                                                     ))}
                                                 </div>
