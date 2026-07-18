@@ -440,7 +440,7 @@ export default function StudentTicketsPage() {
                                 </p>
                                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                                     {STUDENT_CATEGORIES.filter(c => c.routesTo === "ADMIN").map(cat => (
-                                        <button key={cat.key} onClick={() => { setSelectedCategory(cat.key); setSelectedSubcategory(""); }}
+                                        <button key={cat.key} onClick={() => { setSelectedCategory(cat.key); }}
                                             className={`p-3 rounded-xl border-2 text-left transition-all ${selectedCategory === cat.key ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-blue-200 hover:bg-blue-50/50"}`}>
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className="text-xl">{cat.emoji}</span>
@@ -501,7 +501,7 @@ export default function StudentTicketsPage() {
 
                         {/* Submit */}
                         <div className="flex gap-3 pt-2 border-t">
-                            <button onClick={handleCreate} disabled={creating || !description.trim() || !selectedCategory || !title.trim()}
+                            <button onClick={handleCreate} disabled={creating || !description.trim() || !selectedCategory}
                                 className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl disabled:opacity-40 transition-all flex items-center gap-2">
                                 {creating ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting...</> : "Submit Ticket"}
                             </button>
