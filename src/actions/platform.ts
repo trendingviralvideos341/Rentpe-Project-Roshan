@@ -213,21 +213,21 @@ export async function calculateFees(amountStr: string, userId?: string, property
     const TDS_RATE = 0.01; // Section 194-O — TDS by e-commerce aggregator on RENT only
 
     // INCLUSIVE mode: extract GST that is already baked into the fee
-    const gstOnStudentFee = Math.round((customerFee * GST_RATE / (1 + GST_RATE)) * 100) / 100;
-    const studentFeeBase  = Math.round((customerFee - gstOnStudentFee) * 100) / 100; // ₹7.63
-    const gstOnOwnerFee   = Math.round((ownerFee * GST_RATE / (1 + GST_RATE)) * 100) / 100;
-    const ownerFeeBase    = Math.round((ownerFee - gstOnOwnerFee) * 100) / 100;
+    const gstOnStudentFee = Math.round(((customerFee * GST_RATE / (1 + GST_RATE)) + Number.EPSILON) * 100) / 100;
+    const studentFeeBase  = Math.round(((customerFee - gstOnStudentFee) + Number.EPSILON) * 100) / 100; // ₹7.63
+    const gstOnOwnerFee   = Math.round(((ownerFee * GST_RATE / (1 + GST_RATE)) + Number.EPSILON) * 100) / 100;
+    const ownerFeeBase    = Math.round(((ownerFee - gstOnOwnerFee) + Number.EPSILON) * 100) / 100;
 
     // ── LEGAL FIX: TDS u/s 194-O applies ONLY to the rent component, NOT the refundable
     // security deposit. A security deposit is a capital receipt, not income — it is returned
     // to the tenant on exit and is therefore NOT subject to tax deduction at source.
     // Reference: CBDT Circular No. 718 & Income Tax Act Section 194-O r/w Explanation.
-    const tdsAmount = exemptTds ? 0 : Math.round(rentOnlyAmt * TDS_RATE * 100) / 100;
+    const tdsAmount = exemptTds ? 0 : Math.round((rentOnlyAmt * TDS_RATE + Number.EPSILON) * 100) / 100;
 
-    const totalGstCollected = Math.round((gstOnStudentFee + gstOnOwnerFee) * 100) / 100;
+    const totalGstCollected = Math.round(((gstOnStudentFee + gstOnOwnerFee) + Number.EPSILON) * 100) / 100;
     // CGST and SGST are each half of total GST (for invoice display purposes)
-    const cgst = Math.round((gstOnStudentFee / 2) * 100) / 100;  // ₹0.68
-    const sgst = Math.round((gstOnStudentFee - cgst) * 100) / 100; // ₹0.69
+    const cgst = Math.round(((gstOnStudentFee / 2) + Number.EPSILON) * 100) / 100;  // ₹0.68
+    const sgst = Math.round(((gstOnStudentFee - cgst) + Number.EPSILON) * 100) / 100; // ₹0.69
 
     // INCLUSIVE: student pays grossAmount + customerFee (GST already inside customerFee)
     // No extra GST is added on top — ₹9 is the final all-in platform fee
@@ -240,13 +240,13 @@ export async function calculateFees(amountStr: string, userId?: string, property
     return {
         feesEnabled: true,
         grossAmount,
-        customerFee:        Math.round(customerFee * 100) / 100,       // ₹9 (incl. GST)
+        customerFee:        Math.round((customerFee + Number.EPSILON) * 100) / 100,       // ₹9 (incl. GST)
         studentFeeBase,                                                  // ₹7.63 (excl. GST)
-        totalCharged:       Math.round(totalChargedFinal * 100) / 100,  // rent + ₹9
-        ownerNet:           Math.round(ownerNet * 100) / 100,
-        ownerFee:           Math.round(ownerFee * 100) / 100,           // ₹9 (incl. GST)
+        totalCharged:       Math.round((totalChargedFinal + Number.EPSILON) * 100) / 100,  // rent + ₹9
+        ownerNet:           Math.round((ownerNet + Number.EPSILON) * 100) / 100,
+        ownerFee:           Math.round((ownerFee + Number.EPSILON) * 100) / 100,           // ₹9 (incl. GST)
         ownerFeeBase,                                                    // ₹7.63 (excl. GST)
-        platformEarned:     Math.round(platformEarned * 100) / 100,
+        platformEarned:     Math.round((platformEarned + Number.EPSILON) * 100) / 100,
         commissionRate:     (ownerId ? (await prisma.user.findUnique({ where: { id: ownerId }, select: { commissionRate: true } as any })) as any : null)?.commissionRate ?? settings.ownerRentFeeFlat,
         gstOnStudentFee,    // ₹1.37 — the GST component extracted from ₹9
         gstOnOwnerFee,      // ₹1.37 — GST on owner commission
@@ -359,7 +359,7 @@ export async function calculateCheckoutFees(
         const daysInMo     = new Date(moveInDate.getFullYear(), moveInDate.getMonth() + 1, 0).getDate();
         const daysLeft     = daysInMo - moveInDate.getDate() + 1;
         const isFirst      = moveInDate.getDate() === 1;
-        const proratedRent = isFirst ? rentAmount : Math.round((rentAmount / daysInMo) * daysLeft);
+        const proratedRent = isFirst ? rentAmount : Math.round(((rentAmount / daysInMo) * daysLeft) + Number.EPSILON);
 
         const TOKEN_DEDUCT  = tokenPaid ? 1000 : 0;
         rentBase            = proratedRent;
@@ -396,15 +396,15 @@ export async function calculateCheckoutFees(
     const totalCharged = baseAmount + fees.customerFee;
 
     return {
-        baseAmount:       Math.round(baseAmount * 100) / 100,
-        rentBase:         Math.round(rentBase * 100) / 100,
-        depositBase:      Math.round(depositBase * 100) / 100,
+        baseAmount:       Math.round((baseAmount + Number.EPSILON) * 100) / 100,
+        rentBase:         Math.round((rentBase + Number.EPSILON) * 100) / 100,
+        depositBase:      Math.round((depositBase + Number.EPSILON) * 100) / 100,
         convenienceFee:   fees.customerFee,          // ₹9 — all-in (incl. GST)
         convenienceFeeBase: (fees as any).studentFeeBase ?? 0,  // ₹7.63 — for invoice
         gstOnFee:         fees.gstOnStudentFee,       // ₹1.37 — extracted GST for display
         cgst:             fees.cgst,                  // ₹0.68
         sgst:             fees.sgst,                  // ₹0.69
-        totalCharged:     Math.round(totalCharged * 100) / 100,
+        totalCharged:     Math.round((totalCharged + Number.EPSILON) * 100) / 100,
         feesEnabled:      fees.feesEnabled,
         isExempt,
         exemptReason,
@@ -738,10 +738,10 @@ const session = await getSession();
             platformFeeOwner: n(fee.ownerFee) || 0,
             gstOnStudentFee: n(fee.gstOnStudentFee) || 0,
             gstOnOwnerFee: n(fee.gstOnOwnerFee) || 0,
-            cgstStudent: fee.gstOnStudentFee ? Math.round(fee.gstOnStudentFee / 2 * 100) / 100 : 0,
-            sgstStudent: fee.gstOnStudentFee ? Math.round(fee.gstOnStudentFee / 2 * 100) / 100 : 0,
-            cgstOwner: fee.gstOnOwnerFee ? Math.round(fee.gstOnOwnerFee / 2 * 100) / 100 : 0,
-            sgstOwner: fee.gstOnOwnerFee ? Math.round(fee.gstOnOwnerFee / 2 * 100) / 100 : 0,
+            cgstStudent: fee.gstOnStudentFee ? Math.round(((fee.gstOnStudentFee / 2) + Number.EPSILON) * 100) / 100 : 0,
+            sgstStudent: fee.gstOnStudentFee ? Math.round(((fee.gstOnStudentFee - (fee.gstOnStudentFee / 2)) + Number.EPSILON) * 100) / 100 : 0,
+            cgstOwner: fee.gstOnOwnerFee ? Math.round(((fee.gstOnOwnerFee / 2) + Number.EPSILON) * 100) / 100 : 0,
+            sgstOwner: fee.gstOnOwnerFee ? Math.round(((fee.gstOnOwnerFee - (fee.gstOnOwnerFee / 2)) + Number.EPSILON) * 100) / 100 : 0,
             tdsDeducted: n(fee.tdsAmount) || 0,
             ownerNetPayout: n(fee.ownerNet) || 0,
             totalCharged: n(fee.totalCharged) || n(p.amount) || 0,

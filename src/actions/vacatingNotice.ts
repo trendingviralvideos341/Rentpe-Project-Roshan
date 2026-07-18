@@ -166,3 +166,74 @@ export async function getVacatingNotices(propertyId?: string) {
         take: 50,
     });
 }
+
+// ─── ownerInitiateEviction (Owner action replacing blockTenant) ───────────────
+export const ownerInitiateEviction = withSafeAction(async function _ownerInitiateEviction(data: {
+    bookingId: string;
+    plannedMoveOut: string;
+    reason: string;
+}) {
+    const session = await getSession();
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error('Unauthorized');
+
+    const ownerId = (session as any).userId;
+
+    const booking = await prisma.booking.findUnique({
+        where: { id: data.bookingId },
+        include: { property: { select: { id: true, ownerId: true } } }
+    });
+
+    if (!booking) throw new Error('Booking not found');
+    
+    // Ensure access control
+    const isOwner = booking.property!.ownerId === ownerId || booking.property!.ownerId === (session as any).parentOwnerId;
+    if (session.role !== 'ADMIN' && !isOwner) {
+        throw new Error('Unauthorized');
+    }
+
+    const moveOut = new Date(data.plannedMoveOut);
+    const displayId = await generateSequentialId('VN');
+
+    const notice = await prisma.vacatingNotice.create({
+        data: {
+            displayId,
+            bookingId: data.bookingId,
+            userId: booking.userId, // The tenant
+            propertyId: booking.propertyId!,
+            ownerId: booking.property!.ownerId,
+            plannedMoveOut: moveOut,
+            reason: `OWNER INITIATED EVICTION: ${data.reason}`,
+            status: 'ACKNOWLEDGED', // Automatically acknowledged since owner initiated
+            ownerNote: 'Eviction initiated by management.',
+            submittedAt: new Date(),
+            acknowledgedAt: new Date(),
+        } as any
+    });
+
+    // Notify tenant
+    try {
+        await prisma.notification.create({
+            data: {
+                userId: booking.userId,
+                type: 'VACATING_NOTICE',
+                category: 'NOTICE',
+                message: `CRITICAL: Your Property Owner has initiated an eviction for move-out on ${moveOut.toLocaleDateString('en-IN')}. Reason: ${data.reason}`,
+                isPersistent: true,
+            }
+        });
+    } catch (e) { console.error('Notify error', e); }
+
+    logAuditEvent({
+        actorId: ownerId,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Owner',
+        actionType: 'CREATE',
+        entityType: 'BOOKING',
+        entityId: data.bookingId,
+        description: `Owner initiated eviction. Planned move-out: ${data.plannedMoveOut}. Reason: ${data.reason}`,
+    });
+
+    revalidatePath('/dashboard/owner/tenants');
+    revalidatePath('/dashboard/student');
+    return notice;
+});

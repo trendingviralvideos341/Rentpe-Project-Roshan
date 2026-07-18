@@ -1267,6 +1267,13 @@ export async function uploadSignedAgreement(
     throw new Error('Only the property owner or authorized signer can upload the signed agreement.');
   }
 
+  // SECURITY: Agreement Tampering Lock
+  // If the tenant has already verified and accepted the uploaded physical agreement,
+  // the owner is strictly forbidden from replacing the PDF.
+  if ((agreement as any).tenantFinalAccepted) {
+    throw new Error('Security Error: Cannot modify or replace the agreement document. The tenant has already verified and cryptographically accepted the final version.');
+  }
+
   if (!fileBase64.startsWith('data:application/pdf')) {
     throw new Error('Invalid file type. Only PDF files are accepted for the signed agreement upload.');
   }

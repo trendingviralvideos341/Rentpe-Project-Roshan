@@ -10,7 +10,7 @@ import {
     X, Download, FileText, CheckCircle2, TrendingUp, Shield, Building2, IndianRupee, Home,
     Edit2, Save, Plus, Trash2
 } from "lucide-react";
-import { getTenants, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenant, updateTenantProfile, validateAdminCredentialOverride } from "@/actions/tenants";
+import { getTenants, markRentAsPaid, markRentAsUnpaid, unblockTenant, updateTenantProfile, validateAdminCredentialOverride } from "@/actions/tenants";
 import { getInvoiceForReceipt } from "@/actions/payments";
 import { ownerFileVacatingNotice } from "@/actions/tenancy";
 import { toast } from "sonner";
@@ -180,21 +180,7 @@ export default function TenantsPage() {
     };
 
     const handleBlock = async (tenantId: string) => {
-        if (!blockNote.trim()) {
-            toast.error("Reason is required to block a tenant.");
-            return;
-        }
-        setActionLoading(true);
-        try {
-            await blockTenant(tenantId, blockNote.trim());
-            toast.success("Tenant has been blocked.");
-            setBlockNote("");
-            await fetchTenants();
-        } catch (e: any) {
-            toast.error("Error blocking tenant: " + e.message);
-        } finally {
-            setActionLoading(false);
-        }
+        toast.error("Emergency blocking is deprecated for legal compliance. Please use the formal 'Initiate Move-Out' pipeline to evict a tenant.");
     };
 
     const handleUnblock = async (tenantId: string) => {

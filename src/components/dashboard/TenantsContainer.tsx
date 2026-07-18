@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, PlusCircle, ClipboardCheck, Eye, Loader2 } from "lucide-react";
-import { getTenantsPaginated, getTenantStats, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenant, generateNextRentRecord } from "@/actions/tenants";
+import { getTenantsPaginated, getTenantStats, markRentAsPaid, markRentAsUnpaid, unblockTenant, generateNextRentRecord } from "@/actions/tenants";
 import { ownerFileVacatingNotice } from "@/actions/tenancy";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -158,14 +158,7 @@ export function TenantsContainer() {
     };
 
     const handleBlock = async (tenantId: string) => {
-        const note = blockNotes[tenantId]?.trim();
-        if (!note) { toast.error("Please enter a reason before blocking this tenant."); return; }
-        try {
-            await blockTenant(tenantId, note);
-            setBlockNotes(p => { const n = { ...p }; delete n[tenantId]; return n; });
-            toast.success("Tenant successfully blocked.");
-            await fetchTenants();
-        } catch { toast.error("Failed to block tenant."); }
+        toast.error("Emergency blocking is deprecated for legal compliance. Please use the formal 'Initiate Move-Out' pipeline to evict a tenant.");
     };
 
     const handleUnblock = async (tenantId: string) => {

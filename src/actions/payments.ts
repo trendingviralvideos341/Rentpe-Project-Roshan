@@ -68,7 +68,7 @@ async function _createRazorpayOrder(bookingId: string, extras?: { invoiceId?: st
         } else {
             const checkout = await calculateCheckoutFees(bookingId, checkoutType, extras?.invoiceId);
             totalChargedRupees = checkout.totalCharged;
-            finalCharge = Math.round(checkout.totalCharged * 100); // paise
+            finalCharge = Math.round((checkout.totalCharged + Number.EPSILON) * 100); // paise
         }
 
         const options = {
@@ -630,25 +630,25 @@ export async function getInvoiceForReceipt(invoiceId: string) {
     const totalAmountPaidByStudent = payment ? Number(payment.amount) : grossRent;
     const studentFee = Math.max(0, totalAmountPaidByStudent - grossRent);
     const GST_RATE = 0.18;
-    const studentFeeGst = studentFee > 0 ? Math.round((studentFee * GST_RATE / (1 + GST_RATE)) * 100) / 100 : 0;
-    const studentFeeBase = studentFee > 0 ? Math.round((studentFee - studentFeeGst) * 100) / 100 : 0;
-    const studentFeeGstCgst = Math.round((studentFeeGst / 2) * 100) / 100;
-    const studentFeeGstSgst = Math.round((studentFeeGst - studentFeeGstCgst) * 100) / 100;
+    const studentFeeGst = studentFee > 0 ? Math.round(((studentFee * GST_RATE / (1 + GST_RATE)) + Number.EPSILON) * 100) / 100 : 0;
+    const studentFeeBase = studentFee > 0 ? Math.round(((studentFee - studentFeeGst) + Number.EPSILON) * 100) / 100 : 0;
+    const studentFeeGstCgst = Math.round(((studentFeeGst / 2) + Number.EPSILON) * 100) / 100;
+    const studentFeeGstSgst = Math.round(((studentFeeGst - studentFeeGstCgst) + Number.EPSILON) * 100) / 100;
     // Check if owner has a custom commission rate
     const ownerUser = booking?.property ? await prisma.user.findFirst({ where: { properties: { some: { id: booking.property.id } } }, select: { commissionRate: true } as any }) : null;
     let ownerFee = 0;  // Total fee incl. GST (what's deducted from payout)
     if (feesEnabled) {
         if (ownerUser && (ownerUser as any).commissionRate != null) {
-            ownerFee = Math.round((grossRent * (ownerUser as any).commissionRate) / 100 * 100) / 100;
+            ownerFee = Math.round(((grossRent * (ownerUser as any).commissionRate) / 100 + Number.EPSILON) * 100) / 100;
         } else {
             ownerFee = platformSettings?.ownerRentFeeFlat ?? 0;
         }
     }
     // GST-INCLUSIVE decomposition (₹9 incl. GST → base ₹7.63 + GST ₹1.37)
-    const ownerFeeGst  = feesEnabled && ownerFee > 0 ? Math.round((ownerFee * GST_RATE / (1 + GST_RATE)) * 100) / 100 : 0;
-    const ownerFeeBase = feesEnabled && ownerFee > 0 ? Math.round((ownerFee - ownerFeeGst) * 100) / 100 : 0;
-    const ownerFeeGstCgst = Math.round((ownerFeeGst / 2) * 100) / 100;
-    const ownerFeeGstSgst = Math.round((ownerFeeGst - ownerFeeGstCgst) * 100) / 100;
+    const ownerFeeGst  = feesEnabled && ownerFee > 0 ? Math.round(((ownerFee * GST_RATE / (1 + GST_RATE)) + Number.EPSILON) * 100) / 100 : 0;
+    const ownerFeeBase = feesEnabled && ownerFee > 0 ? Math.round(((ownerFee - ownerFeeGst) + Number.EPSILON) * 100) / 100 : 0;
+    const ownerFeeGstCgst = Math.round(((ownerFeeGst / 2) + Number.EPSILON) * 100) / 100;
+    const ownerFeeGstSgst = Math.round(((ownerFeeGst - ownerFeeGstCgst) + Number.EPSILON) * 100) / 100;
     // Net payout = gross rent - all-in platform fee (base + GST already included in ownerFee)
     const netPayout = grossRent - ownerFee;
     // ✅ LEGAL: Owner's taxable rental income = full gross rent collected from student

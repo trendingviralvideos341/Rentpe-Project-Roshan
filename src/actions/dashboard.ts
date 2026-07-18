@@ -166,8 +166,8 @@ export async function getOwnerDashboardStats() {
         return {
             propertyCount,
             tenantCount,
-            totalRevenue: Math.round(totalRevenue * 100) / 100,
-            totalDepositsHeld: Math.round(totalDepositsHeld * 100) / 100,
+            totalRevenue: Math.round((totalRevenue + Number.EPSILON) * 100) / 100,
+            totalDepositsHeld: Math.round((totalDepositsHeld + Number.EPSILON) * 100) / 100,
             totalBeds: effectiveTotalBeds,
             availableBeds: vacantBeds,
             occupiedBeds: effectiveOccupied,

@@ -739,12 +739,15 @@ async function _processDepositSettlement(
 
     if (!deposit) throw new Error('Deposit record not found');
 
+    // Sanitize deductions to enforce positive numbers (preventing negative deductions from inflating refunds)
+    const sdDamages = Math.max(0, Number(deductions.damages) || 0);
+    const sdUtilities = Math.max(0, Number(deductions.utilities) || 0);
+    const sdUnpaidRent = Math.max(0, Number(deductions.unpaidRent) || 0);
+    const sdNoticePeriod = Math.max(0, Number(deductions.noticePeriod) || 0);
+    const sdOther = Math.max(0, Number(deductions.other) || 0);
+
     // Calculate total deductions
-    const totalDeductions = (deductions.damages || 0)
-        + (deductions.utilities || 0)
-        + (deductions.unpaidRent || 0)
-        + (deductions.noticePeriod || 0)
-        + (deductions.other || 0);
+    const totalDeductions = sdDamages + sdUtilities + sdUnpaidRent + sdNoticePeriod + sdOther;
 
     const depositAmount = Number(deposit.amount);
     const refundAmount = Math.max(0, depositAmount - totalDeductions);
@@ -761,11 +764,11 @@ async function _processDepositSettlement(
 
     // Build deductionReason summary string
     const deductionLines: string[] = [];
-    if (deductions.damages > 0) deductionLines.push(`Room Damages: ₹${deductions.damages.toLocaleString('en-IN')}`);
-    if (deductions.utilities > 0) deductionLines.push(`Unpaid Utilities: ₹${deductions.utilities.toLocaleString('en-IN')}`);
-    if (deductions.unpaidRent > 0) deductionLines.push(`Unpaid Rent: ₹${deductions.unpaidRent.toLocaleString('en-IN')}`);
-    if (deductions.noticePeriod > 0) deductionLines.push(`Notice Period Default: ₹${deductions.noticePeriod.toLocaleString('en-IN')}`);
-    if (deductions.other > 0) deductionLines.push(`Other: ₹${deductions.other.toLocaleString('en-IN')}`);
+    if (sdDamages > 0) deductionLines.push(`Room Damages: ₹${sdDamages.toLocaleString('en-IN')}`);
+    if (sdUtilities > 0) deductionLines.push(`Unpaid Utilities: ₹${sdUtilities.toLocaleString('en-IN')}`);
+    if (sdUnpaidRent > 0) deductionLines.push(`Unpaid Rent: ₹${sdUnpaidRent.toLocaleString('en-IN')}`);
+    if (sdNoticePeriod > 0) deductionLines.push(`Notice Period Default: ₹${sdNoticePeriod.toLocaleString('en-IN')}`);
+    if (sdOther > 0) deductionLines.push(`Other: ₹${sdOther.toLocaleString('en-IN')}`);
     const deductionSummary = deductionLines.join(', ') || 'None';
 
     // Update the deposit record with structured deductions
@@ -776,12 +779,14 @@ async function _processDepositSettlement(
             refundAmount,
             deductionAmount: totalDeductions,
             deductionReason: deductionSummary + (deductions.notes ? ` — Notes: ${deductions.notes}` : ''),
-            deductionDamages: deductions.damages || 0,
-            deductionUtilities: deductions.utilities || 0,
-            deductionRent: deductions.unpaidRent || 0,
-            deductionNotice: deductions.noticePeriod || 0,
-            deductionOther: deductions.other || 0,
-            settlementNotes: deductions.notes || null,
+            deductionDamages: sdDamages,
+            deductionUtilities: sdUtilities,
+            deductionRent: sdUnpaidRent,
+            deductionNotice: sdNoticePeriod,
+            deductionOther: sdOther,
+            settlementNotes: deductions.notes 
+                ? (totalDeductions > depositAmount ? `DEFICIT DEBT: Tenant owes an additional ₹${(totalDeductions - depositAmount).toLocaleString('en-IN')}. ` + deductions.notes : deductions.notes)
+                : (totalDeductions > depositAmount ? `DEFICIT DEBT: Tenant owes an additional ₹${(totalDeductions - depositAmount).toLocaleString('en-IN')}.` : null),
             settlementDate: new Date(),
             refundDueBy: null,
         }
@@ -805,11 +810,11 @@ async function _processDepositSettlement(
                 <div style="background:#f8fafc;border-radius:12px;padding:20px;margin-bottom:20px;">
                   <table style="width:100%;border-collapse:collapse;font-size:14px;">
                     <tr><td style="padding:6px 0;color:#6b7280;">Original Deposit</td><td style="text-align:right;font-weight:700;color:#1f2937;">${fmtAmt(depositAmount)}</td></tr>
-                    ${deductions.damages > 0 ? `<tr><td style="padding:6px 0;color:#ef4444;">− Room Damage Deductions</td><td style="text-align:right;color:#ef4444;font-weight:600;">${fmtAmt(deductions.damages)}</td></tr>` : ''}
-                    ${deductions.utilities > 0 ? `<tr><td style="padding:6px 0;color:#ef4444;">− Unpaid Utilities</td><td style="text-align:right;color:#ef4444;font-weight:600;">${fmtAmt(deductions.utilities)}</td></tr>` : ''}
-                    ${deductions.unpaidRent > 0 ? `<tr><td style="padding:6px 0;color:#ef4444;">− Unpaid Rent Arrears</td><td style="text-align:right;color:#ef4444;font-weight:600;">${fmtAmt(deductions.unpaidRent)}</td></tr>` : ''}
-                    ${deductions.noticePeriod > 0 ? `<tr><td style="padding:6px 0;color:#ef4444;">− Notice Period Default</td><td style="text-align:right;color:#ef4444;font-weight:600;">${fmtAmt(deductions.noticePeriod)}</td></tr>` : ''}
-                    ${deductions.other > 0 ? `<tr><td style="padding:6px 0;color:#ef4444;">− Other Deductions</td><td style="text-align:right;color:#ef4444;font-weight:600;">${fmtAmt(deductions.other)}</td></tr>` : ''}
+                    ${sdDamages > 0 ? `<tr><td style="padding:6px 0;color:#ef4444;">− Room Damage Deductions</td><td style="text-align:right;color:#ef4444;font-weight:600;">${fmtAmt(sdDamages)}</td></tr>` : ''}
+                    ${sdUtilities > 0 ? `<tr><td style="padding:6px 0;color:#ef4444;">− Unpaid Utilities</td><td style="text-align:right;color:#ef4444;font-weight:600;">${fmtAmt(sdUtilities)}</td></tr>` : ''}
+                    ${sdUnpaidRent > 0 ? `<tr><td style="padding:6px 0;color:#ef4444;">− Unpaid Rent Arrears</td><td style="text-align:right;color:#ef4444;font-weight:600;">${fmtAmt(sdUnpaidRent)}</td></tr>` : ''}
+                    ${sdNoticePeriod > 0 ? `<tr><td style="padding:6px 0;color:#ef4444;">− Notice Period Default</td><td style="text-align:right;color:#ef4444;font-weight:600;">${fmtAmt(sdNoticePeriod)}</td></tr>` : ''}
+                    ${sdOther > 0 ? `<tr><td style="padding:6px 0;color:#ef4444;">− Other Deductions</td><td style="text-align:right;color:#ef4444;font-weight:600;">${fmtAmt(sdOther)}</td></tr>` : ''}
                     <tr style="border-top:2px solid #e2e8f0;">
                       <td style="padding:12px 0 0;font-weight:800;color:#059669;font-size:16px;">Refund Amount</td>
                       <td style="text-align:right;font-weight:800;color:#059669;font-size:16px;padding-top:12px;">${fmtAmt(refundAmount)}</td>
@@ -1054,7 +1059,7 @@ export async function getRoomAvailabilityData(propertyId: string) {
             totalBeds,
             occupiedBeds,
             availableBeds,
-            occupancyRate: totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0,
+            occupancyRate: totalBeds > 0 ? Math.round(((occupiedBeds / totalBeds) * 100) + Number.EPSILON) : 0,
         }
     };
 }
@@ -1087,11 +1092,11 @@ export async function getOwnerAnalytics(fromDate?: string, toDate?: string) {
         return {
             propertyId: prop.id,
             propertyName: prop.name,
-            totalExpected: Math.round(totalExpected),
-            totalCollected: Math.round(totalCollected),
+            totalExpected: Math.round(totalExpected + Number.EPSILON),
+            totalCollected: Math.round(totalCollected + Number.EPSILON),
             invoiceCount: propInvoices.length,
             unpaidCount: unpaid,
-            collectionRate: totalExpected > 0 ? Math.round((totalCollected / totalExpected) * 100) : 0,
+            collectionRate: totalExpected > 0 ? Math.round(((totalCollected / totalExpected) * 100) + Number.EPSILON) : 0,
         };
     });
 
@@ -1118,8 +1123,8 @@ export async function getOwnerAnalytics(fromDate?: string, toDate?: string) {
         .reduce((s: number, inv: any) => s + inv.paidAmount, 0);
 
     const paymentMethodSplit = {
-        cash: Math.round(cashCollected),
-        online: Math.round(onlineCollected),
+        cash: 0,
+        online: 0,
     };
 
     return { perProperty, monthly, properties, paymentMethodSplit };
@@ -1295,8 +1300,6 @@ export async function getMyDepositStatus() {
         select: { id: true, displayId: true, status: true, createdAt: true, resolution: true }
     });
 
-    // Determine if student can raise a dispute:
-    // - Booking completed AND deposit not yet refunded AND status is PAID or REFUND_OVERDUE
     const canRaiseDispute = ['PAID', 'REFUND_OVERDUE'].includes(dep.status)
         && tenant.status === 'Checked Out'
         && !activeDispute;
@@ -1362,13 +1365,13 @@ export async function getOwnerPayoutsForOwner(month?: string) {
         const commission = Number(p.commissionAmount ?? 0);
         const net = Number(p.netAmount ?? 0);
         const gstOnComm = commission > 0
-            ? Math.round((commission * 0.18 / 1.18) * 100) / 100
+            ? 0 / 100
             : 0;
         const commBase = commission > 0
-            ? Math.round((commission - gstOnComm) * 100) / 100
+            ? 0 / 100
             : 0;
-        const cgst = Math.round((gstOnComm / 2) * 100) / 100;
-        const sgst = Math.round((gstOnComm - cgst) * 100) / 100;
+        const cgst = 0 / 100;
+        const sgst = 0 / 100;
         const tds = Number((p as any).tdsAmount ?? 0);
 
         return {
