@@ -156,6 +156,15 @@ export function AdminAgreementsContainer() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
+  const currentYearNum = new Date().getFullYear();
+  const currentMonthNum = new Date().getMonth() + 1;
+  const currentFYBase = currentMonthNum < 4 ? currentYearNum - 1 : currentYearNum;
+  const defaultMonth = currentMonthNum.toString().padStart(2, '0');
+
+  const [selectedProperty, setSelectedProperty] = useState('ALL');
+  const [selectedYear, setSelectedYear] = useState(currentFYBase.toString());
+  const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
+
   const loadAgreements = async (silent = false) => {
     if (!silent) setLoading(true);
     else setRefreshing(true);
@@ -178,12 +187,49 @@ export function AdminAgreementsContainer() {
   }, []);
 
   // Computed stats
-  const stats = useMemo(() => ({
-    total: agreements.length,
-    pending: agreements.filter(a => !['AGREEMENT_COMPLETED', 'TERMINATED'].includes(a.status)).length,
-    completed: agreements.filter(a => a.status === 'AGREEMENT_COMPLETED').length,
-    terminated: agreements.filter(a => a.status === 'TERMINATED').length,
-  }), [agreements]);
+  const stats = useMemo(() => {
+    // Calculate stats based on filtered list (or all, but usually stats are global or filtered. Let's use global like before)
+    return {
+      total: agreements.length,
+      pending: agreements.filter(a => !['AGREEMENT_COMPLETED', 'TERMINATED'].includes(a.status)).length,
+      completed: agreements.filter(a => a.status === 'AGREEMENT_COMPLETED').length,
+      terminated: agreements.filter(a => a.status === 'TERMINATED').length,
+    };
+  }, [agreements]);
+
+  const propertiesList = Array.from(new Set(agreements.map(a => a.propertyName).filter(Boolean))) as string[];
+
+  const startFY = 2024;
+  const yearOptions = Array.from({ length: Math.max(1, currentFYBase - startFY + 1) }, (_, i) => {
+      const baseYear = currentFYBase - i;
+      const nextYear = (baseYear + 1).toString().slice(-2);
+      return { value: baseYear.toString(), label: `${baseYear}-${nextYear}` };
+  });
+
+  const fyMonths = [
+      { value: '04', label: 'April' }, { value: '05', label: 'May' },
+      { value: '06', label: 'June' }, { value: '07', label: 'July' },
+      { value: '08', label: 'August' }, { value: '09', label: 'September' },
+      { value: '10', label: 'October' }, { value: '11', label: 'November' },
+      { value: '12', label: 'December' }, { value: '01', label: 'January' },
+      { value: '02', label: 'February' }, { value: '03', label: 'March' }
+  ];
+
+  const baseMonthOptions = selectedYear === currentFYBase.toString()
+      ? fyMonths.filter(m => {
+          const mNum = parseInt(m.value);
+          if (currentMonthNum >= 4) return mNum >= 4 && mNum <= currentMonthNum;
+          return mNum >= 4 || mNum <= currentMonthNum;
+      })
+      : fyMonths;
+
+  const monthOptions = [{ value: 'ALL', label: 'All Months' }, ...baseMonthOptions];
+
+  const getFYFromDate = (date: Date) => {
+      const y = date.getFullYear();
+      const m = date.getMonth() + 1;
+      return m < 4 ? y - 1 : y;
+  };
 
   // Filtered agreements
   const filtered = useMemo(() => {
@@ -191,6 +237,18 @@ export function AdminAgreementsContainer() {
     const q = searchQuery.toLowerCase().trim();
 
     return agreements.filter(a => {
+      // Property Filter
+      if (selectedProperty !== 'ALL' && a.propertyName !== selectedProperty) return false;
+
+      // Date Filter
+      if (a.createdAt) {
+          const date = new Date(a.createdAt);
+          const itemFY = getFYFromDate(date).toString();
+          const itemMonth = (date.getMonth() + 1).toString().padStart(2, '0');
+          if (itemFY !== selectedYear) return false;
+          if (selectedMonth !== 'ALL' && itemMonth !== selectedMonth) return false;
+      }
+
       // Status filter
       if (filterGroup && filterGroup.statuses !== 'all') {
         if (!filterGroup.statuses.includes(a.status)) return false;
@@ -210,7 +268,7 @@ export function AdminAgreementsContainer() {
       }
       return true;
     });
-  }, [agreements, statusFilter, searchQuery]);
+  }, [agreements, statusFilter, searchQuery, selectedProperty, selectedYear, selectedMonth]);
 
   const handleOpenPdf = async (agreementId: string, mode: 'view' | 'download') => {
     setDownloadingId(agreementId);
@@ -275,14 +333,62 @@ export function AdminAgreementsContainer() {
               Monitor and manage all tenancy agreements across the platform
             </p>
           </div>
-          <button
-            onClick={() => loadAgreements(true)}
-            disabled={refreshing}
-            className="shrink-0 flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-black text-sm rounded-xl transition-all disabled:opacity-60 mt-6"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+          
+          <div className="shrink-0 flex flex-col items-end gap-3 mt-1">
+            <div className="flex items-center gap-2">
+              <div className="bg-white/10 backdrop-blur-md rounded-xl p-1.5 flex items-center gap-2 border border-white/20">
+                <div className="flex flex-col px-2">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-purple-200 mb-0.5">PROPERTY</span>
+                  <select
+                    value={selectedProperty}
+                    onChange={(e) => setSelectedProperty(e.target.value)}
+                    className="appearance-none bg-transparent text-white text-xs font-black focus:outline-none cursor-pointer pr-4"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23e9d5ff'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '0.75rem' }}
+                  >
+                    <option value="ALL" className="text-slate-800">All Properties</option>
+                    {propertiesList.map(p => <option key={p} value={p} className="text-slate-800">{p}</option>)}
+                  </select>
+                </div>
+                <div className="w-px h-6 bg-white/20"></div>
+                <div className="flex flex-col px-2">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-purple-200 mb-0.5">SELECT YEAR</span>
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => {
+                      setSelectedYear(e.target.value);
+                      // Reset month if switching to a new year to prevent invalid selections
+                      setSelectedMonth('ALL');
+                    }}
+                    className="appearance-none bg-transparent text-white text-xs font-black focus:outline-none cursor-pointer pr-4"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23e9d5ff'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '0.75rem' }}
+                  >
+                    {yearOptions.map(y => <option key={y.value} value={y.value} className="text-slate-800">{y.label}</option>)}
+                  </select>
+                </div>
+                <div className="w-px h-6 bg-white/20"></div>
+                <div className="flex flex-col px-2">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-purple-200 mb-0.5">SELECT MONTH</span>
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="appearance-none bg-transparent text-white text-xs font-black focus:outline-none cursor-pointer pr-4"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23e9d5ff'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '0.75rem' }}
+                  >
+                    {monthOptions.map(m => <option key={m.value} value={m.value} className="text-slate-800">{m.label}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <button
+                onClick={() => loadAgreements(true)}
+                disabled={refreshing}
+                className="shrink-0 flex items-center gap-2 px-3 py-2.5 bg-white/20 hover:bg-white/30 text-white font-black text-xs rounded-xl transition-all disabled:opacity-60 border border-white/20"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
