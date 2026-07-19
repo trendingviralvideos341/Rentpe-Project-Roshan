@@ -12,24 +12,29 @@ export default function TenantKYCAndAgreementPage() {
         <div className="min-h-screen bg-slate-50/50">
             <div className="p-4 md:p-8 space-y-6">
                 {/* Large Full-Width Tabs */}
-                <div className="bg-white p-2 md:p-3 rounded-2xl sm:rounded-full border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-2 w-full max-w-6xl mx-auto">
+                <div className="bg-white p-2 md:p-3 rounded-2xl sm:rounded-full border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center w-full relative">
                     <button
                         onClick={() => setActiveTab("kyc")}
-                        className={`flex-1 py-4 px-6 text-sm md:text-base font-black rounded-xl sm:rounded-full transition-all duration-300 flex items-center justify-center gap-3 ${
+                        className={`flex-1 w-full py-4 px-6 text-sm md:text-base font-black rounded-xl sm:rounded-full transition-all duration-300 flex items-center justify-center gap-3 ${
                             activeTab === "kyc"
-                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-[1.02]"
-                                : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200"
+                                : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
                         }`}
                     >
                         <ShieldCheck className="w-5 h-5 md:w-6 md:h-6" />
                         KYC & Document Verifications
                     </button>
+                    
+                    {/* Separator Line */}
+                    <div className="hidden sm:block w-px h-10 bg-slate-200 mx-2 shrink-0" />
+                    <div className="sm:hidden h-px w-full bg-slate-200 my-2 shrink-0" />
+
                     <button
                         onClick={() => setActiveTab("agreements")}
-                        className={`flex-1 py-4 px-6 text-sm md:text-base font-black rounded-xl sm:rounded-full transition-all duration-300 flex items-center justify-center gap-3 ${
+                        className={`flex-1 w-full py-4 px-6 text-sm md:text-base font-black rounded-xl sm:rounded-full transition-all duration-300 flex items-center justify-center gap-3 ${
                             activeTab === "agreements"
-                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-[1.02]"
-                                : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200"
+                                : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
                         }`}
                     >
                         <FileSignature className="w-5 h-5 md:w-6 md:h-6" />

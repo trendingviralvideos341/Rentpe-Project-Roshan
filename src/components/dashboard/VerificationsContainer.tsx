@@ -321,9 +321,30 @@ export function VerificationsContainer() {
                 </div>
 
                 {kycLoading ? (
-                    <div className="p-8 flex flex-col items-center justify-center min-h-[300px] space-y-4">
-                        <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
-                        <p className="text-muted-foreground font-medium text-xs tracking-widest uppercase">Loading Physical KYC Log...</p>
+                    <div className="space-y-8 animate-pulse">
+                        <div>
+                            <div className="flex items-center gap-3 mb-4 px-1">
+                                <div className="p-2 rounded-lg bg-slate-200 w-8 h-8"></div>
+                                <div className="h-4 bg-slate-200 rounded w-48"></div>
+                            </div>
+                            <div className="space-y-3">
+                                {[1, 2, 3].map(i => (
+                                    <div key={i} className="rounded-2xl border-2 border-slate-100 bg-slate-50 p-4">
+                                        <div className="flex gap-3">
+                                            <div className="w-11 h-11 rounded-xl bg-slate-200 shrink-0"></div>
+                                            <div className="space-y-2 flex-1 mt-1">
+                                                <div className="h-4 bg-slate-200 rounded w-1/3"></div>
+                                                <div className="h-3 bg-slate-200 rounded w-1/4"></div>
+                                            </div>
+                                            <div className="w-24 h-8 bg-slate-200 rounded-full shrink-0"></div>
+                                        </div>
+                                        <div className="mt-4 pt-3 border-t border-slate-200">
+                                            <div className="h-3 bg-slate-200 rounded w-1/2"></div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 ) : kycBookings.length === 0 ? (
                     <Card className="border-dashed border-2 bg-slate-50/50">
