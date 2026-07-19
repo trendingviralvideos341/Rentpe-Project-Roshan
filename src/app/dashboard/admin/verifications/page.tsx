@@ -449,7 +449,7 @@ export default function AdminVerificationsPage() {
             <div className="p-4 md:p-8 space-y-6">
                 
                 {/* Large Full-Width Tabs */}
-                <div className="bg-white p-2 md:p-3 rounded-2xl sm:rounded-full border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center w-full relative">
+                <div className="bg-white p-2 md:p-3 rounded-2xl sm:rounded-full border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center w-full max-w-2xl relative">
                     <button
                         onClick={() => setMainTab("kyc")}
                         className={`flex-1 w-full py-4 px-6 text-sm md:text-base font-black rounded-xl sm:rounded-full transition-all duration-300 flex items-center justify-center gap-3 ${
@@ -483,24 +483,7 @@ export default function AdminVerificationsPage() {
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {mainTab === "kyc" && (
                         <div className="space-y-4 md:space-y-6 pb-20 md:pb-8">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div>
-                                    <h1 className="text-2xl md:text-3xl font-black text-slate-900 flex items-center gap-2">
-                                        <Shield className="h-7 w-7 text-indigo-600" /> Verification Centre
-                                    </h1>
-                                    <p className="text-muted-foreground text-sm mt-1">Owner KYC & Tenant Physical KYC</p>
-                                </div>
-                            </div>
 
-                            <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4 flex gap-3 text-amber-900 shadow-sm">
-                                <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                                <div className="space-y-1">
-                                    <p className="text-xs font-black uppercase tracking-wider">Student Online KYC Bypassed (Physical Check-in Active)</p>
-                                    <p className="text-xs text-amber-700 leading-relaxed font-medium">
-                                        Student online KYC document uploads are disabled. Students are instructed to bring their physical documents directly to the property at check-in. Verification Center queues represent documents uploaded by property owners/partners or other tenants. Property staff can upload scanned copies on behalf of tenants during onboarding.
-                                    </p>
-                                </div>
-                            </div>
 
                             <div className="flex gap-2 bg-slate-100 p-1 rounded-xl w-fit border border-slate-200">
                                 {[
