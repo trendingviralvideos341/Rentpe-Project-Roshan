@@ -128,14 +128,14 @@ export default function DashboardSidebar(props: SidebarProps) {
             links: [
                 { href: "/dashboard/owner/properties", label: "My Properties", icon: Building, badge: pendingPropCount, reqPerm: ["manage_properties", "register_property"] },
                 { href: "/dashboard/owner/food-menu", label: "Service (Food Menu)", icon: Utensils, reqPerm: ["food_menu"] },
+                { href: "/dashboard/owner/tickets", label: "Support Tickets", icon: Ticket, badge: pendingOwnerTicketsCount, reqPerm: ["support"] },
             ]
         },
         {
             title: "Tenant Operations",
             links: [
                 { href: "/dashboard/owner/bookings", label: "Bookings & Onboarding", icon: ClipboardCheck, badge: pendingCount, reqPerm: ["view_bookings", "approve_bookings"] },
-                { href: "/dashboard/owner/verifications", label: "KYC & Doc Verifications", icon: FileCheck, badge: pendingDocCount, reqPerm: ["manage_tenants"] },
-                { href: "/dashboard/owner/agreements", label: "Agreements (L&L)", icon: FileSpreadsheet, badge: pendingOwnerAgreements, reqPerm: ["manage_tenants"] },
+                { href: "/dashboard/owner/verifications", label: "Tenant KYC and Agreement", icon: FileCheck, badge: pendingDocCount + pendingOwnerAgreements, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/tenants", label: "Active Tenants", icon: Calendar, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/notices", label: "Vacating Notices", icon: Bell, badge: pendingNoticesCount, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/room-changes", label: "Room Change Requests", icon: RefreshCw, reqPerm: ["manage_tenants"] },
@@ -160,7 +160,6 @@ export default function DashboardSidebar(props: SidebarProps) {
 
                 { href: "/dashboard/owner/availability", label: "Room Calendar", icon: CalendarDays, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/broadcast", label: "WhatsApp Broadcast", icon: MessageCircle, reqPerm: ["manage_tenants"] },
-                { href: "/dashboard/owner/tickets", label: "Support Tickets", icon: Ticket, badge: pendingOwnerTicketsCount, reqPerm: ["support"] },
                 { href: "/dashboard/owner/activity-log", label: "Activity Log", icon: ClipboardList, reqPerm: ["view_activity"] },
             ]
         }

@@ -231,7 +231,7 @@ function CounterSignModal({ agreement, onClose, onSuccess }: CounterSignModalPro
                 </div>
                 <h3 className="font-black text-slate-900">Send OTP to Your Email</h3>
                 <p className="text-sm text-slate-500">
-                  We'll send a one-time password to verify your identity before counter-signing.
+                  We&apos;ll send a one-time password to verify your identity before counter-signing.
                 </p>
               </div>
               <button
@@ -680,7 +680,7 @@ function EmptyState() {
 
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 
-export default function OwnerAgreementsPage() {
+export function AgreementsContainer() {
   const currentYearNum = new Date().getFullYear();
   const defaultMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
 
@@ -795,7 +795,7 @@ export default function OwnerAgreementsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
+    <div className="bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
       {/* ── Header ── */}
       <div className="bg-gradient-to-r from-[#3b5bdb] to-[#7048e8] px-4 pt-10 pb-20 relative overflow-hidden">
         <div className="absolute -right-16 -top-16 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
