@@ -250,18 +250,18 @@ export default function AuditLogPage() {
             <div className="mb-8 space-y-6">
                 {/* Tabs */}
                 {currentUser && (
-                    <div className="flex gap-2 p-1 bg-white border border-gray-200 rounded-xl w-fit shadow-sm">
+                    <div className="flex gap-3 p-1.5 bg-white border border-gray-200 rounded-xl w-fit shadow-sm">
                         {(currentUser as any)?.isSuperAdmin && (
                             <button
                                 onClick={() => setActiveTab('SYSTEM')}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'SYSTEM' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                                className={`px-6 py-3 rounded-lg text-base font-bold transition-all ${activeTab === 'SYSTEM' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
                             >
                                 System Audit Logs
                             </button>
                         )}
                         <button
                             onClick={() => setActiveTab('SUPPORT')}
-                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'SUPPORT' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                            className={`px-6 py-3 rounded-lg text-base font-bold transition-all ${activeTab === 'SUPPORT' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
                         >
                             Support Logs View
                         </button>
