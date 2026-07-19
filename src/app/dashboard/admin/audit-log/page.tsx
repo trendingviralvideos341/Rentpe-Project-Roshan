@@ -358,9 +358,9 @@ export default function AuditLogPage() {
                                                     setSelectedLog(log);
                                                     setIsDetailOpen(true);
                                                 }}
-                                                className="p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-gray-200 group-hover:block hidden"
+                                                className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm whitespace-nowrap"
                                             >
-                                                <Eye size={16} className="text-gray-400 hover:text-blue-500" />
+                                                View Details
                                             </button>
                                         </td>
                                     </tr>
