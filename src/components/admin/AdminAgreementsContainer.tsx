@@ -334,60 +334,57 @@ export function AdminAgreementsContainer() {
             </p>
           </div>
           
-          <div className="shrink-0 flex flex-col items-end gap-3 mt-1">
-            <div className="flex items-center gap-2">
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-1.5 flex items-center gap-2 border border-white/20">
-                <div className="flex flex-col px-2">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-purple-200 mb-0.5">PROPERTY</span>
-                  <select
-                    value={selectedProperty}
-                    onChange={(e) => setSelectedProperty(e.target.value)}
-                    className="appearance-none bg-transparent text-white text-xs font-black focus:outline-none cursor-pointer pr-4"
-                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23e9d5ff'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '0.75rem' }}
-                  >
-                    <option value="ALL" className="text-slate-800">All Properties</option>
-                    {propertiesList.map(p => <option key={p} value={p} className="text-slate-800">{p}</option>)}
-                  </select>
+          <div className="flex flex-col sm:flex-row items-end gap-4 shrink-0 mt-4 lg:mt-0 w-full lg:w-auto">
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+                <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-1 ml-3">SELECT PROPERTY</span>
+                    <select
+                        value={selectedProperty}
+                        onChange={(e) => setSelectedProperty(e.target.value)}
+                        className="appearance-none bg-white text-indigo-950 rounded-full px-5 py-2.5 pr-10 text-sm font-black focus:outline-none transition-all cursor-pointer relative shadow-lg shadow-indigo-900/20"
+                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%231e1b4b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
+                    >
+                        <option value="ALL">All Properties</option>
+                        {propertiesList.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
                 </div>
-                <div className="w-px h-6 bg-white/20"></div>
-                <div className="flex flex-col px-2">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-purple-200 mb-0.5">SELECT YEAR</span>
-                  <select
-                    value={selectedYear}
-                    onChange={(e) => {
-                      setSelectedYear(e.target.value);
-                      // Reset month if switching to a new year to prevent invalid selections
-                      setSelectedMonth('ALL');
-                    }}
-                    className="appearance-none bg-transparent text-white text-xs font-black focus:outline-none cursor-pointer pr-4"
-                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23e9d5ff'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '0.75rem' }}
-                  >
-                    {yearOptions.map(y => <option key={y.value} value={y.value} className="text-slate-800">{y.label}</option>)}
-                  </select>
+                <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-1 ml-3">SELECT YEAR</span>
+                    <select
+                        value={selectedYear}
+                        onChange={(e) => {
+                          setSelectedYear(e.target.value);
+                          // Reset month if switching to a new year to prevent invalid selections
+                          setSelectedMonth('ALL');
+                        }}
+                        className="appearance-none bg-white text-indigo-950 rounded-full px-5 py-2.5 pr-10 text-sm font-black focus:outline-none transition-all cursor-pointer relative shadow-lg shadow-indigo-900/20"
+                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%231e1b4b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
+                    >
+                        {yearOptions.map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
+                    </select>
                 </div>
-                <div className="w-px h-6 bg-white/20"></div>
-                <div className="flex flex-col px-2">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-purple-200 mb-0.5">SELECT MONTH</span>
-                  <select
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="appearance-none bg-transparent text-white text-xs font-black focus:outline-none cursor-pointer pr-4"
-                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23e9d5ff'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '0.75rem' }}
-                  >
-                    {monthOptions.map(m => <option key={m.value} value={m.value} className="text-slate-800">{m.label}</option>)}
-                  </select>
+                <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-1 ml-3">SELECT MONTH</span>
+                    <select
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(e.target.value)}
+                        className="appearance-none bg-white text-indigo-950 rounded-full px-5 py-2.5 pr-10 text-sm font-black focus:outline-none transition-all cursor-pointer relative shadow-lg shadow-indigo-900/20"
+                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%231e1b4b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
+                    >
+                        {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                    </select>
                 </div>
-              </div>
-
-              <button
-                onClick={() => loadAgreements(true)}
-                disabled={refreshing}
-                className="shrink-0 flex items-center gap-2 px-3 py-2.5 bg-white/20 hover:bg-white/30 text-white font-black text-xs rounded-xl transition-all disabled:opacity-60 border border-white/20"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
             </div>
+            
+            <button
+              onClick={() => loadAgreements(true)}
+              disabled={refreshing}
+              className="shrink-0 flex items-center gap-2 px-4 py-3 bg-white/20 hover:bg-white/30 text-white font-black text-sm rounded-xl transition-all disabled:opacity-60 w-full sm:w-auto justify-center shadow-lg"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
           </div>
         </div>
       </div>
