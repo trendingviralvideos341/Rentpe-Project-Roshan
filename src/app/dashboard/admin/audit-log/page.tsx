@@ -337,11 +337,17 @@ export default function AuditLogPage() {
                                             <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold uppercase transition-colors">
                                                 {log.entityType}
                                             </div>
-                                            {(log.entityName || getFallbackEntityName(log) !== "N/A") && (
-                                                <div className="text-[11px] text-slate-700 font-medium mt-1 max-w-[140px] truncate" title={log.entityName || getFallbackEntityName(log)}>
-                                                    {log.entityName || getFallbackEntityName(log)}
-                                                </div>
-                                            )}
+                                            {(() => {
+                                                const nameToDisplay = log.entityName || getFallbackEntityName(log);
+                                                if (nameToDisplay && nameToDisplay !== "N/A") {
+                                                    return (
+                                                        <div className="text-[11px] text-slate-700 font-medium mt-1 max-w-[140px] truncate" title={nameToDisplay}>
+                                                            {nameToDisplay}
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            })()}
                                             {log.entityId && (
                                                 <div className="text-[9px] text-slate-400 font-mono mt-0.5 max-w-[140px] truncate" title={log.entityId}>
                                                     ID: {log.entityId}
