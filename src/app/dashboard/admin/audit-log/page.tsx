@@ -58,6 +58,16 @@ const getFallbackEntityName = (log: any) => {
         const matchColon = log.description.match(/property:\s*([^\n\r.]+)/i);
         if (matchColon && matchColon[1]) return matchColon[1].trim();
     }
+    
+    if (log.entityType === 'USER') {
+        const emailMatch = log.description?.match(/[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}/);
+        if (emailMatch) return emailMatch[0];
+        
+        if (log.actorName && (log.actionType === 'LOGIN' || log.actionType === 'LOGOUT')) {
+            return log.actorName;
+        }
+    }
+    
     return "N/A";
 };
 
