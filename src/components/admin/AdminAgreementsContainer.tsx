@@ -147,7 +147,7 @@ function EmptyState({ filtered }: { filtered: boolean }) {
 
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 
-export default function AdminAgreementsPage() {
+export function AdminAgreementsContainer() {
   const [agreements, setAgreements] = useState<AgreementRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -259,7 +259,7 @@ export default function AdminAgreementsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
+    <div className="bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
       {/* ── Header ── */}
       <div className="bg-gradient-to-r from-[#3b5bdb] to-[#7048e8] px-4 pt-10 pb-20 relative overflow-hidden">
         <div className="absolute -right-16 -top-16 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />

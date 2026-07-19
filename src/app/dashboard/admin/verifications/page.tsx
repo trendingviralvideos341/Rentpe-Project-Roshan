@@ -11,8 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Shield, CheckCircle, XCircle, Eye, Clock, FileCheck, User, RefreshCcw, X, ZoomIn, Search, Building2, CreditCard, Camera, FileText, MapPin, Phone, ShieldCheck, Upload, AlertCircle, Info } from "lucide-react";
+import { Shield, CheckCircle, XCircle, Eye, Clock, FileCheck, User, RefreshCcw, X, ZoomIn, Search, Building2, CreditCard, Camera, FileText, MapPin, Phone, ShieldCheck, Upload, AlertCircle, Info, FileSignature } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { AdminAgreementsContainer } from "@/components/admin/AdminAgreementsContainer";
 
 // ── KYC OWNER SECTION ─────────────────────────────────────────
 
@@ -431,48 +432,99 @@ function TenantPhysicalKycTab() {
 export default function AdminVerificationsPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const initialTab = searchParams.get("tab") === "tenant" ? "tenant" : "owner";
-    const [activeTab, setActiveTab] = useState(initialTab);
+    const initialKycTab = searchParams.get("tab") === "tenant" ? "tenant" : "owner";
+    
+    // Main Tabs State
+    const [mainTab, setMainTab] = useState<"kyc" | "agreements">("kyc");
+    // KYC Sub-Tabs State
+    const [activeKycTab, setActiveKycTab] = useState(initialKycTab);
 
-    const switchTab = (tab: string) => {
-        setActiveTab(tab);
+    const switchKycTab = (tab: string) => {
+        setActiveKycTab(tab);
         router.replace(`/dashboard/admin/verifications?tab=${tab}`, { scroll: false });
     };
 
     return (
-        <div className="space-y-4 md:space-y-6 pb-20 md:pb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-black text-slate-900 flex items-center gap-2">
-                        <Shield className="h-7 w-7 text-indigo-600" /> Verification Centre
-                    </h1>
-                    <p className="text-muted-foreground text-sm mt-1">Owner KYC & Tenant Physical KYC</p>
-                </div>
-            </div>
-
-            <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4 flex gap-3 text-amber-900 shadow-sm">
-                <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                    <p className="text-xs font-black uppercase tracking-wider">Student Online KYC Bypassed (Physical Check-in Active)</p>
-                    <p className="text-xs text-amber-700 leading-relaxed font-medium">
-                        Student online KYC document uploads are disabled. Students are instructed to bring their physical documents directly to the property at check-in. Verification Center queues represent documents uploaded by property owners/partners or other tenants. Property staff can upload scanned copies on behalf of tenants during onboarding.
-                    </p>
-                </div>
-            </div>
-
-            <div className="flex gap-2 bg-slate-100 p-1 rounded-xl w-fit border border-slate-200">
-                {[
-                    { id: "owner", label: "🏠 Owner KYC Queue" },
-                    { id: "tenant", label: "🎓 Tenant Physical KYC" },
-                ].map(t => (
-                    <button key={t.id} onClick={() => switchTab(t.id)}
-                        className={`px-5 py-2 rounded-lg text-xs font-black transition-all uppercase tracking-wider ${activeTab === t.id ? "bg-indigo-600 text-white shadow-md" : "text-slate-500 hover:text-slate-700"}`}>
-                        {t.label}
+        <div className="min-h-screen bg-slate-50/50">
+            <div className="p-4 md:p-8 space-y-6">
+                
+                {/* Large Full-Width Tabs */}
+                <div className="bg-white p-2 md:p-3 rounded-2xl sm:rounded-full border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center w-full relative">
+                    <button
+                        onClick={() => setMainTab("kyc")}
+                        className={`flex-1 w-full py-4 px-6 text-sm md:text-base font-black rounded-xl sm:rounded-full transition-all duration-300 flex items-center justify-center gap-3 ${
+                            mainTab === "kyc"
+                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200"
+                                : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                        }`}
+                    >
+                        <ShieldCheck className="w-5 h-5 md:w-6 md:h-6" />
+                        KYC & Verification Centre
                     </button>
-                ))}
-            </div>
+                    
+                    {/* Separator Line */}
+                    <div className="hidden sm:block w-px h-10 bg-slate-200 mx-2 shrink-0" />
+                    <div className="sm:hidden h-px w-full bg-slate-200 my-2 shrink-0" />
 
-            {activeTab === "owner" ? <OwnerKYCTab /> : <TenantPhysicalKycTab />}
+                    <button
+                        onClick={() => setMainTab("agreements")}
+                        className={`flex-1 w-full py-4 px-6 text-sm md:text-base font-black rounded-xl sm:rounded-full transition-all duration-300 flex items-center justify-center gap-3 ${
+                            mainTab === "agreements"
+                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200"
+                                : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                        }`}
+                    >
+                        <FileSignature className="w-5 h-5 md:w-6 md:h-6" />
+                        Agreements (L&L)
+                    </button>
+                </div>
+
+                {/* Tab Content */}
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    {mainTab === "kyc" && (
+                        <div className="space-y-4 md:space-y-6 pb-20 md:pb-8">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    <h1 className="text-2xl md:text-3xl font-black text-slate-900 flex items-center gap-2">
+                                        <Shield className="h-7 w-7 text-indigo-600" /> Verification Centre
+                                    </h1>
+                                    <p className="text-muted-foreground text-sm mt-1">Owner KYC & Tenant Physical KYC</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4 flex gap-3 text-amber-900 shadow-sm">
+                                <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                                <div className="space-y-1">
+                                    <p className="text-xs font-black uppercase tracking-wider">Student Online KYC Bypassed (Physical Check-in Active)</p>
+                                    <p className="text-xs text-amber-700 leading-relaxed font-medium">
+                                        Student online KYC document uploads are disabled. Students are instructed to bring their physical documents directly to the property at check-in. Verification Center queues represent documents uploaded by property owners/partners or other tenants. Property staff can upload scanned copies on behalf of tenants during onboarding.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2 bg-slate-100 p-1 rounded-xl w-fit border border-slate-200">
+                                {[
+                                    { id: "owner", label: "🏠 Owner KYC Queue" },
+                                    { id: "tenant", label: "🎓 Tenant Physical KYC" },
+                                ].map(t => (
+                                    <button key={t.id} onClick={() => switchKycTab(t.id)}
+                                        className={`px-5 py-2 rounded-lg text-xs font-black transition-all uppercase tracking-wider ${activeKycTab === t.id ? "bg-indigo-600 text-white shadow-md" : "text-slate-500 hover:text-slate-700"}`}>
+                                        {t.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {activeKycTab === "owner" ? <OwnerKYCTab /> : <TenantPhysicalKycTab />}
+                        </div>
+                    )}
+
+                    {mainTab === "agreements" && (
+                        <div className="-mx-4 md:-mx-8">
+                            <AdminAgreementsContainer />
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }
