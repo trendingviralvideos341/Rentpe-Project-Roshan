@@ -7,7 +7,7 @@ import {
     Download, RefreshCw, ChevronLeft, ChevronRight,
     Eye, MoreVertical, FileText, Shield, HardDrive, Ghost
 } from 'lucide-react';
-import { getAuditLogs } from '@/actions/audit';
+import { getAuditLogs, getSupportAuditLogs, logAuditView } from '@/actions/audit';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -83,8 +83,11 @@ const getFilteredDiffObjects = (prev: any, next: any) => {
     // This prevents dumping the entire previous database object if the payload was partial.
     const keysToCheck = Object.keys(next);
 
+    // Security: Never show these sensitive keys in the raw JSON diff viewer
+    const sensitiveKeys = ['id', 'createdAt', 'updatedAt', 'ownerId', 'password', 'passwordHash', 'token', 'otp', 'secret', 'refreshToken', 'accessToken', 'stripeCustomerId'];
+
     keysToCheck.forEach((key) => {
-        if (key === 'id' || key === 'createdAt' || key === 'updatedAt' || key === 'ownerId') return;
+        if (sensitiveKeys.includes(key)) return;
 
         const prevVal = prev[key];
         const nextVal = next[key];
@@ -110,33 +113,61 @@ export default function AuditLogPage() {
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [actorRole, setActorRole] = useState('ALL');
     const [entityType, setEntityType] = useState('ALL');
     const [actionType, setActionType] = useState('ALL');
 
     const [selectedLog, setSelectedLog] = useState<any | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
+    
+    const [activeTab, setActiveTab] = useState<'SYSTEM' | 'SUPPORT'>('SYSTEM');
+    const [currentUser, setCurrentUser] = useState<any>(null);
+
+    // Performance/DoS Fix: Debounce the search input
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 500); // Wait 500ms after last keystroke before querying
+        return () => clearTimeout(handler);
+    }, [search]);
+
+    useEffect(() => {
+        import('@/actions/auth').then(m => {
+            m.getCurrentUser().then(user => {
+                setCurrentUser(user);
+                if (user && !(user as any).isSuperAdmin) {
+                    setActiveTab('SUPPORT');
+                }
+            });
+        });
+    }, []);
 
     const fetchLogs = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await getAuditLogs({
-                actorRole,
-                actionType,
-                entityType,
-                search,
-                page,
-                limit: 20
-            });
-            setLogs(res.logs);
-            setTotal(res.total);
+            if (activeTab === 'SUPPORT') {
+                const res = await getSupportAuditLogs({ search: debouncedSearch, page, limit: 20 });
+                setLogs(res.logs);
+                setTotal(res.total);
+            } else {
+                const res = await getAuditLogs({
+                    actorRole, actionType, entityType, search: debouncedSearch, page, limit: 20
+                });
+                setLogs(res.logs);
+                setTotal(res.total);
+            }
         } catch (error) {
             toast.error("Failed to fetch audit logs");
             console.error(error);
         } finally {
             setLoading(false);
         }
-    }, [actorRole, actionType, entityType, search, page]);
+    }, [actorRole, actionType, entityType, search, page, activeTab]);
+
+    useEffect(() => {
+        setPage(1);
+    }, [activeTab]);
 
     useEffect(() => {
         fetchLogs();
@@ -175,19 +206,30 @@ export default function AuditLogPage() {
 
     const exportToCSV = () => {
         if (logs.length === 0) return;
+        
+        // Prevent CSV Injection (Formula Injection) by sanitizing fields that start with dangerous characters
+        const sanitizeCSV = (str: any) => {
+            if (!str) return "N/A";
+            const val = String(str).replace(/,/g, ';'); // Escape commas
+            if (/^[=+\-@]/.test(val)) {
+                return "'" + val; // Prepend single quote to prevent Excel formula execution
+            }
+            return val;
+        };
+
         const headers = ["Timestamp", "Actor Name", "Actor Role", "Actor Email", "Action", "Entity Type", "Entity Name", "Entity ID", "Description", "IP Address", "User Agent"];
         const rows = logs.map(l => [
-            new Date(l.createdAt).toLocaleString(),
-            l.actorName,
-            l.actorRole,
-            l.actor?.email || "N/A",
-            l.actionType,
-            l.entityType,
-            l.entityName || "N/A",
-            l.entityId || "N/A",
-            l.description.replace(/,/g, ';'), // Escape commas
-            l.ipAddress,
-            l.userAgent || "N/A"
+            sanitizeCSV(new Date(l.createdAt).toLocaleString()),
+            sanitizeCSV(l.actorName),
+            sanitizeCSV(l.actorRole),
+            sanitizeCSV(l.actor?.email),
+            sanitizeCSV(l.actionType),
+            sanitizeCSV(l.entityType),
+            sanitizeCSV(l.entityName),
+            sanitizeCSV(l.entityId),
+            sanitizeCSV(l.description),
+            sanitizeCSV(l.ipAddress),
+            sanitizeCSV(l.userAgent)
         ]);
         
         const csvContent = "data:text/csv;charset=utf-8," 
@@ -205,22 +247,47 @@ export default function AuditLogPage() {
 
     return (
         <div className="p-6 bg-gray-50 min-h-screen">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                        <HardDrive className="text-blue-600" />
-                        System Audit Logs
-                    </h1>
-                    <p className="text-gray-500 text-sm">Monitor platform activities and security events</p>
-                </div>
+            <div className="mb-8 space-y-6">
+                {/* Tabs */}
+                {currentUser && (
+                    <div className="flex gap-2 p-1 bg-white border border-gray-200 rounded-xl w-fit shadow-sm">
+                        {(currentUser as any)?.isSuperAdmin && (
+                            <button
+                                onClick={() => setActiveTab('SYSTEM')}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'SYSTEM' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                            >
+                                System Audit Logs
+                            </button>
+                        )}
+                        <button
+                            onClick={() => setActiveTab('SUPPORT')}
+                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'SUPPORT' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                        >
+                            Support Logs View
+                        </button>
+                    </div>
+                )}
+
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                            <HardDrive className="text-blue-600" />
+                            {activeTab === 'SYSTEM' ? 'System Audit Logs' : 'Support Logs View'}
+                        </h1>
+                        <p className="text-gray-500 text-sm">
+                            {activeTab === 'SYSTEM' ? 'Monitor platform activities and security events' : 'Search customer activity logs securely'}
+                        </p>
+                    </div>
                 <div className="flex items-center gap-3">
-                    <button 
-                        onClick={exportToCSV}
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
-                    >
-                        <Download size={16} />
-                        Export CSV
-                    </button>
+                    {activeTab === 'SYSTEM' && (
+                        <button 
+                            onClick={exportToCSV}
+                            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+                        >
+                            <Download size={16} />
+                            Export CSV
+                        </button>
+                    )}
                     <button 
                         onClick={() => { setPage(1); fetchLogs(); }}
                         className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
@@ -230,52 +297,63 @@ export default function AuditLogPage() {
                     </button>
                 </div>
             </div>
+            </div>
 
             {/* Filters Bar */}
+            {activeTab === 'SUPPORT' && (
+                <div className="bg-orange-50 border border-orange-200 text-orange-800 px-4 py-3 rounded-lg mb-6 text-sm flex items-center gap-2 shadow-sm">
+                    <Shield className="w-4 h-4 text-orange-600 shrink-0" />
+                    <strong>Note:</strong> Your actions are being audited. Viewing detailed logs will be captured.
+                </div>
+            )}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-wrap items-center gap-4">
                 <div className="flex-1 min-w-[200px] relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                     <input 
                         type="text" 
-                        placeholder="Search logs..." 
-                        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        placeholder={activeTab === 'SUPPORT' ? "Search by Property ID or Email..." : "Search logs..."}
+                        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Role</span>
-                    <select 
-                        className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                        value={actorRole}
-                        onChange={(e) => setActorRole(e.target.value)}
-                    >
-                        {ROLE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
-                </div>
+                {activeTab === 'SYSTEM' && (
+                    <>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Role</span>
+                            <select 
+                                className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                value={actorRole}
+                                onChange={(e) => setActorRole(e.target.value)}
+                            >
+                                {ROLE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                        </div>
 
-                <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Entity</span>
-                    <select 
-                        className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                        value={entityType}
-                        onChange={(e) => setEntityType(e.target.value)}
-                    >
-                        {ENTITY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
-                </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Entity</span>
+                            <select 
+                                className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                value={entityType}
+                                onChange={(e) => setEntityType(e.target.value)}
+                            >
+                                {ENTITY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                        </div>
 
-                <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</span>
-                    <select 
-                        className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                        value={actionType}
-                        onChange={(e) => setActionType(e.target.value)}
-                    >
-                        {ACTION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
-                </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</span>
+                            <select 
+                                className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                value={actionType}
+                                onChange={(e) => setActionType(e.target.value)}
+                            >
+                                {ACTION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Table */}
@@ -289,17 +367,17 @@ export default function AuditLogPage() {
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Entity</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Description</th>
-                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Client Info</th>
+                                {activeTab === 'SYSTEM' && <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Client Info</th>}
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {logs.length === 0 && !loading ? (
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-20 text-center">
+                                    <td colSpan={activeTab === 'SYSTEM' ? 7 : 6} className="px-6 py-20 text-center">
                                         <div className="flex flex-col items-center gap-2 border-2 border-dashed border-gray-100 rounded-xl p-8 max-w-sm mx-auto">
                                             <FileText size={48} className="text-gray-200" />
-                                            <p className="text-gray-400 text-sm">No logs found matching your filters.</p>
+                                            <p className="text-gray-400 text-sm">{activeTab === 'SUPPORT' ? 'Search by Email or Property ID to view logs.' : 'No logs found matching your filters.'}</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -364,20 +442,25 @@ export default function AuditLogPage() {
                                                 {log.description}
                                             </p>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <div className="text-[11px] text-gray-500 font-mono">
-                                                {log.ipAddress}
-                                            </div>
-                                            <div className="text-[10px] text-gray-400 truncate max-w-[120px]" title={log.userAgent}>
-                                                {log.userAgent}
-                                            </div>
-                                        </td>
+                                        {activeTab === 'SYSTEM' && (
+                                            <td className="px-6 py-4">
+                                                <div className="text-[11px] text-gray-500 font-mono">
+                                                    {log.ipAddress}
+                                                </div>
+                                                <div className="text-[10px] text-gray-400 truncate max-w-[120px]" title={log.userAgent}>
+                                                    {log.userAgent}
+                                                </div>
+                                            </td>
+                                        )}
                                         <td className="px-6 py-4 text-right">
                                             <button 
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     setSelectedLog(log);
                                                     setIsDetailOpen(true);
+                                                    if (activeTab === 'SUPPORT' && log.id) {
+                                                        logAuditView(log.id).catch(console.error);
+                                                    }
                                                 }}
                                                 className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm whitespace-nowrap"
                                             >
@@ -465,10 +548,12 @@ export default function AuditLogPage() {
                                         <p className="text-xs font-bold text-slate-400 mt-1 italic">None</p>
                                     )}
                                 </div>
-                                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">IP Address</p>
-                                    <p className="text-xs font-mono font-bold text-slate-800">{selectedLog.ipAddress || "N/A"}</p>
-                                </div>
+                                {activeTab === 'SYSTEM' && (
+                                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">IP Address</p>
+                                        <p className="text-xs font-mono font-bold text-slate-800">{selectedLog.ipAddress || "N/A"}</p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Description block */}
@@ -504,7 +589,7 @@ export default function AuditLogPage() {
                             })() : null}
 
                             {/* Client agent info */}
-                            {selectedLog.userAgent && (
+                            {activeTab === 'SYSTEM' && selectedLog.userAgent && (
                                 <div className="bg-slate-50/30 p-3 rounded-2xl border border-slate-100">
                                     <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">User Agent Header</p>
                                     <p className="text-[9px] font-medium text-slate-500 font-mono leading-relaxed truncate" title={selectedLog.userAgent}>{selectedLog.userAgent}</p>
