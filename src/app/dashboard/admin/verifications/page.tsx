@@ -449,10 +449,10 @@ export default function AdminVerificationsPage() {
             <div className="p-4 md:p-8 space-y-6">
                 
                 {/* Large Full-Width Tabs */}
-                <div className="bg-white p-2 md:p-3 rounded-2xl sm:rounded-full border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center w-full max-w-2xl relative">
+                <div className="bg-white p-1 md:p-1.5 rounded-2xl sm:rounded-full border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center w-full relative">
                     <button
                         onClick={() => setMainTab("kyc")}
-                        className={`flex-1 w-full py-4 px-6 text-sm md:text-base font-black rounded-xl sm:rounded-full transition-all duration-300 flex items-center justify-center gap-3 ${
+                        className={`flex-1 w-full py-2 md:py-2.5 px-4 text-sm md:text-base font-black rounded-xl sm:rounded-full transition-all duration-300 flex items-center justify-center gap-3 ${
                             mainTab === "kyc"
                                 ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200"
                                 : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
@@ -463,12 +463,12 @@ export default function AdminVerificationsPage() {
                     </button>
                     
                     {/* Separator Line */}
-                    <div className="hidden sm:block w-px h-10 bg-slate-200 mx-2 shrink-0" />
+                    <div className="hidden sm:block w-px h-6 bg-slate-200 mx-2 shrink-0" />
                     <div className="sm:hidden h-px w-full bg-slate-200 my-2 shrink-0" />
 
                     <button
                         onClick={() => setMainTab("agreements")}
-                        className={`flex-1 w-full py-4 px-6 text-sm md:text-base font-black rounded-xl sm:rounded-full transition-all duration-300 flex items-center justify-center gap-3 ${
+                        className={`flex-1 w-full py-2 md:py-2.5 px-4 text-sm md:text-base font-black rounded-xl sm:rounded-full transition-all duration-300 flex items-center justify-center gap-3 ${
                             mainTab === "agreements"
                                 ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200"
                                 : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
