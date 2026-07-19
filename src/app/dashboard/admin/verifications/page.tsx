@@ -459,7 +459,7 @@ export default function AdminVerificationsPage() {
                         }`}
                     >
                         <ShieldCheck className="w-5 h-5 md:w-6 md:h-6" />
-                        KYC & Verification Centre
+                        KYC & Document Verifications
                     </button>
                     
                     {/* Separator Line */}

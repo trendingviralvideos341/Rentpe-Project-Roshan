@@ -184,7 +184,7 @@ export default function DashboardSidebar(props: SidebarProps) {
         {
             title: "Operations",
             links: [
-                { href: "/dashboard/admin/verifications", label: "Platform KYC & Agreements", icon: FileCheck, badge: adminAlerts.verifications, reqPerm: ["super_admin", "properties", "operations"] },
+                { href: "/dashboard/admin/verifications", label: "Tenant KYC and Agreement", icon: FileCheck, badge: adminAlerts.verifications, reqPerm: ["super_admin", "properties", "operations"] },
                 { href: "/dashboard/admin/properties", label: "Property Approval Queue", icon: Building, badge: pendingPropCount, reqPerm: ["super_admin", "properties"] },
                 { href: "/dashboard/admin/deactivation-requests", label: "Deactivation Requests", icon: PowerOff, badge: deactivationCount, reqPerm: ["super_admin", "properties"] },
                 { href: "/dashboard/admin/bookings", label: "Customer Bookings", icon: Calendar, badge: adminAlerts.bookings, reqPerm: ["super_admin", "bookings"] },
