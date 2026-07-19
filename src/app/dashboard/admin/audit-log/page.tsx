@@ -327,18 +327,17 @@ export default function AuditLogPage() {
                                             <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold uppercase transition-colors">
                                                 {log.entityType}
                                             </div>
-                                            {(log.entityName || getFallbackEntityName(log) !== "N/A") ? (
-                                                <>
-                                                    <div className="text-[11px] text-slate-700 font-medium mt-1 max-w-[140px] truncate" title={log.entityName || getFallbackEntityName(log)}>
-                                                        {log.entityName || getFallbackEntityName(log)}
-                                                    </div>
-                                                    {log.entityId && (
-                                                        <div className="text-[9px] text-slate-400 font-mono mt-0.5 max-w-[140px] truncate opacity-50 group-hover:opacity-100 transition-opacity" title={log.entityId}>
-                                                            ID: {log.entityId.substring(0, 8)}...
-                                                        </div>
-                                                    )}
-                                                </>
-                                            ) : (
+                                            {(log.entityName || getFallbackEntityName(log) !== "N/A") && (
+                                                <div className="text-[11px] text-slate-700 font-medium mt-1 max-w-[140px] truncate" title={log.entityName || getFallbackEntityName(log)}>
+                                                    {log.entityName || getFallbackEntityName(log)}
+                                                </div>
+                                            )}
+                                            {log.entityId && (
+                                                <div className="text-[9px] text-slate-400 font-mono mt-0.5 max-w-[140px] truncate" title={log.entityId}>
+                                                    ID: {log.entityId}
+                                                </div>
+                                            )}
+                                            {!(log.entityName || getFallbackEntityName(log) !== "N/A") && !log.entityId && (
                                                 <div className="text-[11px] text-slate-400 font-medium mt-1 italic">
                                                     None
                                                 </div>
@@ -436,18 +435,17 @@ export default function AuditLogPage() {
                                 </div>
                                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                                     <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Target Entity</p>
-                                    {getFallbackEntityName(selectedLog) !== "N/A" ? (
-                                        <>
-                                            <p className="text-xs font-bold text-slate-800 truncate" title={getFallbackEntityName(selectedLog)}>
-                                                {getFallbackEntityName(selectedLog)}
-                                            </p>
-                                            {selectedLog.entityId && (
-                                                <p className="text-[9px] font-mono text-slate-400 truncate mt-0.5" title={selectedLog.entityId}>
-                                                    <span className="text-slate-300">ID:</span> {selectedLog.entityId}
-                                                </p>
-                                            )}
-                                        </>
-                                    ) : (
+                                    {getFallbackEntityName(selectedLog) !== "N/A" && (
+                                        <p className="text-xs font-bold text-slate-800 truncate" title={getFallbackEntityName(selectedLog)}>
+                                            {getFallbackEntityName(selectedLog)}
+                                        </p>
+                                    )}
+                                    {selectedLog.entityId && (
+                                        <p className="text-[9px] font-mono text-slate-400 truncate mt-0.5" title={selectedLog.entityId}>
+                                            <span className="text-slate-300">ID:</span> {selectedLog.entityId}
+                                        </p>
+                                    )}
+                                    {getFallbackEntityName(selectedLog) === "N/A" && !selectedLog.entityId && (
                                         <p className="text-xs font-bold text-slate-400 mt-1 italic">None</p>
                                     )}
                                 </div>
