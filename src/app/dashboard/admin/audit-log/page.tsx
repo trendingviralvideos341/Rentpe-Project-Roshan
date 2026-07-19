@@ -249,7 +249,12 @@ export default function AuditLogPage() {
         <div className="p-6 bg-gray-50 min-h-screen">
             <div className="mb-8 space-y-6">
                 {/* Tabs */}
-                {currentUser && (
+                {!currentUser ? (
+                    <div className="flex gap-3 p-1.5 bg-slate-50 border border-gray-100 rounded-xl w-full max-w-2xl shadow-sm animate-pulse">
+                        <div className="flex-1 rounded-lg bg-slate-200 h-12"></div>
+                        <div className="flex-1 rounded-lg bg-slate-200 h-12"></div>
+                    </div>
+                ) : (
                     <div className="flex gap-3 p-1.5 bg-white border border-gray-200 rounded-xl w-full max-w-2xl shadow-sm">
                         {(currentUser as any)?.isSuperAdmin && (
                             <button
