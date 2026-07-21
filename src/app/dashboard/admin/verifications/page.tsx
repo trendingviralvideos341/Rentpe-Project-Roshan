@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 
 import { getPendingDocuments, verifyDocument as verifyTenantDoc } from "@/actions/documents";
 import { getPhysicalKycBookings, markPhysicalKycVerified } from "@/actions/bookings";
+import { getProperties } from "@/actions/properties";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -128,9 +129,55 @@ function PhysicalKycCard({ booking, onMarkVerified }: { booking: any; onMarkVeri
 }
 
 function TenantPhysicalKycTab() {
+    const currentYearNum = new Date().getFullYear();
+    const currentMonthNum = new Date().getMonth() + 1;
+    const currentFYBase = currentMonthNum < 4 ? currentYearNum - 1 : currentYearNum;
+    const defaultMonth = currentMonthNum.toString().padStart(2, '0');
+
     const [kycBookings, setKycBookings] = useState<any[]>([]);
     const [kycLoading, setKycLoading] = useState(true);
     const [kycSearch, setKycSearch] = useState("");
+    const [selectedYear, setSelectedYear] = useState(currentFYBase.toString());
+    const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
+    const [selectedProperty, setSelectedProperty] = useState("ALL");
+    const [ownerProperties, setOwnerProperties] = useState<any[]>([]);
+
+    const properties = Array.from(new Set([
+        ...ownerProperties.map(p => p.name),
+        ...kycBookings.map(b => b.property?.name || b.propertyName)
+    ].filter(Boolean))) as string[];
+
+    const startFY = 2024;
+    const yearOptions = Array.from({ length: Math.max(1, currentFYBase - startFY + 1) }, (_, i) => {
+        const baseYear = currentFYBase - i;
+        const nextYear = (baseYear + 1).toString().slice(-2);
+        return { value: baseYear.toString(), label: `${baseYear}-${nextYear}` };
+    });
+
+    const fyMonths = [
+        { value: '04', label: 'April' }, { value: '05', label: 'May' },
+        { value: '06', label: 'June' }, { value: '07', label: 'July' },
+        { value: '08', label: 'August' }, { value: '09', label: 'September' },
+        { value: '10', label: 'October' }, { value: '11', label: 'November' },
+        { value: '12', label: 'December' }, { value: '01', label: 'January' },
+        { value: '02', label: 'February' }, { value: '03', label: 'March' }
+    ];
+
+    const baseMonthOptions = selectedYear === currentFYBase.toString()
+        ? fyMonths.filter(m => {
+            const mNum = parseInt(m.value);
+            if (currentMonthNum >= 4) return mNum >= 4 && mNum <= currentMonthNum;
+            return mNum >= 4 || mNum <= currentMonthNum;
+        })
+        : fyMonths;
+
+    const monthOptions = [{ value: 'ALL', label: 'All Months' }, ...baseMonthOptions];
+
+    const getFYFromDate = (date: Date) => {
+        const y = date.getFullYear();
+        const m = date.getMonth() + 1;
+        return m < 4 ? y - 1 : y;
+    };
 
     const fetchKyc = async () => {
         setKycLoading(true);
@@ -139,7 +186,12 @@ function TenantPhysicalKycTab() {
         finally { setKycLoading(false); }
     };
 
-    useEffect(() => { fetchKyc(); }, []);
+    const fetchOwnerProps = async () => {
+        try { const props = await getProperties(); setOwnerProperties(props); }
+        catch { console.error("Failed to load properties"); }
+    };
+
+    useEffect(() => { fetchKyc(); fetchOwnerProps(); }, []);
 
     const handleMarkKycVerified = async (bookingId: string) => {
         try {
@@ -150,43 +202,108 @@ function TenantPhysicalKycTab() {
     };
 
     const filteredKyc = kycBookings.filter(b => {
+        let matchDate = true;
+        if (selectedYear && selectedMonth) {
+            const dateStr = b.kycVerifiedAt || b.createdAt || b.updatedAt;
+            if (dateStr) {
+                const date = new Date(dateStr);
+                const itemFY = getFYFromDate(date).toString();
+                const itemMonth = (date.getMonth() + 1).toString().padStart(2, '0');
+                if (itemFY !== selectedYear || (selectedMonth !== 'ALL' && itemMonth !== selectedMonth)) {
+                    matchDate = false;
+                }
+            }
+        }
+
+        let matchProperty = true;
+        if (selectedProperty !== "ALL") {
+            const propName = b.property?.name || b.propertyName;
+            if (propName !== selectedProperty) {
+                matchProperty = false;
+            }
+        }
+
         const q = kycSearch.toLowerCase();
-        return (
+        const matchSearch = (
             b.guestName?.toLowerCase().includes(q) ||
             b.displayId?.toLowerCase().includes(q) ||
             b.propertyName?.toLowerCase().includes(q) ||
             b.tenant?.displayId?.toLowerCase().includes(q) ||
             b.property?.name?.toLowerCase().includes(q)
         );
+
+        return matchDate && matchSearch && matchProperty;
     });
+
     const verifiedKyc = filteredKyc.filter(b => b.kycVerified);
     const unverifiedKyc = filteredKyc.filter(b => !b.kycVerified);
 
     return (
         <div className="space-y-6">
-            {/* Search + stats bar */}
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between w-full">
+                <div className="relative flex-1 w-full max-w-md">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                     <Input
-                        placeholder="Search by student name, booking ID, tenant ID or property..."
-                        className="pl-11 h-10 border-slate-200 bg-slate-50/30 focus:bg-white rounded-xl text-sm"
+                        placeholder="Search by student name, booking ID..."
+                        className="pl-11 h-12 bg-white border border-slate-200 shadow-sm rounded-full text-sm w-full font-medium"
                         value={kycSearch}
-                        onChange={e => setKycSearch(e.target.value)}
+                        onChange={(e) => setKycSearch(e.target.value)}
                     />
                 </div>
-                <div className="flex items-center gap-6 pt-2 border-t border-slate-100">
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-green-500" />
-                        <span className="text-[11px] font-bold text-slate-600">{verifiedKyc.length} Verified</span>
+                
+                <div className="flex flex-wrap items-center gap-3 shrink-0">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1 ml-3">PROPERTY</span>
+                        <select
+                            value={selectedProperty}
+                            onChange={(e) => setSelectedProperty(e.target.value)}
+                            className="appearance-none bg-white text-indigo-950 rounded-full px-5 py-2.5 pr-10 text-sm font-black focus:outline-none transition-all cursor-pointer relative shadow-sm border border-slate-200 hover:shadow-md"
+                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%231e1b4b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
+                        >
+                            <option value="ALL">All Properties</option>
+                            {properties.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-                        <span className="text-[11px] font-bold text-slate-600">{unverifiedKyc.length} Pending</span>
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1 ml-3">SELECT YEAR</span>
+                        <select
+                            value={selectedYear}
+                            onChange={(e) => {
+                                setSelectedYear(e.target.value);
+                                setSelectedMonth('ALL');
+                            }}
+                            className="appearance-none bg-white text-indigo-950 rounded-full px-5 py-2.5 pr-10 text-sm font-black focus:outline-none transition-all cursor-pointer relative shadow-sm border border-slate-200 hover:shadow-md"
+                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%231e1b4b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
+                        >
+                            {yearOptions.map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
+                        </select>
                     </div>
-                    <Button variant="outline" size="sm" onClick={fetchKyc} disabled={kycLoading} className="ml-auto rounded-xl text-xs">
-                        <RefreshCcw className={`h-3 w-3 mr-2 ${kycLoading ? 'animate-spin' : ''}`} />Refresh
-                    </Button>
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1 ml-3">SELECT MONTH</span>
+                        <select
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(e.target.value)}
+                            className="appearance-none bg-white text-indigo-950 rounded-full px-5 py-2.5 pr-10 text-sm font-black focus:outline-none transition-all cursor-pointer relative shadow-sm border border-slate-200 hover:shadow-md"
+                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%231e1b4b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
+                        >
+                            {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                        </select>
+                    </div>
+                    
+                    <button onClick={fetchKyc} disabled={kycLoading} className="ml-2 mt-4 flex items-center justify-center w-12 h-12 bg-white rounded-full border border-slate-200 shadow-sm hover:shadow-md transition-all text-indigo-600 disabled:opacity-50">
+                        <RefreshCcw className={`w-5 h-5 ${kycLoading ? 'animate-spin' : ''}`} />
+                    </button>
+                </div>
+            </div>
+            
+            <div className="bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 -mt-2">
+                <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span className="text-[11px] font-bold text-slate-600">{verifiedKyc.length} Verified</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
+                    <span className="text-[11px] font-bold text-slate-600">{unverifiedKyc.length} Pending Verification</span>
                 </div>
             </div>
 
