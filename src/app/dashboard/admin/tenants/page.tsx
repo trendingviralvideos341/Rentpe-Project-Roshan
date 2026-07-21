@@ -8,7 +8,7 @@ import {
     CheckCircle, XCircle, Users, Loader2, Search,
     Eye, Building, ShieldAlert, Phone, Mail, Calendar, Info, AlertTriangle,
     X, Download, FileText, CheckCircle2, TrendingUp, Shield, Building2, IndianRupee, Home,
-    Edit2, Save, Plus, Trash2
+    Edit2, Save, Plus, Trash2, MoreHorizontal, Copy
 } from "lucide-react";
 import { getTenants, markRentAsPaid, markRentAsUnpaid, unblockTenant, updateTenantProfile, validateAdminCredentialOverride } from "@/actions/tenants";
 import { getInvoiceForReceipt } from "@/actions/payments";
@@ -21,6 +21,38 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+function formatToDDMMYYYY(dateStr: string | null | undefined): string {
+    if (!dateStr) return "-";
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        return `${dd}-${mm}-${yyyy}`;
+    }
+    return dateStr;
+}
+
+function formatToDDMonthYYYY(dateStr: string | null | undefined): string {
+    if (!dateStr) return "-";
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+        const dd = String(d.getDate()).padStart(2, '0');
+        const month = d.toLocaleString('en-IN', { month: 'short' });
+        const yyyy = d.getFullYear();
+        return `${dd} ${month} ${yyyy}`;
+    }
+    return dateStr;
+}
 
 function formatMonthLabel(monthStr: string): string {
     if (!monthStr) return "";
@@ -102,6 +134,11 @@ export default function TenantsPage() {
     const [showSaveEditDialog, setShowSaveEditDialog] = useState(false);
     const [auditTicketId, setAuditTicketId] = useState("");
     const [auditReason, setAuditReason] = useState("");
+
+    // Export CSV State
+    const [showExportDialog, setShowExportDialog] = useState(false);
+    const [exportYear, setExportYear] = useState<string>(new Date().getFullYear().toString());
+    const [exportMonth, setExportMonth] = useState<string>((new Date().getMonth() + 1).toString());
 
     const currentMonth = new Date().toLocaleString('en-IN', { month: 'short', year: 'numeric' });
     const todayStr = new Date().toISOString().split("T")[0];
@@ -418,29 +455,96 @@ export default function TenantsPage() {
     const properties = Array.from(new Set(tenants.map(t => t.property?.name).filter(Boolean)));
 
     // Stats calculations
-    const activeCount = tenants.filter(t => t.status === "Active").length;
-    const upcomingCount = tenants.filter(t => t.status === "Upcoming").length;
-    const checkedOutCount = tenants.filter(t => t.status === "Checked Out" || t.status === "Blocked").length;
+    const activeCount = tenants.filter(t => t.status?.toLowerCase() === "active").length;
+    const upcomingCount = tenants.filter(t => t.status?.toLowerCase() === "upcoming").length;
+    const checkedOutCount = tenants.filter(t => {
+        const s = t.status?.toLowerCase();
+        return s === "checked out" || s === "blocked";
+    }).length;
 
     const filteredTenants = tenants.filter(t => {
         const matchSearch =
-            t.name.toLowerCase().includes(search.toLowerCase()) ||
-            t.phone.includes(search) ||
-            t.roomNumber.toLowerCase().includes(search.toLowerCase()) ||
-            t.displayId.toLowerCase().includes(search.toLowerCase());
+            t.name?.toLowerCase().includes(search.toLowerCase()) ||
+            t.phone?.includes(search) ||
+            t.roomNumber?.toLowerCase().includes(search.toLowerCase()) ||
+            t.displayId?.toLowerCase().includes(search.toLowerCase());
 
         const matchProperty = filterProperty === "ALL" || t.property?.name === filterProperty;
         const matchType = filterType === "ALL" || t.roomType === filterType;
+        
+        const s = t.status?.toLowerCase();
         const matchStatus = filterStatus === "ALL" || 
-            (filterStatus === "ACTIVE" && t.status === "Active") ||
-            (filterStatus === "UPCOMING" && t.status === "Upcoming") ||
-            (filterStatus === "CHECKED_OUT" && t.status === "Checked Out") ||
-            (filterStatus === "BLOCKED" && t.status === "Blocked");
+            (filterStatus === "ACTIVE" && s === "active") ||
+            (filterStatus === "UPCOMING" && s === "upcoming") ||
+            (filterStatus === "CHECKED_OUT" && (s === "checked out" || s === "blocked")) ||
+            (filterStatus === "BLOCKED" && s === "blocked");
 
         return matchSearch && matchProperty && matchType && matchStatus;
     });
 
+    const handleExportCSV = () => {
+        if (filteredTenants.length === 0) {
+            toast.error("No tenants to export in the current view.");
+            return;
+        }
 
+        const monthName = new Date(Number(exportYear), Number(exportMonth) - 1, 1).toLocaleString('en-IN', { month: 'long' });
+        
+        let csvContent = "Tenant ID,Booking ID,Name,Phone,Email,PG Property,Room,Sharing Type,Start Date,Gross Rent (₹),Status";
+        
+        // Dynamic columns based on filter
+        if (filterStatus === 'CHECKED_OUT' || filterStatus === 'BLOCKED') {
+            csvContent += ",Vacated Date";
+        } else if (filterStatus === 'UPCOMING') {
+            csvContent += ",Upcoming Move-in Date";
+        }
+        csvContent += "\n";
+
+        filteredTenants.forEach(t => {
+            const safeCSV = (str: string | undefined | null) => {
+                if (!str) return '""';
+                const s = String(str).replace(/"/g, '""');
+                // Prevent CSV Injection (formulas starting with = + - @)
+                if (/^[=\-+\@]/.test(s)) {
+                    return `"'\t${s}"`; 
+                }
+                return `"${s}"`;
+            };
+
+            const row = [
+                safeCSV(t.displayId),
+                safeCSV(t.booking?.displayId),
+                safeCSV(t.name),
+                safeCSV(t.phone),
+                safeCSV(t.email),
+                safeCSV(t.property?.name),
+                safeCSV(t.roomNumber),
+                safeCSV(t.roomType),
+                safeCSV(t.startDate || t.moveInDate),
+                safeCSV(t.rentAmount),
+                safeCSV(t.status)
+            ];
+
+            if (filterStatus === 'CHECKED_OUT' || filterStatus === 'BLOCKED') {
+                row.push(safeCSV(t.vacatedDate || t.booking?.moveOutDate));
+            } else if (filterStatus === 'UPCOMING') {
+                row.push(safeCSV(t.startDate || t.moveInDate));
+            }
+
+            csvContent += row.join(",") + "\n";
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Master_Tenants_Ledger_${monthName}_${exportYear}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setShowExportDialog(false);
+        toast.success(`Exported ${filteredTenants.length} tenants successfully for ${monthName} ${exportYear}.`);
+    };
 
     return (
         <div className="space-y-6">
@@ -454,37 +558,46 @@ export default function TenantsPage() {
 
             {/* Occupancy Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 border-indigo-200 shadow-sm">
+                <Card 
+                    className={`cursor-pointer transition-all duration-200 border-2 hover:-translate-y-0.5 hover:shadow-lg ${filterStatus === 'ACTIVE' ? 'bg-indigo-600 border-indigo-600 shadow-md text-white' : 'bg-gradient-to-br from-indigo-50 to-indigo-100/50 border-indigo-200 shadow-sm hover:border-indigo-300 hover:bg-indigo-100/50'}`}
+                    onClick={() => setFilterStatus(filterStatus === 'ACTIVE' ? 'ALL' : 'ACTIVE')}
+                >
                     <CardContent className="p-5 flex items-center justify-between">
                         <div>
-                            <p className="text-2xl font-black text-indigo-950">{activeCount}</p>
-                            <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mt-1">Active Tenants</p>
+                            <p className={`text-2xl font-black ${filterStatus === 'ACTIVE' ? 'text-white' : 'text-indigo-950'}`}>{activeCount}</p>
+                            <p className={`text-xs font-bold uppercase tracking-widest mt-1 ${filterStatus === 'ACTIVE' ? 'text-indigo-100' : 'text-indigo-600'}`}>Active Tenants</p>
                         </div>
-                        <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center text-white shadow-md">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-md ${filterStatus === 'ACTIVE' ? 'bg-white/20 text-white' : 'bg-indigo-500 text-white'}`}>
                             <Users className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200 shadow-sm">
+                <Card 
+                    className={`cursor-pointer transition-all duration-200 border-2 hover:-translate-y-0.5 hover:shadow-lg ${filterStatus === 'UPCOMING' ? 'bg-blue-600 border-blue-600 shadow-md text-white' : 'bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200 shadow-sm hover:border-blue-300 hover:bg-blue-100/50'}`}
+                    onClick={() => setFilterStatus(filterStatus === 'UPCOMING' ? 'ALL' : 'UPCOMING')}
+                >
                     <CardContent className="p-5 flex items-center justify-between">
                         <div>
-                            <p className="text-2xl font-black text-blue-950">{upcomingCount}</p>
-                            <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mt-1">Upcoming Move-ins</p>
+                            <p className={`text-2xl font-black ${filterStatus === 'UPCOMING' ? 'text-white' : 'text-blue-950'}`}>{upcomingCount}</p>
+                            <p className={`text-xs font-bold uppercase tracking-widest mt-1 ${filterStatus === 'UPCOMING' ? 'text-blue-100' : 'text-blue-600'}`}>Upcoming Move-ins</p>
                         </div>
-                        <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-md">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-md ${filterStatus === 'UPCOMING' ? 'bg-white/20 text-white' : 'bg-blue-500 text-white'}`}>
                             <Calendar className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200 shadow-sm">
+                <Card 
+                    className={`cursor-pointer transition-all duration-200 border-2 hover:-translate-y-0.5 hover:shadow-lg ${filterStatus === 'CHECKED_OUT' ? 'bg-slate-700 border-slate-700 shadow-md text-white' : 'bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200 shadow-sm hover:border-slate-300 hover:bg-slate-100/80'}`}
+                    onClick={() => setFilterStatus(filterStatus === 'CHECKED_OUT' ? 'ALL' : 'CHECKED_OUT')}
+                >
                     <CardContent className="p-5 flex items-center justify-between">
                         <div>
-                            <p className="text-2xl font-black text-slate-900">{checkedOutCount}</p>
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Checked Out / Blocked</p>
+                            <p className={`text-2xl font-black ${filterStatus === 'CHECKED_OUT' ? 'text-white' : 'text-slate-900'}`}>{checkedOutCount}</p>
+                            <p className={`text-xs font-bold uppercase tracking-widest mt-1 ${filterStatus === 'CHECKED_OUT' ? 'text-slate-300' : 'text-slate-500'}`}>Checked Out / Blocked</p>
                         </div>
-                        <div className="w-10 h-10 bg-slate-500 rounded-xl flex items-center justify-center text-white shadow-md">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-md ${filterStatus === 'CHECKED_OUT' ? 'bg-white/20 text-white' : 'bg-slate-500 text-white'}`}>
                             <Building className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -494,48 +607,56 @@ export default function TenantsPage() {
             {/* Filter Bar */}
             <Card className="border-slate-100 shadow-sm">
                 <CardContent className="p-4">
-                    <div className="flex flex-wrap gap-3 items-center">
-                        <div className="flex-1 min-w-[240px] relative">
-                            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                            <Input
-                                placeholder="Search by name, room, phone, display ID..."
-                                value={search}
-                                onChange={e => setSearch(e.target.value)}
-                                className="pl-9 bg-slate-50 border-slate-200"
-                            />
+                    <div className="flex flex-wrap gap-3 items-center justify-between">
+                        <div className="flex flex-wrap gap-3 items-center flex-1">
+                            <div className="flex-1 min-w-[240px] relative">
+                                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <Input
+                                    placeholder="Search by name, room, phone, display ID..."
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                    className="pl-9 bg-slate-50 border-slate-200"
+                                />
+                            </div>
+                            <select
+                                className="border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-xs font-bold text-slate-700"
+                                value={filterProperty}
+                                onChange={e => setFilterProperty(e.target.value)}
+                            >
+                                <option value="ALL">All PG Properties</option>
+                                {properties.map(p => (
+                                    <option key={p} value={p}>{p}</option>
+                                ))}
+                            </select>
+                            <select
+                                className="border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-xs font-bold text-slate-700"
+                                value={filterType}
+                                onChange={e => setFilterType(e.target.value)}
+                            >
+                                <option value="ALL">All Sharing Types</option>
+                                <option value="Single Sharing">Single Sharing</option>
+                                <option value="Double Sharing">Double Sharing</option>
+                                <option value="Three Sharing">Three Sharing</option>
+                                <option value="Four Sharing">Four Sharing</option>
+                            </select>
+                            <select
+                                className="border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-xs font-bold text-slate-700"
+                                value={filterStatus}
+                                onChange={e => setFilterStatus(e.target.value)}
+                            >
+                                <option value="ALL">All Statuses</option>
+                                <option value="ACTIVE">✅ Active</option>
+                                <option value="UPCOMING">⏳ Upcoming</option>
+                                <option value="CHECKED_OUT">🏠 Checked Out</option>
+                                <option value="BLOCKED">🚫 Blocked</option>
+                            </select>
                         </div>
-                        <select
-                            className="border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-xs font-bold text-slate-700"
-                            value={filterProperty}
-                            onChange={e => setFilterProperty(e.target.value)}
+                        <Button 
+                            onClick={() => setShowExportDialog(true)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl"
                         >
-                            <option value="ALL">All PG Properties</option>
-                            {properties.map(p => (
-                                <option key={p} value={p}>{p}</option>
-                            ))}
-                        </select>
-                        <select
-                            className="border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-xs font-bold text-slate-700"
-                            value={filterType}
-                            onChange={e => setFilterType(e.target.value)}
-                        >
-                            <option value="ALL">All Sharing Types</option>
-                            <option value="Single Sharing">Single Sharing</option>
-                            <option value="Double Sharing">Double Sharing</option>
-                            <option value="Three Sharing">Three Sharing</option>
-                            <option value="Four Sharing">Four Sharing</option>
-                        </select>
-                        <select
-                            className="border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-xs font-bold text-slate-700"
-                            value={filterStatus}
-                            onChange={e => setFilterStatus(e.target.value)}
-                        >
-                            <option value="ALL">All Statuses</option>
-                            <option value="ACTIVE">✅ Active</option>
-                            <option value="UPCOMING">⏳ Upcoming</option>
-                            <option value="CHECKED_OUT">🏠 Checked Out</option>
-                            <option value="BLOCKED">🚫 Blocked</option>
-                        </select>
+                            <Download className="w-4 h-4 mr-2" /> Export CSV
+                        </Button>
                     </div>
                 </CardContent>
             </Card>
@@ -548,11 +669,15 @@ export default function TenantsPage() {
                             <thead className="bg-slate-900 text-white text-xs font-bold">
                                 <tr>
                                     <th className="p-4 uppercase tracking-wider">Tenant ID</th>
+                                    <th className="p-4 uppercase tracking-wider">Booking ID</th>
                                     <th className="p-4 uppercase tracking-wider">Name & PG</th>
                                     <th className="p-4 uppercase tracking-wider">Contact</th>
                                     <th className="p-4 uppercase tracking-wider">Room/Type</th>
                                     <th className="p-4 uppercase tracking-wider">Start Date</th>
+                                    {(filterStatus === 'CHECKED_OUT' || filterStatus === 'BLOCKED') && <th className="p-4 uppercase tracking-wider">Vacated Date</th>}
+                                    {filterStatus === 'UPCOMING' && <th className="p-4 uppercase tracking-wider">Upcoming Move-In Date</th>}
                                     <th className="p-4 uppercase tracking-wider">Rent</th>
+                                    <th className="p-4 uppercase tracking-wider">{currentMonth} Status</th>
                                     <th className="p-4 uppercase tracking-wider">Status</th>
                                     <th className="p-4 uppercase tracking-wider text-center">Action</th>
                                 </tr>
@@ -560,7 +685,7 @@ export default function TenantsPage() {
                             <tbody className="divide-y divide-slate-100 text-sm">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={8} className="p-12 text-center">
+                                        <td colSpan={12} className="p-12 text-center">
                                             <div className="flex flex-col items-center justify-center gap-3">
                                                 <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
                                                 <p className="text-indigo-600 font-bold animate-pulse">Loading Tenants...</p>
@@ -569,7 +694,7 @@ export default function TenantsPage() {
                                     </tr>
                                 ) : filteredTenants.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="p-12 text-center bg-slate-50">
+                                        <td colSpan={12} className="p-12 text-center bg-slate-50">
                                             <div className="space-y-2">
                                                 <p className="text-slate-500 font-black text-lg">NO Tenants available in these records</p>
                                                 <p className="text-sm text-slate-400">Try adjusting your filters or search terms.</p>
@@ -578,14 +703,16 @@ export default function TenantsPage() {
                                     </tr>
                                 ) : (
                                     filteredTenants.map(t => {
-                                        const isBlocked = t.status === "Blocked";
-                                        const isCheckedOut = t.status === "Checked Out";
-                                        const isUpcoming = t.status === "Upcoming";
-                                        const isActive = t.status === "Active";
+                                        const s = t.status?.toLowerCase();
+                                        const isBlocked = s === "blocked";
+                                        const isCheckedOut = s === "checked out";
+                                        const isUpcoming = s === "upcoming";
+                                        const isActive = s === "active";
 
                                         return (
                                             <tr key={t.id} className={`hover:bg-slate-50/50 transition-colors ${isBlocked ? "bg-red-50/20" : ""}`}>
                                                 <td className="p-4 font-mono text-xs text-slate-500 font-bold">{t.displayId}</td>
+                                                <td className="p-4 font-mono text-xs text-indigo-500 font-bold">{t.booking?.displayId || "—"}</td>
                                                 <td className="p-4">
                                                     <p className={`font-bold text-slate-900 ${isBlocked ? "line-through text-slate-400" : ""}`}>{t.name}</p>
                                                     <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-0.5">{t.property?.name || "Unknown PG"}</p>
@@ -598,7 +725,29 @@ export default function TenantsPage() {
                                                     {t.roomNumber} <span className="text-slate-400 font-normal">({t.roomType})</span>
                                                 </td>
                                                 <td className="p-4 text-xs text-slate-600 font-semibold">{t.startDate || t.moveInDate}</td>
+                                                
+                                                {(filterStatus === 'CHECKED_OUT' || filterStatus === 'BLOCKED') && (
+                                                    <td className="p-4 text-xs text-slate-600 font-semibold">{formatToDDMonthYYYY(t.vacatedDate || t.booking?.moveOutDate)}</td>
+                                                )}
+                                                {filterStatus === 'UPCOMING' && (
+                                                    <td className="p-4 text-xs text-slate-600 font-semibold">{formatToDDMonthYYYY(t.startDate || t.moveInDate)}</td>
+                                                )}
+                                                
                                                 <td className="p-4 font-bold text-slate-900">₹{t.rentAmount}</td>
+                                                <td className="p-4">
+                                                    {(() => {
+                                                        const monthPrefix = new Date().toISOString().slice(0, 7);
+                                                        const isPaid = t.ledger && typeof t.ledger === 'object' && Object.keys(t.ledger).some(key => key.startsWith(monthPrefix) && t.ledger[key]?.status === 'PAID');
+                                                        
+                                                        if (isPaid) {
+                                                            return <span className="inline-flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded border border-green-200 uppercase tracking-wider"><CheckCircle2 className="w-3 h-3" /> Paid</span>;
+                                                        }
+                                                        if (isActive) {
+                                                            return <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 uppercase tracking-wider"><AlertTriangle className="w-3 h-3" /> Owed</span>;
+                                                        }
+                                                        return <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">—</span>;
+                                                    })()}
+                                                </td>
                                                 <td className="p-4">
                                                     <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                                                         isActive ? "bg-green-100 text-green-700" :
@@ -610,16 +759,37 @@ export default function TenantsPage() {
                                                     </span>
                                                 </td>
                                                 <td className="p-4 text-center">
-                                                    <Button
-                                                        size="sm"
-                                                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg px-3 py-1 flex items-center gap-1.5 mx-auto"
-                                                        onClick={() => {
-                                                            setSelectedTenant(t);
-                                                            setActiveTab("profile");
-                                                        }}
-                                                    >
-                                                        <Eye className="w-3.5 h-3.5" /> View Details
-                                                    </Button>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 mx-auto">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="w-48">
+                                                            <DropdownMenuLabel>Admin Actions</DropdownMenuLabel>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem onClick={() => {
+                                                                setSelectedTenant(t);
+                                                                setActiveTab("profile");
+                                                            }} className="cursor-pointer">
+                                                                <Eye className="mr-2 h-4 w-4" /> View Full Profile
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => {
+                                                                navigator.clipboard.writeText(t.displayId);
+                                                                toast.success("Tenant ID copied to clipboard");
+                                                            }} className="cursor-pointer">
+                                                                <Copy className="mr-2 h-4 w-4" /> Copy Tenant ID
+                                                            </DropdownMenuItem>
+                                                            {t.booking?.displayId && (
+                                                                <DropdownMenuItem onClick={() => {
+                                                                    navigator.clipboard.writeText(t.booking.displayId);
+                                                                    toast.success("Booking ID copied to clipboard");
+                                                                }} className="cursor-pointer">
+                                                                    <Copy className="mr-2 h-4 w-4" /> Copy Booking ID
+                                                                </DropdownMenuItem>
+                                                            )}
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 </td>
                                             </tr>
                                         );
@@ -1832,6 +2002,87 @@ export default function TenantsPage() {
                     </DialogContent>
                 </Dialog>
             )}
+
+            {/* Export CSV Dialog */}
+            <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+                <DialogContent className="max-w-md bg-white border rounded-2xl p-6 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-2">
+                            <Download className="w-5 h-5 text-emerald-600" /> Export CSV Report
+                        </DialogTitle>
+                        <DialogDescription className="text-slate-500 text-sm mt-1">
+                            Select the financial year and month to generate the report.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {/* Dynamic Warning Message */}
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2 mt-4">
+                        <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+                        <div className="text-sm text-red-800 leading-tight">
+                            <p className="font-bold">You are exporting:</p>
+                            <p className="mt-1">
+                                <strong>{filteredTenants.length}</strong> {filterStatus === 'ALL' ? 'Total' : filterStatus === 'CHECKED_OUT' ? 'Checked Out' : filterStatus === 'UPCOMING' ? 'Upcoming' : filterStatus === 'ACTIVE' ? 'Active' : 'Blocked'} Tenants.
+                            </p>
+                            <p className="text-[11px] mt-1 text-red-600">The CSV will exactly match your current table filters.</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Financial Year</label>
+                                <select 
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm font-bold text-slate-700"
+                                    value={exportYear}
+                                    onChange={e => setExportYear(e.target.value)}
+                                >
+                                    {[0, 1, 2, 3].map(offset => {
+                                        const year = new Date().getFullYear() - offset;
+                                        return <option key={year} value={year}>{year}</option>;
+                                    })}
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Month</label>
+                                <select 
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm font-bold text-slate-700"
+                                    value={exportMonth}
+                                    onChange={e => setExportMonth(e.target.value)}
+                                >
+                                    <option value="1">January</option>
+                                    <option value="2">February</option>
+                                    <option value="3">March</option>
+                                    <option value="4">April</option>
+                                    <option value="5">May</option>
+                                    <option value="6">June</option>
+                                    <option value="7">July</option>
+                                    <option value="8">August</option>
+                                    <option value="9">September</option>
+                                    <option value="10">October</option>
+                                    <option value="11">November</option>
+                                    <option value="12">December</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 mt-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowExportDialog(false)}
+                            className="font-bold border-slate-200 rounded-xl"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleExportCSV}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl"
+                        >
+                            Download CSV
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
