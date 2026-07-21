@@ -42,6 +42,19 @@ function formatMonthLabel(m: string): string {
     return new Date(Number(y), Number(mo) - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
 }
 
+function formatToDDMonthYYYY(dateStr: string | null | undefined): string {
+    if (!dateStr) return "-";
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+        const dd = String(d.getDate()).padStart(2, '0');
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const month = monthNames[d.getMonth()];
+        const yyyy = d.getFullYear();
+        return `${dd} ${month} ${yyyy}`;
+    }
+    return formatToDDMMYYYY(dateStr);
+}
+
 export function TenantsContainer() {
     const [tenants, setTenants] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -465,6 +478,9 @@ export function TenantsContainer() {
                                     <th className="p-4 text-left font-medium">Name & PG</th>
                                     <th className="p-4 text-left font-medium">Room</th>
                                     <th className="p-4 text-left font-medium">Checked In Date</th>
+                                    {activeTab === 'CHECKED_OUT' && <th className="p-4 text-left font-medium">Vacated Date</th>}
+                                    {activeTab === 'UPCOMING_MOVE_IN' && <th className="p-4 text-left font-medium">Upcoming Move-In Date</th>}
+                                    {activeTab === 'UPCOMING_VACATE' && <th className="p-4 text-left font-medium">Upcoming Vacate Date</th>}
                                     <th className="p-4 text-left font-medium">Monthly Rent</th>
                                     <th className="p-4 text-left font-medium">{formatMonthLabel(currentMonth)} Status</th>
                                     <th className="p-4 text-left font-medium">Status & History</th>
@@ -474,7 +490,7 @@ export function TenantsContainer() {
                             <tbody>
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={9} className="p-12 text-center">
+                                        <td colSpan={activeTab === 'ACTIVE' ? 9 : 10} className="p-12 text-center">
                                             <div className="flex flex-col items-center justify-center gap-3">
                                                 <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
                                                 <p className="text-indigo-600 font-bold animate-pulse">Loading tenants...</p>
@@ -483,7 +499,7 @@ export function TenantsContainer() {
                                     </tr>
                                 ) : filteredTenants.length === 0 ? (
                                     <tr>
-                                        <td colSpan={9} className="p-12 text-center bg-slate-50">
+                                        <td colSpan={activeTab === 'ACTIVE' ? 9 : 10} className="p-12 text-center bg-slate-50">
                                             <div className="space-y-2">
                                                 <p className="text-slate-500 font-black text-lg">NO Tenants available in these records</p>
                                                 <p className="text-sm text-slate-400">Try adjusting your filters or search terms.</p>
@@ -517,6 +533,9 @@ export function TenantsContainer() {
                                                 </td>
                                                 <td className="p-4 text-sm">{t.roomNumber} <span className="text-xs text-muted-foreground">({t.roomType})</span></td>
                                                 <td className="p-4 text-sm">{formatToDDMMYYYY(t.startDate || t.moveInDate)}</td>
+                                                {activeTab === 'CHECKED_OUT' && <td className="p-4 text-sm font-semibold text-slate-600">{formatToDDMonthYYYY(t.actualMoveOutDate || t.expectedMoveOutDate)}</td>}
+                                                {activeTab === 'UPCOMING_MOVE_IN' && <td className="p-4 text-sm font-semibold text-emerald-600">{formatToDDMonthYYYY(t.startDate || t.moveInDate)}</td>}
+                                                {activeTab === 'UPCOMING_VACATE' && <td className="p-4 text-sm font-semibold text-amber-600">{formatToDDMonthYYYY(t.expectedMoveOutDate)}</td>}
                                                 <td className="p-4 font-bold">
                                                     ₹{t.rentAmount || t.rent || 0}
                                                 </td>
