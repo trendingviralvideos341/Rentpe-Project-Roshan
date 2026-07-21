@@ -272,16 +272,16 @@ export function TenantsContainer() {
                 </div>
             </div>
 
-            <div className="flex bg-slate-100/80 rounded-xl p-1 gap-1 border">
+            <div className="flex bg-slate-100/80 rounded-xl p-1 gap-2 border border-slate-200">
                 <button
                     onClick={() => handleMainTabChange('ACTIVE_DIRECTORY')}
-                    className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${mainTab === 'ACTIVE_DIRECTORY' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-200'}`}
+                    className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all duration-200 border-2 ${mainTab === 'ACTIVE_DIRECTORY' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-700 border-slate-200 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:shadow'}`}
                 >
                     Active Tenants
                 </button>
                 <button
                     onClick={() => handleMainTabChange('VACATED_DIRECTORY')}
-                    className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${mainTab === 'VACATED_DIRECTORY' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-600 hover:bg-slate-200'}`}
+                    className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all duration-200 border-2 ${mainTab === 'VACATED_DIRECTORY' ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-700 border-slate-200 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:shadow'}`}
                 >
                     Vacated Tenants
                 </button>
@@ -290,7 +290,7 @@ export function TenantsContainer() {
             {mainTab === 'ACTIVE_DIRECTORY' && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Card 
-                        className={`cursor-pointer transition-all ${activeTab === 'ACTIVE' ? 'bg-indigo-600 border-indigo-600 shadow-md text-white' : 'bg-indigo-50/50 border-indigo-100 hover:bg-indigo-50'}`}
+                        className={`cursor-pointer transition-all duration-200 border-2 hover:-translate-y-0.5 hover:shadow-lg ${activeTab === 'ACTIVE' ? 'bg-indigo-600 border-indigo-600 shadow-md text-white' : 'bg-white border-indigo-300 shadow-sm hover:border-indigo-400 hover:bg-indigo-50/50'}`}
                         onClick={() => setActiveTab('ACTIVE')}
                     >
                         <CardContent className="p-4">
@@ -302,7 +302,7 @@ export function TenantsContainer() {
                         </CardContent>
                     </Card>
                     <Card 
-                        className={`cursor-pointer transition-all ${activeTab === 'UPCOMING_MOVE_IN' ? 'bg-emerald-600 border-emerald-600 shadow-md text-white' : 'bg-emerald-50/50 border-emerald-100 hover:bg-emerald-50'}`}
+                        className={`cursor-pointer transition-all duration-200 border-2 hover:-translate-y-0.5 hover:shadow-lg ${activeTab === 'UPCOMING_MOVE_IN' ? 'bg-emerald-600 border-emerald-600 shadow-md text-white' : 'bg-white border-emerald-300 shadow-sm hover:border-emerald-400 hover:bg-emerald-50/50'}`}
                         onClick={() => setActiveTab('UPCOMING_MOVE_IN')}
                     >
                         <CardContent className="p-4">
@@ -314,7 +314,7 @@ export function TenantsContainer() {
                         </CardContent>
                     </Card>
                     <Card 
-                        className={`cursor-pointer transition-all ${activeTab === 'UPCOMING_VACATE' ? 'bg-amber-500 border-amber-500 shadow-md text-white' : 'bg-amber-50/50 border-amber-100 hover:bg-amber-50'}`}
+                        className={`cursor-pointer transition-all duration-200 border-2 hover:-translate-y-0.5 hover:shadow-lg ${activeTab === 'UPCOMING_VACATE' ? 'bg-amber-500 border-amber-500 shadow-md text-white' : 'bg-white border-amber-300 shadow-sm hover:border-amber-400 hover:bg-amber-50/50'}`}
                         onClick={() => setActiveTab('UPCOMING_VACATE')}
                     >
                         <CardContent className="p-4">
