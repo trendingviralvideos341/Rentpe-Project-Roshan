@@ -57,6 +57,12 @@ export async function fileVacatingNotice(data: {
         }
     });
 
+    // Sync to tenant record
+    await prisma.tenant.updateMany({
+        where: { bookingId: data.bookingId },
+        data: { expectedMoveOutDate: data.plannedMoveOut }
+    });
+
     // Notify owner â€” flag if tenant is requesting early move-out
     const earlyLeaveNote = data.tenantComment?.trim()
         ? ` âš ï¸ Tenant has also requested an early move-out: "${data.tenantComment.trim()}"`
@@ -133,6 +139,12 @@ export async function ownerFileVacatingNotice(data: {
         }
     });
 
+    // Sync to tenant record
+    await prisma.tenant.update({
+        where: { id: data.tenantId },
+        data: { expectedMoveOutDate: data.plannedMoveOut }
+    });
+
     // Notify student
     await prisma.notification.create({
         data: {
@@ -179,6 +191,12 @@ export async function withdrawVacatingNotice(noticeId: string) {
         data: { status: 'WITHDRAWN', deletedAt: new Date() }
     });
 
+    // Sync to tenant record to clear move out date
+    await prisma.tenant.updateMany({
+        where: { bookingId: notice.bookingId },
+        data: { expectedMoveOutDate: null }
+    });
+
     logAuditEvent({
         actorId: userId,
         actorRole: 'USER',
@@ -221,6 +239,13 @@ export async function acknowledgeVacatingNotice(noticeId: string, ownerNote?: st
         where: { id: noticeId },
         data: updateData
     });
+
+    if (approvedMoveOutDate) {
+        await prisma.tenant.updateMany({
+            where: { bookingId: notice.bookingId },
+            data: { expectedMoveOutDate: approvedMoveOutDate }
+        });
+    }
 
     // Notify student
     await prisma.notification.create({

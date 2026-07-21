@@ -149,8 +149,11 @@ export async function getTenantsPaginated(params: {
     // Tab Logic
     if (params.activeTab === 'ACTIVE') {
         whereClause.status = 'Active';
-    } else if (params.activeTab === 'UPCOMING') {
+    } else if (params.activeTab === 'UPCOMING_MOVE_IN') {
         whereClause.status = 'Upcoming';
+    } else if (params.activeTab === 'UPCOMING_VACATE') {
+        whereClause.status = 'Active';
+        whereClause.expectedMoveOutDate = { not: null };
     } else if (params.activeTab === 'CHECKED_OUT') {
         whereClause.status = 'Checked Out';
     }
@@ -255,13 +258,14 @@ export async function getTenantStats() {
         }
     }
 
-    const [active, upcoming, checkedOut] = await Promise.all([
+    const [active, upcoming, checkedOut, upcomingVacate] = await Promise.all([
         prisma.tenant.count({ where: { ...baseWhere, status: 'Active' } }),
         prisma.tenant.count({ where: { ...baseWhere, status: 'Upcoming' } }),
-        prisma.tenant.count({ where: { ...baseWhere, status: 'Checked Out' } })
+        prisma.tenant.count({ where: { ...baseWhere, status: 'Checked Out' } }),
+        prisma.tenant.count({ where: { ...baseWhere, status: 'Active', expectedMoveOutDate: { not: null } } })
     ]);
 
-    return { active, upcoming, checkedOut };
+    return { active, upcoming, checkedOut, upcomingVacate };
 }
 
 /**

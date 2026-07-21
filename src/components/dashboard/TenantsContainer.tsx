@@ -67,14 +67,24 @@ export function TenantsContainer() {
     const [moveOutDate, setMoveOutDate] = useState("");
     const [initiatingNoticeBusy, setInitiatingNoticeBusy] = useState(false);
 
-    const [activeTab, setActiveTab] = useState<'ACTIVE' | 'UPCOMING' | 'CHECKED_OUT'>('ACTIVE');
+    const [mainTab, setMainTab] = useState<'ACTIVE_DIRECTORY' | 'VACATED_DIRECTORY'>('ACTIVE_DIRECTORY');
+    const [activeTab, setActiveTab] = useState<'ACTIVE' | 'UPCOMING_MOVE_IN' | 'UPCOMING_VACATE' | 'CHECKED_OUT'>('ACTIVE');
     const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
     const [filterMonth, setFilterMonth] = useState((new Date().getMonth() + 1).toString());
     const [offset, setOffset] = useState(0);
     const [total, setTotal] = useState(0);
     const limit = 25;
-    const [stats, setStats] = useState({ active: 0, upcoming: 0, checkedOut: 0 });
+    const [stats, setStats] = useState({ active: 0, upcoming: 0, checkedOut: 0, upcomingVacate: 0 });
     const currentMonth = `${filterYear}-${String(filterMonth).padStart(2, '0')}`;
+
+    const handleMainTabChange = (tab: 'ACTIVE_DIRECTORY' | 'VACATED_DIRECTORY') => {
+        setMainTab(tab);
+        if (tab === 'ACTIVE_DIRECTORY') {
+            setActiveTab('ACTIVE');
+        } else {
+            setActiveTab('CHECKED_OUT');
+        }
+    };
 
     const fetchStats = async () => {
         try { setStats(await getTenantStats()); }
@@ -240,8 +250,8 @@ export function TenantsContainer() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold">Tenants</h1>
-                    <p className="text-muted-foreground">Manage active tenants and track monthly rent.</p>
+                    <h1 className="text-3xl font-bold">Tenants Directory</h1>
+                    <p className="text-muted-foreground">Manage your property residents and rent history.</p>
                 </div>
                 <div className="flex gap-2 items-center">
                     <span className="text-sm text-muted-foreground">Total: <strong>{total}</strong></span>
@@ -249,44 +259,61 @@ export function TenantsContainer() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card 
-                    className={`cursor-pointer transition-all ${activeTab === 'ACTIVE' ? 'bg-indigo-600 border-indigo-600 shadow-md text-white' : 'bg-indigo-50/50 border-indigo-100 hover:bg-indigo-50'}`}
-                    onClick={() => setActiveTab('ACTIVE')}
+            <div className="flex bg-slate-100/80 rounded-xl p-1 gap-1 border">
+                <button
+                    onClick={() => handleMainTabChange('ACTIVE_DIRECTORY')}
+                    className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${mainTab === 'ACTIVE_DIRECTORY' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-200'}`}
                 >
-                    <CardContent className="p-4">
-                        <p className={`text-xs font-bold uppercase tracking-wider ${activeTab === 'ACTIVE' ? 'text-indigo-100' : 'text-indigo-600'}`}>Total Active Tenants</p>
-                        <p className={`text-2xl font-black mt-1 ${activeTab === 'ACTIVE' ? 'text-white' : 'text-indigo-900'}`}>
-                            {stats.active}
-                        </p>
-                        <p className={`text-[10px] mt-1 ${activeTab === 'ACTIVE' ? 'text-indigo-200' : 'text-indigo-500'}`}>Currently residing in rooms</p>
-                    </CardContent>
-                </Card>
-                <Card 
-                    className={`cursor-pointer transition-all ${activeTab === 'UPCOMING' ? 'bg-emerald-600 border-emerald-600 shadow-md text-white' : 'bg-emerald-50/50 border-emerald-100 hover:bg-emerald-50'}`}
-                    onClick={() => setActiveTab('UPCOMING')}
+                    Active Tenants
+                </button>
+                <button
+                    onClick={() => handleMainTabChange('VACATED_DIRECTORY')}
+                    className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${mainTab === 'VACATED_DIRECTORY' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-600 hover:bg-slate-200'}`}
                 >
-                    <CardContent className="p-4">
-                        <p className={`text-xs font-bold uppercase tracking-wider ${activeTab === 'UPCOMING' ? 'text-emerald-100' : 'text-emerald-600'}`}>Upcoming Move-ins</p>
-                        <p className={`text-2xl font-black mt-1 ${activeTab === 'UPCOMING' ? 'text-white' : 'text-emerald-900'}`}>
-                            {stats.upcoming}
-                        </p>
-                        <p className={`text-[10px] mt-1 ${activeTab === 'UPCOMING' ? 'text-emerald-200' : 'text-emerald-500'}`}>Booked and awaiting arrival</p>
-                    </CardContent>
-                </Card>
-                <Card 
-                    className={`cursor-pointer transition-all ${activeTab === 'CHECKED_OUT' ? 'bg-slate-700 border-slate-700 shadow-md text-white' : 'bg-slate-50/50 border-slate-200 hover:bg-slate-100'}`}
-                    onClick={() => setActiveTab('CHECKED_OUT')}
-                >
-                    <CardContent className="p-4">
-                        <p className={`text-xs font-bold uppercase tracking-wider ${activeTab === 'CHECKED_OUT' ? 'text-slate-300' : 'text-slate-600'}`}>Checked Out Tenants</p>
-                        <p className={`text-2xl font-black mt-1 ${activeTab === 'CHECKED_OUT' ? 'text-white' : 'text-slate-800'}`}>
-                            {stats.checkedOut}
-                        </p>
-                        <p className={`text-[10px] mt-1 ${activeTab === 'CHECKED_OUT' ? 'text-slate-400' : 'text-slate-500'}`}>All-time departed residents</p>
-                    </CardContent>
-                </Card>
+                    Vacated Tenants
+                </button>
             </div>
+
+            {mainTab === 'ACTIVE_DIRECTORY' && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card 
+                        className={`cursor-pointer transition-all ${activeTab === 'ACTIVE' ? 'bg-indigo-600 border-indigo-600 shadow-md text-white' : 'bg-indigo-50/50 border-indigo-100 hover:bg-indigo-50'}`}
+                        onClick={() => setActiveTab('ACTIVE')}
+                    >
+                        <CardContent className="p-4">
+                            <p className={`text-xs font-bold uppercase tracking-wider ${activeTab === 'ACTIVE' ? 'text-indigo-100' : 'text-indigo-600'}`}>Active Tenants</p>
+                            <p className={`text-2xl font-black mt-1 ${activeTab === 'ACTIVE' ? 'text-white' : 'text-indigo-900'}`}>
+                                {stats.active}
+                            </p>
+                            <p className={`text-[10px] mt-1 ${activeTab === 'ACTIVE' ? 'text-indigo-200' : 'text-indigo-500'}`}>Currently residing</p>
+                        </CardContent>
+                    </Card>
+                    <Card 
+                        className={`cursor-pointer transition-all ${activeTab === 'UPCOMING_MOVE_IN' ? 'bg-emerald-600 border-emerald-600 shadow-md text-white' : 'bg-emerald-50/50 border-emerald-100 hover:bg-emerald-50'}`}
+                        onClick={() => setActiveTab('UPCOMING_MOVE_IN')}
+                    >
+                        <CardContent className="p-4">
+                            <p className={`text-xs font-bold uppercase tracking-wider ${activeTab === 'UPCOMING_MOVE_IN' ? 'text-emerald-100' : 'text-emerald-600'}`}>Upcoming Move In</p>
+                            <p className={`text-2xl font-black mt-1 ${activeTab === 'UPCOMING_MOVE_IN' ? 'text-white' : 'text-emerald-900'}`}>
+                                {stats.upcoming}
+                            </p>
+                            <p className={`text-[10px] mt-1 ${activeTab === 'UPCOMING_MOVE_IN' ? 'text-emerald-200' : 'text-emerald-500'}`}>All upcoming move-ins</p>
+                        </CardContent>
+                    </Card>
+                    <Card 
+                        className={`cursor-pointer transition-all ${activeTab === 'UPCOMING_VACATE' ? 'bg-amber-500 border-amber-500 shadow-md text-white' : 'bg-amber-50/50 border-amber-100 hover:bg-amber-50'}`}
+                        onClick={() => setActiveTab('UPCOMING_VACATE')}
+                    >
+                        <CardContent className="p-4">
+                            <p className={`text-xs font-bold uppercase tracking-wider ${activeTab === 'UPCOMING_VACATE' ? 'text-amber-100' : 'text-amber-600'}`}>Upcoming Vacate</p>
+                            <p className={`text-2xl font-black mt-1 ${activeTab === 'UPCOMING_VACATE' ? 'text-white' : 'text-amber-900'}`}>
+                                {stats.upcomingVacate || 0}
+                            </p>
+                            <p className={`text-[10px] mt-1 ${activeTab === 'UPCOMING_VACATE' ? 'text-amber-100' : 'text-amber-500'}`}>All upcoming vacates</p>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
             <Card>
                 <CardContent className="p-4">
                     <div className="flex flex-wrap gap-4 items-center">
