@@ -410,7 +410,10 @@ export function TenantsContainer() {
                             <div className="text-xs text-slate-600 space-y-1">
                                 <p>🛏 {t.roomNumber} ({t.roomType})</p>
                                 <p>💰 ₹{t.rentAmount}/month</p>
-                                <p>📅 Move-in: {t.moveInDate}</p>
+                                <p>📅 Move-in: {formatToDDMonthYYYY(t.startDate || t.moveInDate)}</p>
+                                {activeTab === 'CHECKED_OUT' && <p>🏠 Vacated: {formatToDDMonthYYYY(t.actualMoveOutDate || t.expectedMoveOutDate)}</p>}
+                                {activeTab === 'UPCOMING_MOVE_IN' && <p>📅 Upcoming Move-in: {formatToDDMonthYYYY(t.startDate || t.moveInDate)}</p>}
+                                {activeTab === 'UPCOMING_VACATE' && <p>👋 Vacating: {formatToDDMonthYYYY(t.expectedMoveOutDate)}</p>}
                                 {/* Permanent ID badges — industry standard for ops transparency */}
                                 <div className="flex flex-wrap gap-1.5 pt-1">
                                     <span className="inline-flex items-center gap-1 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[9px] font-black px-2 py-0.5 rounded-full font-mono">
