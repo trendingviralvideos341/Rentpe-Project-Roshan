@@ -47,7 +47,7 @@ function formatToDDMonthYYYY(dateStr: string | null | undefined): string {
     const d = new Date(dateStr);
     if (!isNaN(d.getTime())) {
         const dd = String(d.getDate()).padStart(2, '0');
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         const month = monthNames[d.getMonth()];
         const yyyy = d.getFullYear();
         return `${dd} ${month} ${yyyy}`;
