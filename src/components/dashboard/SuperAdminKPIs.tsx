@@ -21,6 +21,9 @@ import {
     PieChart, Pie, Cell, Legend, LineChart, Line
 } from "recharts";
 import { formatDistanceToNow } from "date-fns";
+import PeriodSelector from "@/components/ui/PeriodSelector";
+import { PeriodFilter } from "@/types/date";
+import { getFYLabel } from "@/lib/date";
 
 interface SuperAdminKPIsProps {
     snapshot: any;
@@ -29,6 +32,8 @@ interface SuperAdminKPIsProps {
     conversionAnalytics: any;
     onboardedProperties?: any[];
     recentActivity?: any[];
+    periodFilter: PeriodFilter;
+    onPeriodChange: (filter: PeriodFilter) => void;
 }
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
@@ -87,7 +92,16 @@ function ChartEmptyState({ icon: Icon, title, subtitle }: { icon: React.ElementT
     );
 }
 
-export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversionAnalytics, onboardedProperties = [], recentActivity = [] }: SuperAdminKPIsProps) {
+export function SuperAdminKPIs({
+    snapshot,
+    revenueTrends,
+    userGrowth,
+    conversionAnalytics,
+    onboardedProperties = [],
+    recentActivity = [],
+    periodFilter,
+    onPeriodChange
+}: SuperAdminKPIsProps) {
     const safe = (val: any, fallback: any = 0) => val ?? fallback;
     const safeDiv = (a: any, b: any) => b ? Math.round((safe(a) / safe(b, 1)) * 100) : 0;
 
@@ -136,11 +150,9 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                     </CardHeader>
                     <CardContent className="relative z-10">
                         <div className="text-4xl font-black tracking-tight">₹{safe(snapshot.revenue?.platformEarned).toLocaleString('en-IN')}</div>
-                        <div className="flex items-center gap-1.5 mt-3">
-                            <div className="flex items-center gap-1 px-2 py-0.5 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-black text-white border border-white/20">
-                                <ArrowUpRight className="h-3 w-3" /> Total Earned
-                            </div>
-                        </div>
+                        <p className="text-[10px] mt-3 flex items-center gap-1 text-white/90 font-bold leading-tight">
+                            <TrendingUp className="h-3 w-3 shrink-0" /> Data Showing for {getFYLabel(parseInt(periodFilter?.financialYear || "2026"))} (April to March)
+                        </p>
                     </CardContent>
                 </Card>
 
@@ -201,12 +213,18 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                 {/* Revenue & Growth Chart */}
                 <Card className="lg:col-span-2 border-none shadow-xl bg-white">
                     <CardHeader className="border-b bg-slate-50/50 p-6">
-                        <div className="flex justify-between items-center">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div>
                                 <CardTitle className="text-lg font-black text-slate-800">Revenue Performance</CardTitle>
                                 <CardDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest">Platform Earned vs Gross Volume</CardDescription>
                             </div>
-                            <BarChart3 className="h-5 w-5 text-indigo-500" />
+                            {periodFilter && onPeriodChange && (
+                                <PeriodSelector
+                                    value={periodFilter}
+                                    onChange={onPeriodChange}
+                                    showLabels={false}
+                                />
+                            )}
                         </div>
                     </CardHeader>
                     <CardContent className="p-6">

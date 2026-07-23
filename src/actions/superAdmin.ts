@@ -16,6 +16,7 @@ import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/actions/rbac";
 import { logAuditEvent } from "@/lib/audit";
 import { TENANT_STATUS } from "@/lib/constants/statuses";
+import { getISTDate, getFYDateRange, getCurrentFY } from "@/lib/date";
 
 async function isSuperAdmin() {
     const session = await getSession();
@@ -28,8 +29,14 @@ async function isSuperAdmin() {
 // ─────────────────────────────────────────────────────────────────────────────
 //  PLATFORM BUSINESS DASHBOARD — All high-level KPIs in one call
 // ─────────────────────────────────────────────────────────────────────────────
-export async function getSuperAdminBusinessSnapshot() {
+export async function getSuperAdminBusinessSnapshot(fyYearStr?: string) {
     const adminId = await isSuperAdmin();
+
+    const parsedYear = parseInt(fyYearStr || "");
+    const now = getISTDate(new Date());
+    const currentFY = getCurrentFY(now);
+    const fyYear = isNaN(parsedYear) || parsedYear > currentFY ? currentFY : parsedYear;
+    const fyRange = getFYDateRange(fyYear, 'all');
 
     const [
         totalStudents, totalOwners, totalAdmins,
@@ -67,7 +74,10 @@ export async function getSuperAdminBusinessSnapshot() {
         (prisma as any).ticket.count(),
         (prisma as any).attendance.count({ where: { date: new Date().toISOString().split('T')[0] } }),
         prisma.platformSettings.findUnique({ where: { id: 'singleton' } }),
-        (prisma as any).platformFee.aggregate({ _sum: { platformEarned: true } }),
+        (prisma as any).platformFee.aggregate({
+            _sum: { platformEarned: true },
+            where: { createdAt: { gte: fyRange.gte, lt: fyRange.lt } }
+        }),
         prisma.user.findUnique({ 
             where: { id: adminId },
             select: { id: true, name: true, email: true, role: true, adminRole: true, phone: true, createdAt: true, displayId: true }
@@ -205,45 +215,80 @@ export async function getOnboardedProperties() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  PLATFORM REVENUE TRENDS — Monthly breakdown
-// ─────────────────────────────────────────────────────────────────────────────
-export async function getPlatformRevenueTrends(months: number = 12) {
+export async function getPlatformRevenueTrends(yearStr?: string, monthStr?: string) {
     await isSuperAdmin();
 
-    const cutoff = new Date();
-    cutoff.setMonth(cutoff.getMonth() - months);
+    const now = getISTDate(new Date());
+    const currentFY = getCurrentFY(now);
+    const parsedYear = parseInt(yearStr || "");
+    const year = isNaN(parsedYear) || parsedYear > currentFY ? currentFY : parsedYear;
+
+    let startDate: Date;
+    let endDate: Date;
+    let isWeekly = false;
+
+    if (monthStr && monthStr !== 'all') {
+        const parsedMonth = parseInt(monthStr, 10);
+        if (isNaN(parsedMonth) || parsedMonth < 1 || parsedMonth > 12) {
+            throw new Error("Invalid month parameter");
+        }
+        const queryYear = parsedMonth < 4 ? year + 1 : year;
+        startDate = new Date(Date.UTC(queryYear, parsedMonth - 2, new Date(queryYear, parsedMonth - 1, 0).getDate(), 18, 30, 0, 0));
+        endDate = new Date(Date.UTC(queryYear, parsedMonth - 1, new Date(queryYear, parsedMonth, 0).getDate(), 18, 29, 59, 999));
+        isWeekly = true;
+    } else {
+        startDate = new Date(Date.UTC(year, 2, 31, 18, 30, 0, 0));
+        endDate = new Date(Date.UTC(year + 1, 2, 31, 18, 29, 59, 999));
+    }
 
     const fees = await (prisma as any).platformFee.findMany({
-        where: { createdAt: { gte: cutoff } },
-        include: { booking: { select: { createdAt: true, amount: true } } },
+        where: { createdAt: { gte: startDate, lte: endDate } },
         orderBy: { createdAt: 'asc' }
     });
 
-    const monthlyMap: Record<string, { month: string; platformEarned: number; grossVolume: number; transactions: number }> = {};
-
-    for (const f of fees) {
-        const d = new Date(f.createdAt);
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        const label = d.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
-        if (!monthlyMap[key]) monthlyMap[key] = { month: label, platformEarned: 0, grossVolume: 0, transactions: 0 };
-        monthlyMap[key].platformEarned += f.platformEarned;
-        monthlyMap[key].grossVolume += f.grossAmount;
-        monthlyMap[key].transactions++;
+    if (isWeekly) {
+        let w1Earned = 0, w2Earned = 0, w3Earned = 0, w4Earned = 0;
+        let w1Gross = 0, w2Gross = 0, w3Gross = 0, w4Gross = 0;
+        let w1Count = 0, w2Count = 0, w3Count = 0, w4Count = 0;
+        for (const f of fees) {
+            const day = getISTDate(new Date(f.createdAt)).getDate();
+            const earned = Number(f.platformEarned || 0);
+            const gross = Number(f.grossAmount || 0);
+            if (day <= 7) { w1Earned += earned; w1Gross += gross; w1Count++; }
+            else if (day <= 14) { w2Earned += earned; w2Gross += gross; w2Count++; }
+            else if (day <= 21) { w3Earned += earned; w3Gross += gross; w3Count++; }
+            else { w4Earned += earned; w4Gross += gross; w4Count++; }
+        }
+        const weekly = [
+            { month: 'Week 1 (1-7)', platformEarned: Math.round(w1Earned * 100) / 100, grossVolume: Math.round(w1Gross * 100) / 100, transactions: w1Count },
+            { month: 'Week 2 (8-14)', platformEarned: Math.round(w2Earned * 100) / 100, grossVolume: Math.round(w2Gross * 100) / 100, transactions: w2Count },
+            { month: 'Week 3 (15-21)', platformEarned: Math.round(w3Earned * 100) / 100, grossVolume: Math.round(w3Gross * 100) / 100, transactions: w3Count },
+            { month: 'Week 4 (22+)', platformEarned: Math.round(w4Earned * 100) / 100, grossVolume: Math.round(w4Gross * 100) / 100, transactions: w4Count },
+        ];
+        return { monthly: weekly, total: weekly.reduce((s, m) => s + m.platformEarned, 0) };
+    } else {
+        const monthMap: Record<string, { month: string; platformEarned: number; grossVolume: number; transactions: number }> = {};
+        for (let i = 0; i < 12; i++) {
+            const d = new Date(year, 3 + i, 1);
+            const mName = d.toLocaleString('en-IN', { month: 'short', timeZone: 'Asia/Kolkata' });
+            monthMap[mName] = { month: mName, platformEarned: 0, grossVolume: 0, transactions: 0 };
+        }
+        for (const f of fees) {
+            const d = getISTDate(new Date(f.createdAt));
+            const mName = d.toLocaleString('en-IN', { month: 'short', timeZone: 'Asia/Kolkata' });
+            if (monthMap[mName]) {
+                monthMap[mName].platformEarned += Number(f.platformEarned || 0);
+                monthMap[mName].grossVolume += Number(f.grossAmount || 0);
+                monthMap[mName].transactions++;
+            }
+        }
+        const monthly = Object.keys(monthMap).map(k => ({
+            ...monthMap[k],
+            platformEarned: Math.round(monthMap[k].platformEarned * 100) / 100,
+            grossVolume: Math.round(monthMap[k].grossVolume * 100) / 100
+        }));
+        return { monthly, total: monthly.reduce((s, m) => s + m.platformEarned, 0) };
     }
-
-    const monthly = Object.entries(monthlyMap)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([, v]) => ({ ...v, platformEarned: Math.round(v.platformEarned * 100) / 100, grossVolume: Math.round(v.grossVolume * 100) / 100 }));
-
-    // MoM growth
-    const withGrowth = monthly.map((m, i) => ({
-        ...m,
-        momGrowth: i > 0 && monthly[i - 1].platformEarned > 0
-            ? Math.round(((m.platformEarned - monthly[i - 1].platformEarned) / monthly[i - 1].platformEarned) * 100)
-            : 0
-    }));
-
-    return { monthly: withGrowth, total: monthly.reduce((s, m) => s + m.platformEarned, 0) };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -511,7 +556,7 @@ export async function generateMasterBusinessReport() {
 
     const [snapshot, revenueTrends, userGrowth, bookingAnalytics, cancellationReport, healthReport] = await Promise.all([
         getSuperAdminBusinessSnapshot(),
-        getPlatformRevenueTrends(12),
+        getPlatformRevenueTrends(),
         getUserGrowthAnalytics(12),
         getBookingConversionAnalytics(6),
         getPlatformCancellationReport(6),

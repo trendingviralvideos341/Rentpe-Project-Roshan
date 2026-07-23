@@ -27,6 +27,9 @@ import {
 import { AdminPropertyDashboardView } from "@/components/dashboard/AdminPropertyDashboardView";
 import { SuperAdminKPIs } from "@/components/dashboard/SuperAdminKPIs";
 import { formatDistanceToNow } from "date-fns";
+import { parsePeriodSearchParams, serializePeriodFilter } from "@/lib/router/periodSearchParams";
+import { PeriodFilter } from "@/types/date";
+import { getCurrentFYMonthString } from "@/lib/date";
 
 export default function AdminDashboard() {
     const [snapshot, setSnapshot] = useState<any>(null);
@@ -40,6 +43,11 @@ export default function AdminDashboard() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const activeTab = searchParams.get("tab") || "overview";
+
+    const periodFilter = parsePeriodSearchParams(searchParams, new Date(), { defaultMonth: getCurrentFYMonthString() });
+    const selectedYear = periodFilter.financialYear;
+    const selectedMonth = periodFilter.month;
+
     const [flaggedReviews, setFlaggedReviews] = useState<any[]>([]);
     const [reviewsLoading, setReviewsLoading] = useState(false);
     const [securityLogs, setSecurityLogs] = useState<any[]>([]);
@@ -47,10 +55,12 @@ export default function AdminDashboard() {
     const [ownersWithProperties, setOwnersWithProperties] = useState<any[]>([]);
     const [ownersLoading, setOwnersLoading] = useState(false);
 
-    const fetchStats = useCallback(async () => {
+    const fetchStats = useCallback(async (yearToFetch?: string, monthToFetch?: string) => {
         setLoading(true);
         setError(false);
         try {
+            const year = yearToFetch || selectedYear;
+            const month = monthToFetch || selectedMonth;
             // First try getAdminStats (accessible to all admins)
             const basicStats = await getAdminStats();
             
@@ -62,8 +72,8 @@ export default function AdminDashboard() {
 
             try {
                 [snap, rev, growth, conv] = await Promise.all([
-                    getSuperAdminBusinessSnapshot(),
-                    getPlatformRevenueTrends(6),
+                    getSuperAdminBusinessSnapshot(year),
+                    getPlatformRevenueTrends(year, month),
                     getUserGrowthAnalytics(6),
                     getBookingConversionAnalytics(6)
                 ]);
@@ -94,11 +104,18 @@ export default function AdminDashboard() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [selectedYear, selectedMonth]);
 
     useEffect(() => {
-        fetchStats();
-    }, [fetchStats]);
+        fetchStats(selectedYear, selectedMonth);
+    }, [selectedYear, selectedMonth, fetchStats]);
+
+    const handlePeriodChange = (newFilter: PeriodFilter) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (newFilter.financialYear) params.set('fy', newFilter.financialYear);
+        if (newFilter.month) params.set('month', newFilter.month);
+        router.push(`?${params.toString()}`);
+    };
 
     const handleTabChange = (value: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -176,7 +193,7 @@ export default function AdminDashboard() {
     if (error || !snapshot) return (
         <div className="p-8 text-center text-red-500">
             <p>Failed to load platform statistics. Please ensure you are logged in as a Super Admin.</p>
-            <Button variant="outline" className="mt-4" onClick={fetchStats}>Retry</Button>
+            <Button variant="outline" className="mt-4" onClick={() => fetchStats(selectedYear, selectedMonth)}>Retry</Button>
         </div>
     );
 
@@ -218,7 +235,7 @@ export default function AdminDashboard() {
                     </p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={fetchStats}>
+                    <Button variant="outline" onClick={() => fetchStats(selectedYear, selectedMonth)}>
                         <RefreshCcw className="h-4 w-4 mr-2" /> Refresh
                     </Button>
                 </div>
@@ -263,6 +280,8 @@ export default function AdminDashboard() {
                         conversionAnalytics={conversion}
                         onboardedProperties={onboardedProperties}
                         recentActivity={recentActivity}
+                        periodFilter={periodFilter}
+                        onPeriodChange={handlePeriodChange}
                     />
                 </TabsContent>
 
