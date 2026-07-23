@@ -141,7 +141,7 @@ export function SuperAdminKPIs({
     return (
         <div className="space-y-8 pb-12">
             {/* ── Strategic KPI Top Row ── */}
-            <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 transition-opacity duration-300 ${isRefetching ? 'opacity-65' : 'opacity-100'}`}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <Card className="border-none shadow-xl bg-gradient-to-br from-violet-600 to-violet-800 text-white relative overflow-hidden group hover:scale-[1.02] transition-all duration-500">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-white/20 transition-all"></div>
                     <CardHeader className="pb-2 relative z-10">
@@ -213,7 +213,7 @@ export function SuperAdminKPIs({
             {/* ── Visual Analytics Row 1: Revenue + Inventory ── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Revenue & Growth Chart */}
-                <Card className={`lg:col-span-2 border-none shadow-xl bg-white transition-opacity duration-300 ${isRefetching ? 'opacity-65' : 'opacity-100'}`}>
+                <Card className="lg:col-span-2 border-none shadow-xl bg-white">
                     <CardHeader className="border-b bg-slate-50/50 p-6">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div>

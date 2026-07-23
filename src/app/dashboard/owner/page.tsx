@@ -231,7 +231,7 @@ export default function OwnerDashboard() {
 
                 <TabsContent value="overview" className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     {/* ── KPI Cards ── */}
-                    <div className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 transition-opacity duration-300 ${isRefetching ? 'opacity-65' : 'opacity-100'}`}>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                         <Card className="xl:col-span-1 bg-gradient-to-br from-violet-600 to-violet-800 border-l-4 border-l-violet-300 text-white">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-xs font-black uppercase tracking-widest text-white/70">Total Revenue</CardTitle>
