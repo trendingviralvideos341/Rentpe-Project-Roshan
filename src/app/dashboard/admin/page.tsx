@@ -39,6 +39,7 @@ export default function AdminDashboard() {
     const [onboardedProperties, setOnboardedProperties] = useState<any[]>([]);
     const [recentActivity, setRecentActivity] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isRefetching, setIsRefetching] = useState(false);
     const [error, setError] = useState(false);
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -56,7 +57,11 @@ export default function AdminDashboard() {
     const [ownersLoading, setOwnersLoading] = useState(false);
 
     const fetchStats = useCallback(async (yearToFetch?: string, monthToFetch?: string) => {
-        setLoading(true);
+        if (!snapshot) {
+            setLoading(true);
+        } else {
+            setIsRefetching(true);
+        }
         setError(false);
         try {
             const year = yearToFetch || selectedYear;
@@ -103,8 +108,9 @@ export default function AdminDashboard() {
             setError(true);
         } finally {
             setLoading(false);
+            setIsRefetching(false);
         }
-    }, [selectedYear, selectedMonth]);
+    }, [selectedYear, selectedMonth, snapshot]);
 
     useEffect(() => {
         fetchStats(selectedYear, selectedMonth);
@@ -282,6 +288,7 @@ export default function AdminDashboard() {
                         recentActivity={recentActivity}
                         periodFilter={periodFilter}
                         onPeriodChange={handlePeriodChange}
+                        isRefetching={isRefetching}
                     />
                 </TabsContent>
 
