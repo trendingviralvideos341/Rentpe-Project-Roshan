@@ -25,6 +25,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import PeriodSelector from '@/components/ui/PeriodSelector';
 import { parsePeriodSearchParams, serializePeriodFilter } from '@/lib/router/periodSearchParams';
 import type { PeriodFilter } from '@/types/date';
+import { getCurrentFYMonthString, getFYLabel } from '@/lib/date';
 
 const COLORS = ['#8b5cf6', '#e2e8f0'];
 const PIE_COLORS = ['#6366f1', '#e2e8f0', '#f59e0b'];
@@ -53,7 +54,7 @@ export default function OwnerDashboard() {
     const [chartLoading, setChartLoading] = useState(false);
 
     const [periodFilter, setPeriodFilter] = useState<PeriodFilter>(
-        () => parsePeriodSearchParams(new URLSearchParams(searchParams?.toString() ?? ''))
+        () => parsePeriodSearchParams(new URLSearchParams(searchParams?.toString() ?? ''), new Date(), { defaultMonth: getCurrentFYMonthString() })
     );
 
     const handlePeriodChange = (filter: PeriodFilter) => {
@@ -62,7 +63,7 @@ export default function OwnerDashboard() {
     };
 
     const selectedYear = periodFilter.financialYear ?? String(new Date().getFullYear());
-    const selectedMonth = periodFilter.month ?? 'all';
+    const selectedMonth = periodFilter.month ?? getCurrentFYMonthString();
 
     const fetchChart = useCallback(async (year: string, month: string) => {
         setChartLoading(true);
@@ -82,12 +83,12 @@ export default function OwnerDashboard() {
         }
     }, [stats, selectedYear, selectedMonth, fetchChart]);
 
-    const fetchStats = useCallback(async () => {
+    const fetchStats = useCallback(async (yearToFetch?: string) => {
         setLoading(true);
         setError(false);
         try {
             const [statsData, inventoryData, staffData, notifs, count] = await Promise.all([
-                getOwnerDashboardStats(),
+                getOwnerDashboardStats(yearToFetch),
                 getOwnerInventory(),
                 getOwnerStaff().catch(() => []),
                 getNotifications('OWNER').catch(() => []),
@@ -112,8 +113,8 @@ export default function OwnerDashboard() {
     }, []);
 
     useEffect(() => {
-        fetchStats();
-    }, [fetchStats]);
+        fetchStats(selectedYear);
+    }, [fetchStats, selectedYear]);
 
     const handleMarkRead = async (id: string) => {
         try {
@@ -168,7 +169,7 @@ export default function OwnerDashboard() {
                 <Button 
                     variant="outline" 
                     className="border-slate-200 text-slate-600 font-bold px-8 h-12 rounded-2xl"
-                    onClick={fetchStats}
+                    onClick={() => fetchStats(selectedYear)}
                 >
                     Retry Connection
                 </Button>
@@ -184,7 +185,7 @@ export default function OwnerDashboard() {
                     <p className="text-muted-foreground">Welcome back, here&apos;s what&apos;s happening today.</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={fetchStats}>
+                    <Button variant="outline" size="sm" onClick={() => fetchStats(selectedYear)}>
                         <RefreshCcw className="h-4 w-4 mr-2" /> Refresh
                     </Button>
                 </div>
@@ -234,7 +235,7 @@ export default function OwnerDashboard() {
                             <CardContent>
                                 <div className="text-2xl font-black text-white">₹{(stats.totalRevenue ?? 0).toLocaleString('en-IN')}</div>
                                 <p className="text-[10px] mt-1 flex items-center gap-1 text-white/90 font-bold leading-tight">
-                                    <TrendingUp className="h-3 w-3" /> Data Showing for financial year April To March
+                                    <TrendingUp className="h-3 w-3 shrink-0" /> Data Showing for {getFYLabel(parseInt(selectedYear))} (April to March)
                                 </p>
                             </CardContent>
                         </Card>
@@ -249,8 +250,8 @@ export default function OwnerDashboard() {
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-black text-white">₹{(stats.totalDepositsHeld ?? 0).toLocaleString('en-IN')}</div>
-                                <p className="text-xs mt-1 text-white/70 font-bold flex items-center gap-1">
-                                    <Shield className="h-3 w-3" /> Refundable liability
+                                <p className="text-xs mt-1 text-white/90 font-bold flex items-center gap-1">
+                                    <Shield className="h-3 w-3 shrink-0" /> Refundable liability for {getFYLabel(parseInt(selectedYear))}
                                 </p>
                             </CardContent>
                         </Card>

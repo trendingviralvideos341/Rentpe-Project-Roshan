@@ -1,4 +1,4 @@
-import { getCurrentFY } from '@/lib/date';
+import { getCurrentFY, getCurrentFYMonthString } from '@/lib/date';
 import { PeriodFilter } from '@/types/date';
 
 const CURRENT_VERSION = '1';
@@ -12,25 +12,26 @@ const VALID_QUARTERS = new Set(['Q1', 'Q2', 'Q3', 'Q4', 'all', 'ALL']);
 
 /**
  * Validates and sanitizes a Financial Year value from URL params.
- * Accepts a 4-digit year string (e.g., "2026"). Falls back to current FY.
+ * Accepts a 4-digit year string (e.g., "2026"). Capped at current FY.
  */
 function sanitizeFY(raw: string | null, today: Date): string {
-    if (!raw) return String(getCurrentFY(today));
+    const current = getCurrentFY(today);
+    if (!raw) return String(current);
     const parsed = parseInt(raw, 10);
-    if (isNaN(parsed) || parsed < 2020 || parsed > 2100) {
-        return String(getCurrentFY(today));
+    if (isNaN(parsed) || parsed < 2020 || parsed > current) {
+        return String(current);
     }
     return String(parsed);
 }
 
 /**
  * Validates and sanitizes a Month value from URL params.
- * Accepts "01" to "12", "all", or "ALL". Falls back to "all".
+ * Accepts "01" to "12", "all", or "ALL". Falls back to defaultMonth or "all".
  */
-function sanitizeMonth(raw: string | null): string {
-    if (!raw) return 'all';
+function sanitizeMonth(raw: string | null, defaultMonth: string = 'all'): string {
+    if (!raw) return defaultMonth;
     const padded = raw.padStart(2, '0');
-    if (!VALID_MONTHS.has(padded) && !VALID_MONTHS.has(raw)) return 'all';
+    if (!VALID_MONTHS.has(padded) && !VALID_MONTHS.has(raw)) return defaultMonth;
     return padded === raw ? raw : padded;
 }
 
@@ -49,15 +50,17 @@ function sanitizeQuarter(raw: string | null): string {
  */
 export function parsePeriodSearchParams(
     searchParams: URLSearchParams,
-    today: Date = new Date()
+    today: Date = new Date(),
+    options?: { defaultMonth?: string }
 ): PeriodFilter {
+    const fallbackMonth = options?.defaultMonth ?? 'all';
     // If version doesn't match, return defaults (forward-compatible fallback)
     const version = searchParams.get('v');
     if (version && version !== CURRENT_VERSION) {
         return {
             mode: 'financialYear',
             financialYear: String(getCurrentFY(today)),
-            month: 'all',
+            month: fallbackMonth,
             quarter: 'all'
         };
     }
@@ -65,7 +68,7 @@ export function parsePeriodSearchParams(
     return {
         mode: 'financialYear',
         financialYear: sanitizeFY(searchParams.get('fy'), today),
-        month: sanitizeMonth(searchParams.get('month')),
+        month: sanitizeMonth(searchParams.get('month'), fallbackMonth),
         quarter: sanitizeQuarter(searchParams.get('quarter'))
     };
 }

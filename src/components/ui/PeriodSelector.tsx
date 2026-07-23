@@ -33,7 +33,7 @@ const PeriodSelector: React.FC<PeriodSelectorProps> = ({
     theme = 'light'
 }) => {
     const currentFY = getCurrentFY(today);
-    const effectiveToFY = toFY ?? (currentFY + 1);
+    const effectiveToFY = toFY ?? currentFY;
 
     // Memoized FY options list — only recalculates when fromFY or toFY changes
     const fyOptions = useMemo(() => getFYOptions(fromFY, effectiveToFY), [fromFY, effectiveToFY]);

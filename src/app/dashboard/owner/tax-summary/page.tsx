@@ -21,19 +21,19 @@ function buildFYOptions() {
     const fyStart = now.getMonth() >= 3 ? thisYear : thisYear - 1; // If Jan-Mar, FY started last year
     return [
         {
-            label: `FY ${fyStart - 1}\u201326`,
-            from: new Date(Date.UTC(fyStart - 1, 2, 31, 18, 30, 0, 0)),      // Apr 1 IST
-            to:   new Date(Date.UTC(fyStart, 2, 31, 18, 29, 59, 999)),        // Mar 31 23:59 IST
+            label: `FY ${fyStart - 2}\u2013${String(fyStart - 1).slice(-2)}`,
+            from: new Date(Date.UTC(fyStart - 2, 2, 31, 18, 30, 0, 0)),
+            to:   new Date(Date.UTC(fyStart - 1, 2, 31, 18, 29, 59, 999)),
+        },
+        {
+            label: `FY ${fyStart - 1}\u2013${String(fyStart).slice(-2)}`,
+            from: new Date(Date.UTC(fyStart - 1, 2, 31, 18, 30, 0, 0)),
+            to:   new Date(Date.UTC(fyStart, 2, 31, 18, 29, 59, 999)),
         },
         {
             label: `FY ${fyStart}\u2013${String(fyStart + 1).slice(-2)}`,
             from: new Date(Date.UTC(fyStart, 2, 31, 18, 30, 0, 0)),
             to:   new Date(Date.UTC(fyStart + 1, 2, 31, 18, 29, 59, 999)),
-        },
-        {
-            label: `FY ${fyStart + 1}\u2013${String(fyStart + 2).slice(-2)}`,
-            from: new Date(Date.UTC(fyStart + 1, 2, 31, 18, 30, 0, 0)),
-            to:   new Date(Date.UTC(fyStart + 2, 2, 31, 18, 29, 59, 999)),
         },
     ];
 }

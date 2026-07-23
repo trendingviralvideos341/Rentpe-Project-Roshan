@@ -3,11 +3,11 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { runOnDemandExpiry } from "@/actions/expiry";
-import { getISTDate } from "@/lib/date";
+import { getISTDate, getFYDateRange, getCurrentFY } from "@/lib/date";
 import { TENANT_STATUS } from "@/lib/constants/statuses";
 
 
-export async function getOwnerDashboardStats() {
+export async function getOwnerDashboardStats(fyYearStr?: string) {
     // Opportunistically expire stale bookings on every dashboard load.
     // Wrapped in its own try/catch inside runOnDemandExpiry — never throws.
     await runOnDemandExpiry();
@@ -19,6 +19,13 @@ export async function getOwnerDashboardStats() {
         }
 
         const userId = session.userId;
+
+        // Calculate FY range for full financial year query
+        const parsedYear = parseInt(fyYearStr || "");
+        const now = getISTDate(new Date());
+        const currentFY = getCurrentFY(now);
+        const fyYear = isNaN(parsedYear) || parsedYear > currentFY ? currentFY : parsedYear;
+        const fyRange = getFYDateRange(fyYear, 'all');
 
         // ── Get all property IDs for this owner (needed for SecurityDeposit query) ──
         const ownerProperties = await prisma.property.findMany({
@@ -59,21 +66,14 @@ export async function getOwnerDashboardStats() {
                     status: 'PENDING_APPROVAL'
                 }
             }),
-            // Revenue from confirmed bookings — rent ONLY (excludes deposits) — current Financial Year (April to March)
-            // Note: booking.amount = monthly rent; booking.depositAmount = security deposit (separate field)
-            // Per CA/GST standards, security deposits are liabilities — NOT revenue
+            // Revenue from confirmed bookings — rent ONLY (excludes deposits) — selected Financial Year (April to March)
             prisma.booking.findMany({
                 where: {
                     property: { ownerId: userId },
                     status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID', 'COMPLETED'] },
                     createdAt: { 
-                        gte: (() => {
-                            // IST-aware FY detection — safe even in the 5.5hr April 1 UTC crossover
-                            const now = getISTDate(new Date());
-                            const startYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
-                            // April 1st 00:00:00 IST = March 31st 18:30:00 UTC
-                            return new Date(Date.UTC(startYear, 2, 31, 18, 30, 0, 0));
-                        })()
+                        gte: fyRange.gte,
+                        lt: fyRange.lt
                     }
                 },
                 select: { createdAt: true, amount: true, depositAmount: true }
@@ -83,16 +83,13 @@ export async function getOwnerDashboardStats() {
                 where: { property: { ownerId: userId, status: { in: ['LIVE', 'APPROVED'] } } },
                 _sum: { totalBeds: true }
             }),
-            // Security Deposits Held — refundable liability, NOT revenue
-            // Fetch ALL paid deposits; subtract any refundAmount already returned to tenant.
-            // Net held = amount - (refundAmount already processed). This is the true liability.
-            // Per Indian CA / GST standards: deposits are Balance Sheet liabilities, never P&L.
+            // Security Deposits Held for the selected Financial Year — refundable liability, NOT revenue
             ownerPropertyIds.length > 0
                 ? (prisma as any).securityDeposit.findMany({
                     where: {
                         billingProfile: { propertyId: { in: ownerPropertyIds } },
-                        status: 'PAID',           // collected from tenant
-                        // Include all — full/partial refunds handled in JS below
+                        status: 'PAID',
+                        createdAt: { gte: fyRange.gte, lt: fyRange.lt }
                     },
                     select: { amount: true, refundAmount: true, refundStatus: true }
                   })

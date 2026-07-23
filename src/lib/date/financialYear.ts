@@ -15,6 +15,16 @@ export function getCurrentFY(today: Date = new Date()): number {
 }
 
 /**
+ * Returns today's 2-digit month string in IST (e.g. "07" for July).
+ */
+export function getCurrentFYMonthString(today: Date = new Date()): string {
+    const istDate = getISTDate(today);
+    const monthNum = istDate.getMonth() + 1; // 1-indexed (1 to 12)
+    return String(monthNum).padStart(2, '0');
+}
+
+
+/**
  * Generates the list of 12 months for a financial year, starting with April and ending with March.
  * Value format is standardized to "01" to "12".
  */
