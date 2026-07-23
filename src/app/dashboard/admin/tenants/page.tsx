@@ -29,6 +29,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { TENANT_STATUS } from "@/lib/constants/statuses";
 
 function formatToDDMMYYYY(dateStr: string | null | undefined): string {
     if (!dateStr) return "-";
@@ -808,10 +809,10 @@ export default function TenantsPage() {
                         {/* Premium dark gradient header */}
                         {(() => {
                             const st = selectedTenant;
-                            const isBlocked = st.status === 'Blocked';
-                            const isCheckedOut = st.status === 'Checked Out';
-                            const isUpcoming = st.status === 'Upcoming';
-                            const isActive = st.status === 'Active';
+                            const isBlocked = st.status === TENANT_STATUS.BLOCKED;
+                            const isCheckedOut = st.status === TENANT_STATUS.CHECKED_OUT;
+                            const isUpcoming = st.status === TENANT_STATUS.UPCOMING;
+                            const isActive = st.status === TENANT_STATUS.ACTIVE;
                             const initials = st.name?.split(' ').map((n: string) => n[0]).join('').slice(0,2).toUpperCase() || 'T';
                             const statusBadge = isBlocked
                                 ? { label: '🚫 Blocked', cls: 'bg-red-100 text-red-700 border-red-200' }

@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { generateSequentialId } from "@/lib/ids";
 import { logAuditEvent } from "@/lib/audit";
+import { TENANT_STATUS } from "@/lib/constants/statuses";
 
 
 const LOCK_DURATION_MINUTES = 10; // Anti-ghost booking window
@@ -209,7 +210,7 @@ export async function deleteBookingAndFreeBed(bookingId: string, bedId: string) 
         // ── 1. Nullify tenant's bookingId reference (keep tenant record intact) ──
         await tx.tenant.updateMany({
             where: { booking: { id: bookingId } },
-            data: { status: 'Checked Out' }
+            data: { status: TENANT_STATUS.CHECKED_OUT }
         }).catch(() => {});
 
         // ── 2. Delete all child records that reference this booking ──

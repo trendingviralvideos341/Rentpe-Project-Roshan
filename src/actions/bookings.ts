@@ -10,6 +10,7 @@ import { generateSequentialId } from "@/lib/ids";
 import { validateBooking, recordFingerprint } from "@/lib/fraud";
 import { sendSlackNotification } from "@/lib/slack";
 import { withSafeAction } from "@/lib/safe-action";
+import { TENANT_STATUS } from "@/lib/constants/statuses";
 
 
 
@@ -86,7 +87,7 @@ async function _createBooking(data: {
             where: {
                 studentId: userId,
                 propertyId: data.propertyId,
-                status: 'Blocked'
+                status: TENANT_STATUS.BLOCKED
             }
         });
 
@@ -921,7 +922,7 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
                                 startDate: existingB.agreementSignedAt
                                     ? existingB.agreementSignedAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
                                     : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-                                status: 'ACTIVE',
+                                status: TENANT_STATUS.ACTIVE,
                             }
                         });
                         tenantId = tenant.id;
@@ -930,7 +931,7 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
                         // NEW FLOW path: Tenant already exists (created during physical KYC)
                         await prisma.tenant.update({
                             where: { id: tenantId },
-                            data: { status: 'ACTIVE' }
+                            data: { status: TENANT_STATUS.ACTIVE }
                         });
                     }
 
@@ -1205,8 +1206,8 @@ export async function checkInBooking(id: string) {
 
         const tenantDisplayId = tenancy.displayId;
 
-        // Tenant status: 'Upcoming' for new flow (agreement not yet signed), 'ACTIVE' for legacy
-        const tenantStatus = isNewFlow ? 'Upcoming' : 'ACTIVE';
+        // Tenant status: 'Upcoming' for new flow (agreement not yet signed), 'Active' for legacy
+        const tenantStatus = isNewFlow ? TENANT_STATUS.UPCOMING : TENANT_STATUS.ACTIVE;
 
         const tenant = await prisma.tenant.create({
             data: {
@@ -2250,11 +2251,11 @@ export async function getOwnerAnalytics() {
     const propertyIds = (await prisma.property.findMany({ where: { ownerId }, select: { id: true } })).map(p => p.id);
 
     const [activeTenants, pendingBookings, kycPending, totalBeds, occupiedBeds] = await Promise.all([
-        prisma.tenant.count({ where: { propertyId: { in: propertyIds }, status: 'ACTIVE' } }),
+        prisma.tenant.count({ where: { propertyId: { in: propertyIds }, status: TENANT_STATUS.ACTIVE } }),
         prisma.booking.count({ where: { propertyId: { in: propertyIds }, status: { in: ['APPLIED', 'PENDING_APPROVAL'] } } }),
         prisma.booking.count({ where: { propertyId: { in: propertyIds }, status: { in: ['KYC_PENDING', 'APPROVED_KYC_PENDING', 'ROOM_RESERVED'] } } }),
         prisma.room.aggregate({ _sum: { availability: true }, where: { propertyId: { in: propertyIds } } }),
-        prisma.tenant.count({ where: { propertyId: { in: propertyIds }, status: 'ACTIVE' } }),
+        prisma.tenant.count({ where: { propertyId: { in: propertyIds }, status: TENANT_STATUS.ACTIVE } }),
     ]);
 
     const totalBedsCount = (totalBeds._sum?.availability || 0) + occupiedBeds;
@@ -2273,7 +2274,7 @@ export async function getPlatformAnalytics() {
         prisma.property.count({ where: { status: 'LIVE' } }),
         prisma.booking.count(),
         prisma.booking.count({ where: { status: { in: ['KYC_PENDING', 'APPROVED_KYC_PENDING', 'ROOM_RESERVED'] } } }),
-        prisma.tenant.count({ where: { status: 'ACTIVE' } }),
+        prisma.tenant.count({ where: { status: TENANT_STATUS.ACTIVE } }),
         prisma.tenantDocument.count({ where: { status: 'PENDING' } }),
     ]);
 
@@ -2324,7 +2325,7 @@ export async function completeVacate(bookingId: string) {
     if (tenant) {
         await prisma.tenant.update({
             where: { id: tenant.id },
-            data: { status: 'Checked Out', actualMoveOutDate: new Date().toISOString() }
+            data: { status: TENANT_STATUS.CHECKED_OUT, actualMoveOutDate: new Date().toISOString() }
         });
         // Free the bed
         if (tenant.bedId) {

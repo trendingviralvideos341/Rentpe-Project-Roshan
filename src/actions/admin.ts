@@ -12,6 +12,7 @@ import { decryptIfPresent, maskBankAccount, maskBeneficiaryName, maskIfscCode } 
 import { runOnDemandExpiry } from "@/actions/expiry";
 import { NotificationService } from "@/lib/notifications";
 import { requirePermission } from "@/actions/rbac";
+import { TENANT_STATUS } from "@/lib/constants/statuses";
 
 export async function getAdminStats() {
     await runOnDemandExpiry();
@@ -753,12 +754,12 @@ async function _adminDeleteTenant(tenantId: string) {
     await requirePermission('CANCEL_BOOKING'); // Tenant deletion requires CANCEL_BOOKING
 
     const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { status: true } });
-    if (tenant?.status === 'Active' || tenant?.status === 'ACTIVE') {
+    if (tenant?.status === TENANT_STATUS.ACTIVE) {
         throw new Error("Cannot delete an active tenant. Please process their move-out first.");
     }
 
     await prisma.$transaction(async (tx) => {
-        await tx.tenant.update({ where: { id: tenantId }, data: { status: 'CANCELLED' } });
+        await tx.tenant.update({ where: { id: tenantId }, data: { status: TENANT_STATUS.CANCELLED } });
     });
 
     logAuditEvent({
@@ -782,7 +783,7 @@ async function _adminDeleteProperty(propertyId: string) {
     await prisma.$transaction(async (tx) => {
         await tx.room.updateMany({ where: { propertyId }, data: { status: 'CANCELLED' } });
         await tx.booking.updateMany({ where: { propertyName: { contains: propertyId } }, data: { status: 'CANCELLED' } });
-        await tx.tenant.updateMany({ where: { propertyId }, data: { status: 'CANCELLED' } });
+        await tx.tenant.updateMany({ where: { propertyId }, data: { status: TENANT_STATUS.CANCELLED } });
         await tx.property.update({ where: { id: propertyId }, data: { status: 'CANCELLED' } });
     });
 

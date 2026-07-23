@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { generateSequentialId } from "@/lib/ids";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 /**
  * Super Admin check helper
@@ -64,7 +65,10 @@ async function _createAdminEmployee(data: {
         let user = await tx.user.findUnique({ where: { email: data.email } });
         
         if (!user) {
-            const passwordHash = await bcrypt.hash("RentPe@123", 10); // Default pass for new staff
+            // SECURITY: Generate a cryptographically random one-time temporary password.
+            // This must be changed on first login. Never use a hardcoded default password.
+            const tempPassword = `RP-${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
+            const passwordHash = await bcrypt.hash(tempPassword, 12);
             user = await tx.user.create({
                 data: {
                     email: data.email,
@@ -74,8 +78,10 @@ async function _createAdminEmployee(data: {
                     roles: ['USER', 'ADMIN'],
                     isAdmin: true,
                     passwordHash,
-                    status: 'ACTIVE'
-                }
+                    status: 'ACTIVE',
+                    mustChangePassword: true, // Forces password reset on first login
+                    tempPasswordPlain: tempPassword, // Stored briefly so Super Admin can communicate it; cleared on first login
+                } as any
             });
         } else {
             // Update role to ADMIN if it was something else

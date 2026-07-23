@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SettlementModal } from "@/components/dashboard/SettlementModal";
+import { TENANT_STATUS } from "@/lib/constants/statuses";
 
 function formatToDDMMYYYY(dateStr: string | null | undefined): string {
     if (!dateStr) return "—";
@@ -512,8 +513,8 @@ export function TenantsContainer() {
                                 ) : filteredTenants.map(t => {
                                     const latestRent = t.rentRecords.find((r: any) => r.month === currentMonth);
                                     const isPaid = latestRent?.paid ?? false;
-                                    const isBlocked = t.status === "Blocked";
-                                    const isCheckedOut = t.status === "Checked Out";
+                                    const isBlocked = t.status === TENANT_STATUS.BLOCKED;
+                                    const isCheckedOut = t.status === TENANT_STATUS.CHECKED_OUT;
                                     const historyExpanded = expandedHistory.has(t.id);
 
                                     return (
@@ -596,8 +597,8 @@ export function TenantsContainer() {
                                                 {/* Status & History */}
                                                 <td className="p-4">
                                                     <div className="flex items-center gap-2">
-                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${isCheckedOut ? "bg-slate-100 text-slate-600" : isBlocked ? "bg-red-100 text-red-800" : t.status === 'Upcoming' ? "bg-amber-100 text-amber-800" : "bg-green-100 text-green-800"}`}>
-                                                            {isCheckedOut ? "Checked Out" : isBlocked ? "Blocked" : t.status === 'Upcoming' ? "Upcoming" : "Active"}
+                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${isCheckedOut ? "bg-slate-100 text-slate-600" : isBlocked ? "bg-red-100 text-red-800" : t.status === TENANT_STATUS.UPCOMING ? "bg-amber-100 text-amber-800" : "bg-green-100 text-green-800"}`}>
+                                                            {isCheckedOut ? "Checked Out" : isBlocked ? "Blocked" : t.status === TENANT_STATUS.UPCOMING ? "Upcoming" : "Active"}
                                                         </span>
                                                         {t.actionNotes?.length > 0 && (
                                                             <button onClick={() => toggleHistory(t.id)} className="text-muted-foreground hover:text-foreground">
@@ -743,10 +744,10 @@ export function TenantsContainer() {
                 <DialogContent className="max-w-4xl md:max-w-5xl max-h-[90vh] overflow-y-auto p-0 gap-0">
                     {/* Premium glassmorphism header */}
                     {viewingDetails && (() => {
-                        const isActive = viewingDetails.status === 'Active';
-                        const isBlocked = viewingDetails.status === 'Blocked';
-                        const isCheckedOut = viewingDetails.status === 'Checked Out';
-                        const isUpcoming = viewingDetails.status === 'Upcoming';
+                        const isActive = viewingDetails.status === TENANT_STATUS.ACTIVE;
+                        const isBlocked = viewingDetails.status === TENANT_STATUS.BLOCKED;
+                        const isCheckedOut = viewingDetails.status === TENANT_STATUS.CHECKED_OUT;
+                        const isUpcoming = viewingDetails.status === TENANT_STATUS.UPCOMING;
                         const latestRentRecord = viewingDetails.rentRecords?.find((r: any) => r.month === currentMonth);
                         const isOverdue = !latestRentRecord?.paid && isActive;
                         const initials = viewingDetails.name?.split(' ').map((n: string) => n[0]).join('').slice(0,2).toUpperCase() || 'T';

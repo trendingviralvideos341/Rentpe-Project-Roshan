@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { runOnDemandExpiry } from "@/actions/expiry";
 import { getISTDate } from "@/lib/date";
+import { TENANT_STATUS } from "@/lib/constants/statuses";
 
 
 export async function getOwnerDashboardStats() {
@@ -40,7 +41,7 @@ export async function getOwnerDashboardStats() {
             prisma.tenant.count({
                 where: {
                     property: { ownerId: userId },
-                    status: 'ACTIVE'
+                    status: TENANT_STATUS.ACTIVE
                 }
             }),
             // Real total bed count from Bed records

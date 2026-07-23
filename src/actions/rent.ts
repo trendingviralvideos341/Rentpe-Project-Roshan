@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { internalGenerateInvoice } from "@/actions/billing";
+import { TENANT_STATUS } from "@/lib/constants/statuses";
 
 /**
  * Returns the current month's pending (unpaid) RentInvoice for the logged-in
@@ -35,7 +36,7 @@ export async function getPendingRentInvoice() {
             }
         });
 
-        if (activeBooking && activeBooking.tenant && ['Active', 'ACTIVE', 'ACTIVE_TENANT'].includes(activeBooking.tenant.status)) {
+        if (activeBooking && activeBooking.tenant && activeBooking.tenant.status === TENANT_STATUS.ACTIVE) {
             const tenant = activeBooking.tenant;
             const now = new Date();
             // YYYY-MM format required by internalGenerateInvoice
@@ -122,8 +123,8 @@ export async function getPendingRentInvoice() {
         if (!booking || !booking.tenant) return null;
         const tenant = booking.tenant;
 
-        // Only show banner for Active tenants — DB has mixed casing so check all variants
-        if (!['Active', 'ACTIVE', 'ACTIVE_TENANT'].includes(tenant.status)) return null;
+        // Only show banner for Active tenants
+        if (tenant.status !== TENANT_STATUS.ACTIVE) return null;
 
         const pendingInvoice = tenant.billingProfile?.invoices?.[0] ?? null;
         if (!pendingInvoice) return null;

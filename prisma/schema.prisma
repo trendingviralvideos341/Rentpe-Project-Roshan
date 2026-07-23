@@ -409,7 +409,7 @@ model Tenant {
   startDate           String
   expectedMoveOutDate String?
   actualMoveOutDate   String?
-  status              String            @default("UPCOMING_MOVE_IN")
+  status              String            @default("Upcoming")
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
   vacateNote          String?

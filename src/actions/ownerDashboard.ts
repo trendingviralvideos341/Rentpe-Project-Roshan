@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { createNotification } from "@/actions/notifications";
 import { logAuditEvent } from "@/lib/audit";
+import { TENANT_STATUS } from "@/lib/constants/statuses";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  OWNER DASHBOARD HOME — Single API call for all summary cards
@@ -40,9 +41,10 @@ export async function getOwnerDashboardHome() {
     const [pendingRequests, activeBookings, upcomingMoveIns, activeTenants, scheduledMoveOuts] = await Promise.all([
         prisma.booking.count({ where: { propertyId: { in: propertyIds }, status: 'PENDING_APPROVAL' } }),
         prisma.booking.count({ where: { propertyId: { in: propertyIds }, status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'ROOM_RESERVED', 'KYC_PENDING'] } } }),
-        (prisma.tenant as any).count({ where: { propertyId: { in: propertyIds }, status: 'UPCOMING_MOVE_IN' } }),
-        (prisma.tenant as any).count({ where: { propertyId: { in: propertyIds }, status: 'ACTIVE_TENANT' } }),
-        (prisma.tenant as any).count({ where: { propertyId: { in: propertyIds }, status: 'MOVE_OUT_SCHEDULED' } }),
+        (prisma.tenant as any).count({ where: { propertyId: { in: propertyIds }, status: TENANT_STATUS.UPCOMING } }),
+        (prisma.tenant as any).count({ where: { propertyId: { in: propertyIds }, status: TENANT_STATUS.ACTIVE } }),
+        // Scheduled move-outs = active vacating notices not yet withdrawn
+        prisma.vacatingNotice.count({ where: { booking: { propertyId: { in: propertyIds } }, status: { not: 'WITHDRAWN' }, deletedAt: null } }),
     ]);
 
     // Monthly revenue (current month confirmed bookings, minus refunds)
@@ -402,7 +404,8 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
             select: { parentOwnerId: true, staffPermissions: true }
         });
         if (!staffUser || !staffUser.parentOwnerId) throw new Error('Unauthorized');
-        const permissions = JSON.parse(staffUser.staffPermissions || '[]');
+        let permissions: string[] = [];
+        try { permissions = JSON.parse(staffUser.staffPermissions || '[]'); } catch { permissions = []; }
         if (!permissions.includes('view_financials')) {
             throw new Error('You do not have permission to view financial statements.');
         }
@@ -601,7 +604,8 @@ export async function getOwnerMonthlyTaxBreakdown(fromDate?: Date, toDate?: Date
             select: { parentOwnerId: true, staffPermissions: true }
         });
         if (!staffUser || !staffUser.parentOwnerId) throw new Error('Unauthorized');
-        const permissions = JSON.parse(staffUser.staffPermissions || '[]');
+        let permissions: string[] = [];
+        try { permissions = JSON.parse(staffUser.staffPermissions || '[]'); } catch { permissions = []; }
         if (!permissions.includes('view_financials')) {
             throw new Error('You do not have permission to view financial statements.');
         }

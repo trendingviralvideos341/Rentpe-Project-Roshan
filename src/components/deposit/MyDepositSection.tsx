@@ -8,6 +8,7 @@ import {
     Shield, AlertTriangle, CheckCircle2, Clock, X,
     ChevronDown, ChevronUp, MessageSquare, Loader2, Info
 } from 'lucide-react';
+import { TENANT_STATUS } from '@/lib/constants/statuses';
 
 // ── Status config for student view ───────────────────────────────────────────
 const DEPOSIT_STATUS: Record<string, { label: string; icon: string; cls: string; desc: string }> = {
@@ -250,7 +251,7 @@ export function MyDepositSection() {
                 )}
 
                 {/* Days remaining banner */}
-                {dep.refundDueBy && dep.status === 'PAID' && dep.tenantStatus === 'Checked Out' && (
+                {dep.refundDueBy && dep.status === 'PAID' && dep.tenantStatus === TENANT_STATUS.CHECKED_OUT && (
                     <div className="mx-4 mt-4 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-3">
                         <Clock className="w-4 h-4 text-amber-500 flex-shrink-0" />
                         <div>

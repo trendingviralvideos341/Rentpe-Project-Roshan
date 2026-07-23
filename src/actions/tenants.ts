@@ -9,6 +9,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { firstMonthRent, lastMonthRent } from "@/utils/billingUtils";
 import { generateSequentialId } from "@/lib/ids";
 import { cookies } from "next/headers";
+import { TENANT_STATUS, BOOKING_STATUS } from "@/lib/constants/statuses";
 
 export async function getTenants() {
     const session = await getSession();
@@ -148,14 +149,14 @@ export async function getTenantsPaginated(params: {
 
     // Tab Logic
     if (params.activeTab === 'ACTIVE') {
-        whereClause.status = 'Active';
+        whereClause.status = TENANT_STATUS.ACTIVE;
     } else if (params.activeTab === 'UPCOMING_MOVE_IN') {
-        whereClause.status = 'Upcoming';
+        whereClause.status = TENANT_STATUS.UPCOMING;
     } else if (params.activeTab === 'UPCOMING_VACATE') {
-        whereClause.status = 'Active';
+        whereClause.status = TENANT_STATUS.ACTIVE;
         whereClause.expectedMoveOutDate = { not: null };
     } else if (params.activeTab === 'CHECKED_OUT') {
-        whereClause.status = 'Checked Out';
+        whereClause.status = TENANT_STATUS.CHECKED_OUT;
     }
 
     // Property Logic
@@ -182,11 +183,11 @@ export async function getTenantsPaginated(params: {
     // Payment Logic (this requires a sub-query)
     if (params.filterPayment && params.filterPayment !== 'ALL') {
         if (params.filterPayment === 'BLOCKED') {
-            whereClause.status = 'Blocked';
+            whereClause.status = TENANT_STATUS.BLOCKED;
         } else if (params.filterPayment === 'VACATED_FILTER') {
-            whereClause.status = 'Checked Out';
+            whereClause.status = TENANT_STATUS.CHECKED_OUT;
         } else if (params.filterPayment === 'DEBT_FILTER') {
-            whereClause.status = 'Checked Out';
+            whereClause.status = TENANT_STATUS.CHECKED_OUT;
             whereClause.settlementRecord = { tenantDebt: { gt: 0 } };
         } else if (params.filterPayment === 'PAID') {
             whereClause.rentRecords = { some: { month: params.currentMonth, paid: true } };
@@ -259,10 +260,10 @@ export async function getTenantStats() {
     }
 
     const [active, upcoming, checkedOut, upcomingVacate] = await Promise.all([
-        prisma.tenant.count({ where: { ...baseWhere, status: 'Active' } }),
-        prisma.tenant.count({ where: { ...baseWhere, status: 'Upcoming' } }),
-        prisma.tenant.count({ where: { ...baseWhere, status: 'Checked Out' } }),
-        prisma.tenant.count({ where: { ...baseWhere, status: 'Active', expectedMoveOutDate: { not: null } } })
+        prisma.tenant.count({ where: { ...baseWhere, status: TENANT_STATUS.ACTIVE } }),
+        prisma.tenant.count({ where: { ...baseWhere, status: TENANT_STATUS.UPCOMING } }),
+        prisma.tenant.count({ where: { ...baseWhere, status: TENANT_STATUS.CHECKED_OUT } }),
+        prisma.tenant.count({ where: { ...baseWhere, status: TENANT_STATUS.ACTIVE, expectedMoveOutDate: { not: null } } })
     ]);
 
     return { active, upcoming, checkedOut, upcomingVacate };
@@ -320,7 +321,7 @@ export async function createTenantFromBooking(bookingId: string) {
                 roomType: booking.occupancy,
                 rent: booking.amount,
                 startDate: agreementDate,
-                status: 'Upcoming'
+                status: TENANT_STATUS.UPCOMING
             }
         });
 
@@ -356,7 +357,7 @@ export async function confirmMoveIn(tenantId: string) {
         include: { bed: true, booking: { select: { agreementSignedAt: true } } }
     });
 
-    if (!tenant || tenant.status !== 'Upcoming') {
+    if (!tenant || tenant.status !== TENANT_STATUS.UPCOMING) {
         throw new Error("Invalid tenant status for move-in.");
     }
 
@@ -368,7 +369,7 @@ export async function confirmMoveIn(tenantId: string) {
         // 1. Update Tenant
         await tx.tenant.update({
             where: { id: tenantId },
-            data: { status: 'Active' }
+            data: { status: TENANT_STATUS.ACTIVE }
         });
 
         // 2. Update Bed to OCCUPIED
@@ -383,6 +384,8 @@ export async function confirmMoveIn(tenantId: string) {
         if (tenant.bookingId) {
             await tx.booking.update({
                 where: { id: tenant.bookingId },
+                // FIX: was 'ACTIVE' (correct for Booking), now explicit via BOOKING_STATUS not needed
+                // Booking.status uses UPPERCASE, Tenant.status uses Title Case
                 data: { status: 'ACTIVE' }
             });
         }
@@ -630,7 +633,7 @@ export async function unblockTenant(tenantId: string, note: string) {
 
     const tenant = await prisma.tenant.update({
         where: { id: tenantId },
-        data: { status: 'Active', actualMoveOutDate: null }
+        data: { status: TENANT_STATUS.ACTIVE, actualMoveOutDate: null }
     });
 
     await prisma.actionNote.create({
@@ -804,7 +807,7 @@ export async function confirmMoveOut(tenantId: string, deductions: number, note:
     if (!tenant) throw new Error("Tenant not found");
 
     // Idempotent: if already checked out, ensure notice is VACATED and return success
-    if (tenant.status === 'Checked Out') {
+    if (tenant.status === TENANT_STATUS.CHECKED_OUT) {
         if (tenant.bookingId) {
             await prisma.vacatingNotice.updateMany({
                 where: { bookingId: tenant.bookingId, status: { notIn: ['VACATED', 'WITHDRAWN'] } },
@@ -934,7 +937,7 @@ Note: ${note}
         if (tenant.bookingId) {
             await tx.booking.update({
                 where: { id: tenant.bookingId },
-                data: { status: 'CHECKED_OUT' }
+                data: { status: BOOKING_STATUS.CHECKED_OUT }
             });
         }
 
@@ -942,7 +945,7 @@ Note: ${note}
         await tx.tenant.update({
             where: { id: tenantId },
             data: { 
-                status: 'Checked Out', 
+                status: TENANT_STATUS.CHECKED_OUT, 
                 actualMoveOutDate: moveOutDate.toISOString(), 
                 vacateNote: settlementSummary 
             }
@@ -983,10 +986,10 @@ export async function getTenantsByCategory(ownerId: string, category: 'UPCOMING'
 
     let statusFilter: string[] = [];
     switch (category) {
-        case 'UPCOMING': statusFilter = ['Upcoming']; break;
-        case 'ACTIVE': statusFilter = ['Active']; break;
-        case 'MOVE_OUT': statusFilter = ['Active']; break; 
-        case 'PAST': statusFilter = ['Checked Out']; break;
+        case 'UPCOMING': statusFilter = [TENANT_STATUS.UPCOMING]; break;
+        case 'ACTIVE': statusFilter = [TENANT_STATUS.ACTIVE]; break;
+        case 'MOVE_OUT': statusFilter = [TENANT_STATUS.ACTIVE]; break; 
+        case 'PAST': statusFilter = [TENANT_STATUS.CHECKED_OUT]; break;
     }
 
     // If owner/staff, get allowed properties

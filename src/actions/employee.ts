@@ -16,7 +16,8 @@ async function generateEoreqId(): Promise<string> {
 }
 
 function appendAudit(trailJson: string, action: string, actorId: string, actorName: string, note?: string) {
-    const trail = JSON.parse(trailJson || "[]");
+    let trail: any[];
+    try { trail = JSON.parse(trailJson || "[]"); } catch { trail = []; }
     trail.push({ action, actorId, actorName, note: note || "", timestamp: new Date().toISOString() });
     return JSON.stringify(trail);
 }

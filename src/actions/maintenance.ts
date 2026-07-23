@@ -106,7 +106,7 @@ export async function getMyMaintenanceRequests() {
 
     return requests.map(r => ({
         ...r,
-        photos: JSON.parse(r.photos || '[]') as string[]
+        photos: (() => { try { return JSON.parse(r.photos || '[]') as string[]; } catch { return [] as string[]; } })()
     }));
 }
 
@@ -134,7 +134,7 @@ export async function getOwnerMaintenanceRequests() {
 
     return requests.map(r => ({
         ...r,
-        photos: JSON.parse(r.photos || '[]') as string[]
+        photos: (() => { try { return JSON.parse(r.photos || '[]') as string[]; } catch { return [] as string[]; } })()
     }));
 }
 

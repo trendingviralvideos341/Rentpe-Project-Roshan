@@ -415,7 +415,8 @@ export async function replyToTicket(id: string, message: string) {
     }
 
     // Append to legacy JSON replies (for backward compat)
-    const replies = JSON.parse((ticket as any).replies || "[]");
+    let replies: any[];
+    try { replies = JSON.parse((ticket as any).replies || "[]"); } catch { replies = []; }
     replies.push({
         sender: session.role,
         senderId: userId,

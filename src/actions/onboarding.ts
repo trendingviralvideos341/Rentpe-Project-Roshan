@@ -7,7 +7,8 @@ import { uploadToCloudinary, batchUploadToCloudinary } from "@/lib/upload";
 
 // ── helpers ──────────────────────────────────────────
 function appendAudit(existing: string, entry: { status: string; actorId: string; actorName: string; note?: string }) {
-    const arr = JSON.parse(existing || "[]");
+    let arr: any[];
+    try { arr = JSON.parse(existing || "[]"); } catch { arr = []; }
     arr.push({ ...entry, timestamp: new Date().toISOString() });
     return JSON.stringify(arr);
 }

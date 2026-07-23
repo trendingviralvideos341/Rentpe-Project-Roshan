@@ -92,7 +92,7 @@ export async function searchProperties(query?: string, filters?: {
                     totalAvailableBeds: totalAvailable,
                     // Industry standard: show as full/waitlist, not hidden
                     isFull: totalAvailable === 0,
-                    amenities: JSON.parse(p.amenities || '[]'),
+                    amenities: (() => { try { return JSON.parse(p.amenities || '[]'); } catch { return []; } })(),
                     image: allPhotos[0] || '',
                     buildingPhotos,
                     commonAreaPhotos,

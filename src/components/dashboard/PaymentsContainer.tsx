@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, IndianRupee, RefreshCcw, ChevronDown, ChevronUp, History } from "lucide-react";
 import { getTenants, markRentAsPaid, markRentAsUnpaid } from "@/actions/tenants";
 import { toast } from "sonner";
+import { TENANT_STATUS } from "@/lib/constants/statuses";
 
 function formatMonthLabel(m: string): string {
     if (!m) return '';
@@ -48,7 +49,8 @@ export function PaymentsContainer() {
         });
     };
 
-    const activeTenants = tenants.filter(t => t.status !== "VACATED" && t.status !== "Checked Out");
+    // Only include Active and Upcoming tenants — exclude Checked Out and Blocked
+    const activeTenants = tenants.filter(t => t.status === TENANT_STATUS.ACTIVE || t.status === TENANT_STATUS.UPCOMING);
 
     const totalExpected = activeTenants.reduce((sum, t) => sum + (Number(t.rent) || 0), 0);
     const paidTenants = activeTenants.filter(t => {

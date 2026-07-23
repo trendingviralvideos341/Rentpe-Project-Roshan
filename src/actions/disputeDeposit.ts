@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { sendEmail } from "@/lib/email";
 import { generateMasterId } from "@/lib/ids";
+import { TENANT_STATUS } from "@/lib/constants/statuses";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT 4: Student Deposit Dispute Escalation
@@ -76,7 +77,7 @@ export async function raiseDepositDispute(depositId: string, reason: string, det
 
     // Tenant must be Checked Out to raise a post-move-out dispute
     const tenantStatus = deposit.billingProfile?.tenant?.status;
-    if (tenantStatus !== 'Checked Out') {
+    if (tenantStatus !== TENANT_STATUS.CHECKED_OUT) {
         throw new Error('You must have completed your move-out before raising a deposit dispute.');
     }
 

@@ -11,6 +11,7 @@ import {
     getActiveFoodPreference, isFirstActivation,
     applyCreditNotes, CreditNoteInput
 } from "@/utils/foodBillingUtils";
+import { generateSequentialId } from "@/lib/ids";
 
 /**
  * Financial System: Core Billing & Deposit Actions
@@ -176,7 +177,7 @@ export async function internalGenerateInvoice(
     // ── 7. Apply credit notes in $transaction with row-level lock ──
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 5);
-    const displayId = `INV-${Math.floor(Math.random() * 900000) + 100000}`;
+    const displayId = await generateSequentialId('INVOICE');
 
     const invoice = await (prisma as any).$transaction(async (tx: any) => {
         // Fetch & lock pending credit notes (FIFO — createdAt ASC)
@@ -207,9 +208,10 @@ export async function internalGenerateInvoice(
 
             // Carry forward excess credits as a new PENDING credit note
             if (carryForward > 0 && booking) {
+                const cnDisplayId = await generateSequentialId('CREDIT_NOTE');
                 await tx.creditNote.create({
                     data: {
-                        displayId: `CN-CF-${Date.now()}`,
+                        displayId: cnDisplayId,
                         bookingId: booking.id,
                         tenantId,
                         amount: carryForward,

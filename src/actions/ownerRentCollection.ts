@@ -8,6 +8,7 @@ import { generateMasterId } from "@/lib/ids";
 import { sendEmail } from "@/lib/email";
 import { internalGenerateInvoice } from "@/actions/billing";
 import { withSafeAction } from "@/lib/safe-action";
+import { TENANT_STATUS } from "@/lib/constants/statuses";
 
 // ────────────────────────────────────────────────────────
 // HELPERS
@@ -44,8 +45,8 @@ export async function getOwnerRentCollection(month?: string, propertyId?: string
         const activeTenants = await prisma.tenant.findMany({
             where: {
                 propertyId: { in: propertyIds },
-                // DB has mixed status values — include all active variants
-                status: { in: ['Active', 'ACTIVE', 'ACTIVE_TENANT'] },
+                // CANONICAL: Use TENANT_STATUS.ACTIVE — all active tenant writes now use this constant
+                status: TENANT_STATUS.ACTIVE,
             },
             include: {
                 billingProfile: true
@@ -894,7 +895,7 @@ export async function getTenantsForBulkInvoice(month: string) {
     });
 
     return profiles
-        .filter((p: any) => p.tenant && ['Active', 'ACTIVE_TENANT', 'UPCOMING_MOVE_IN'].includes(p.tenant.status))
+        .filter((p: any) => p.tenant && p.tenant.status === TENANT_STATUS.ACTIVE)
         .map((p: any) => ({
             tenantId: p.tenantId,
             billingProfileId: p.id,
@@ -1301,7 +1302,7 @@ export async function getMyDepositStatus() {
     });
 
     const canRaiseDispute = ['PAID', 'REFUND_OVERDUE'].includes(dep.status)
-        && tenant.status === 'Checked Out'
+        && tenant.status === TENANT_STATUS.CHECKED_OUT
         && !activeDispute;
 
     return {

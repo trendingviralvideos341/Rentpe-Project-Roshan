@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Bed, Home, User, Settings, AlertTriangle, CheckCircle2, Clock, Info, Eye, EyeOff, Wifi, X, Phone, IdCard, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getOwnerInventory } from "@/actions/dashboard";
+import { TENANT_STATUS } from "@/lib/constants/statuses";
 
 const STATUS_COLORS: Record<string, string> = {
     AVAILABLE:    "bg-emerald-100 text-emerald-700 border-emerald-400 ring-2 ring-emerald-300",
@@ -26,10 +27,10 @@ const STATUS_ICONS: Record<string, any> = {
 };
 
 function getStageLabel(bookingStatus?: string, tenantStatus?: string): { label: string; color: string } {
-    if (tenantStatus === 'Active')        return { label: "✅ Active Tenant",          color: "bg-emerald-100 text-emerald-700" };
-    if (tenantStatus === 'Upcoming')      return { label: "🏠 Move-In Scheduled",       color: "bg-blue-100 text-blue-700" };
-    if (tenantStatus === 'Checked Out')   return { label: "🚪 Checked Out",             color: "bg-slate-100 text-slate-600" };
-    if (tenantStatus === 'Blocked')       return { label: "🚫 Blocked / Evicted",       color: "bg-red-100 text-red-700" };
+    if (tenantStatus === TENANT_STATUS.ACTIVE)        return { label: "✅ Active Tenant",          color: "bg-emerald-100 text-emerald-700" };
+    if (tenantStatus === TENANT_STATUS.UPCOMING)      return { label: "🏠 Move-In Scheduled",       color: "bg-blue-100 text-blue-700" };
+    if (tenantStatus === TENANT_STATUS.CHECKED_OUT)   return { label: "🚪 Checked Out",             color: "bg-slate-100 text-slate-600" };
+    if (tenantStatus === TENANT_STATUS.BLOCKED)       return { label: "🚫 Blocked / Evicted",       color: "bg-red-100 text-red-700" };
 
     switch (bookingStatus) {
         case 'APPLIED':
@@ -240,7 +241,7 @@ export function InventoryGrid({ properties: initialProperties }: { properties: a
                         >
                             {/* Modal Header */}
                             <div className={`p-5 flex items-center justify-between ${
-                                tn?.status === 'ACTIVE'  ? 'bg-gradient-to-r from-orange-500 to-orange-600' :
+                                tn?.status === TENANT_STATUS.ACTIVE  ? 'bg-gradient-to-r from-orange-500 to-orange-600' :
                                 isTerminal              ? 'bg-gradient-to-r from-slate-500 to-slate-600' :
                                 isActive                ? 'bg-gradient-to-r from-amber-500 to-amber-600' :
                                                           'bg-gradient-to-r from-slate-400 to-slate-500'

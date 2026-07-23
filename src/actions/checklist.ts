@@ -57,10 +57,9 @@ export async function getChecklist(bookingId: string) {
         checklist = await initializeChecklist(bookingId, userId);
     }
 
-    return {
-        ...checklist,
-        items: JSON.parse(checklist.items || '[]') as typeof DEFAULT_CHECKLIST_ITEMS
-    };
+    let parsedItems: typeof DEFAULT_CHECKLIST_ITEMS = DEFAULT_CHECKLIST_ITEMS;
+    try { parsedItems = JSON.parse(checklist.items || '[]') as typeof DEFAULT_CHECKLIST_ITEMS; } catch { parsedItems = DEFAULT_CHECKLIST_ITEMS; }
+    return { ...checklist, items: parsedItems };
 }
 
 /** Toggle a checklist item's done state */
@@ -72,7 +71,8 @@ export async function updateChecklistItem(bookingId: string, itemId: string, don
     const checklist = await prisma.moveInChecklist.findUnique({ where: { bookingId } });
     if (!checklist || checklist.userId !== userId) throw new Error("Unauthorized");
 
-    const items = JSON.parse(checklist.items || '[]') as typeof DEFAULT_CHECKLIST_ITEMS;
+    let items: typeof DEFAULT_CHECKLIST_ITEMS = DEFAULT_CHECKLIST_ITEMS;
+    try { items = JSON.parse(checklist.items || '[]') as typeof DEFAULT_CHECKLIST_ITEMS; } catch { items = DEFAULT_CHECKLIST_ITEMS; }
     const updated = items.map((item: any) => item.id === itemId ? { ...item, done } : item);
     const allDone = updated.every((i: any) => i.done);
 

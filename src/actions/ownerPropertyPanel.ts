@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { TENANT_STATUS } from "@/lib/constants/statuses";
 
 /**
  * Returns all properties visible to the current user (OWNER or STAFF),
@@ -68,7 +69,7 @@ export async function getOwnerPropertyPanel() {
         // Active tenants per property
         (prisma.tenant as any).groupBy({
             by: ['propertyId'],
-            where: { propertyId: { in: propIds }, status: 'ACTIVE_TENANT' },
+            where: { propertyId: { in: propIds }, status: TENANT_STATUS.ACTIVE },
             _count: { id: true }
         }),
         // Pending booking requests per property
@@ -77,10 +78,10 @@ export async function getOwnerPropertyPanel() {
             where: { propertyId: { in: propIds }, status: 'PENDING_APPROVAL' },
             _count: { id: true }
         }),
-        // Upcoming move-outs per property
-        (prisma.tenant as any).groupBy({
+        // Upcoming move-outs per property (VacatingNotice count)
+        prisma.vacatingNotice.groupBy({
             by: ['propertyId'],
-            where: { propertyId: { in: propIds }, status: 'MOVE_OUT_SCHEDULED' },
+            where: { propertyId: { in: propIds }, status: { not: 'WITHDRAWN' } },
             _count: { id: true }
         }),
         // Revenue per property (confirmed bookings — Current Financial Year only, rent excl. deposits)

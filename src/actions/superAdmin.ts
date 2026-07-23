@@ -15,6 +15,7 @@ import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/actions/rbac";
 import { logAuditEvent } from "@/lib/audit";
+import { TENANT_STATUS } from "@/lib/constants/statuses";
 
 async function isSuperAdmin() {
     const session = await getSession();
@@ -51,9 +52,10 @@ export async function getSuperAdminBusinessSnapshot() {
         prisma.property.count({ where: { status: 'SUSPENDED' } }),
         prisma.room.count(),
         (prisma as any).bed.count(),
-        (prisma.tenant as any).count({ where: { status: 'ACTIVE_TENANT' } }),
-        (prisma.tenant as any).count({ where: { status: 'UPCOMING_MOVE_IN' } }),
-        (prisma.tenant as any).count({ where: { status: 'MOVE_OUT_SCHEDULED' } }),
+        (prisma.tenant as any).count({ where: { status: TENANT_STATUS.ACTIVE } }),
+        (prisma.tenant as any).count({ where: { status: TENANT_STATUS.UPCOMING } }),
+        // Platform-wide scheduled move-outs = active non-withdrawn vacating notices
+        prisma.vacatingNotice.count({ where: { status: { not: 'WITHDRAWN' }, deletedAt: null } }),
         prisma.booking.count(),
         prisma.booking.count({ where: { status: { in: ['BOOKING_CONFIRMED','CHECKED_IN','PAID','CASH_PAID'] } } }),
         prisma.booking.count({ where: { status: 'CANCELLED' } }),
@@ -151,7 +153,7 @@ export async function getOnboardedProperties() {
         const roomIds = allRoomIdsByProp.get(prop.id) || [];
 
         const [activeTenants, revenue, avgRating, availableBedCount] = await Promise.all([
-            (prisma.tenant as any).count({ where: { propertyId: prop.id, status: 'ACTIVE_TENANT' } }),
+            (prisma.tenant as any).count({ where: { propertyId: prop.id, status: TENANT_STATUS.ACTIVE } }),
             prisma.booking.aggregate({
                 where: { propertyId: prop.id, status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID'] } },
                 _sum: { amount: true }
@@ -603,7 +605,7 @@ export async function getAdminPropertyDashboard(propertyId: string) {
         recentTenants,
     ] = await Promise.all([
         // Active tenants
-        (prisma.tenant as any).count({ where: { propertyId, status: 'ACTIVE_TENANT' } }),
+        (prisma.tenant as any).count({ where: { propertyId, status: TENANT_STATUS.ACTIVE } }),
         // Pending booking requests
         prisma.booking.count({ where: { propertyId, status: 'PENDING_APPROVAL' } }),
         // Confirmed bookings — Current Financial Year (April to March) — rent revenue only
@@ -615,8 +617,8 @@ export async function getAdminPropertyDashboard(propertyId: string) {
             },
             select: { createdAt: true, amount: true, depositAmount: true }
         }),
-        // Upcoming move-outs
-        (prisma.tenant as any).count({ where: { propertyId, status: 'MOVE_OUT_SCHEDULED' } }),
+        // Upcoming move-outs — count active vacating notices for this property
+        prisma.vacatingNotice.count({ where: { propertyId, status: { not: 'WITHDRAWN' }, deletedAt: null } }),
         // Average review rating
         prisma.review.aggregate({ where: { propertyId }, _avg: { rating: true } }),
         // How many properties does this owner have total?
@@ -631,7 +633,7 @@ export async function getAdminPropertyDashboard(propertyId: string) {
         }),
         // Recent active tenants (for the tenant list)
         (prisma.tenant as any).findMany({
-            where: { propertyId, status: { in: ['ACTIVE_TENANT', 'UPCOMING_MOVE_IN', 'MOVE_OUT_SCHEDULED'] } },
+            where: { propertyId, status: { in: [TENANT_STATUS.ACTIVE, TENANT_STATUS.UPCOMING] } },
             select: { id: true, name: true, phone: true, status: true, startDate: true, roomId: true },
             orderBy: { startDate: 'desc' },
             take: 20

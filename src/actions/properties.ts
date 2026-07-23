@@ -151,7 +151,8 @@ export async function getPropertyById(id: string) {
     if (!['LIVE', 'APPROVED'].includes(property.status)) return null;
 
     // For public view, filter only verified photos
-    const verifiedDocs = JSON.parse(property.verifiedDocs || '[]');
+    let verifiedDocs: string[] = [];
+    try { verifiedDocs = JSON.parse(property.verifiedDocs || '[]'); } catch { verifiedDocs = []; }
     const filterPhotos = (dataString: string | null, keyPrefix: string) => {
         if (!dataString) return null;
         try {
@@ -204,7 +205,8 @@ async function _createProperty(data: FormData | any) {
     ]) as any[];
 
     if (user?.role === 'STAFF') {
-        const perms = JSON.parse(user.staffPermissions || "[]");
+        let perms: string[] = [];
+        try { perms = JSON.parse(user.staffPermissions || "[]"); } catch { perms = []; }
         if (!perms.includes('register_property')) throw new Error("You do not have permission to register properties");
     }
 
@@ -252,7 +254,8 @@ async function _createProperty(data: FormData | any) {
     const pgLicenceUrl = getAllVal("pgLicenceUrl");
     const livePhotoUrl = getVal("livePhotoUrl");
 
-    const parsedRooms: any[] = typeof roomsSource === 'string' ? JSON.parse(roomsSource) : (roomsSource || []);
+    let parsedRooms: any[] = [];
+    try { parsedRooms = typeof roomsSource === 'string' ? JSON.parse(roomsSource) : (roomsSource || []); } catch { parsedRooms = []; }
 
     // ──────────────── SECURITY: Hard-caps to prevent abuse & DB overload ────────────────
     const MAX_ROOMS = 50;
@@ -597,7 +600,8 @@ export async function deletePropertyDocument(propertyId: string, docType: string
 
     const updateData: any = {};
     const currentValue = (property as any)[docType] as string | null;
-    let verifiedDocs = JSON.parse((property as any).verifiedDocs || "[]");
+    let verifiedDocs = [];
+    try { verifiedDocs = JSON.parse((property as any).verifiedDocs || "[]"); } catch { verifiedDocs = []; }
 
     if (index !== undefined && currentValue) {
         try {
@@ -646,7 +650,8 @@ export async function togglePropertyDocumentVerification(propertyId: string, doc
     const property = await prisma.property.findUnique({ where: { id: propertyId }, select: { verifiedDocs: true } });
     if (!property) throw new Error("Not found");
 
-    let verifiedDocs = JSON.parse(property.verifiedDocs || "[]");
+    let verifiedDocs = [];
+    try { verifiedDocs = JSON.parse(property.verifiedDocs || "[]"); } catch { verifiedDocs = []; }
     if (verified) { if (!verifiedDocs.includes(docKey)) verifiedDocs.push(docKey); }
     else { verifiedDocs = verifiedDocs.filter((key: string) => key !== docKey); }
 
