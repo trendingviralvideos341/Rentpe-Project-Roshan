@@ -55,7 +55,7 @@ export default function AddPropertyPage() {
     const [ownerName, setOwnerName] = useState("");
     const [ownerEmail, setOwnerEmail] = useState("");
     const [businessName, setBusinessName] = useState("");
-    const [propertyType, setPropertyType] = useState<"PG" | "Hostel" | "Flat/Apartment" | "Other" | "">("PG");
+    const [propertyType, setPropertyType] = useState<"PG" | "Hostel" | "Flat/Apartment" | "Other" | "">("");
     const [licenseNumber, setLicenseNumber] = useState("");
     const [reraId, setReraId] = useState("");
     const [hasGstNumber, setHasGstNumber] = useState<"yes" | "no" | "">("");
@@ -235,7 +235,7 @@ export default function AddPropertyPage() {
         setPostOffice(d.postOffice || "");
         setDescription(d.description || "");
         setBusinessName(d.businessName || "");
-        setPropertyType(d.propertyType || "PG");
+        setPropertyType(d.propertyType || "");
         setLicenseNumber(d.licenseNumber || "");
         setReraId(d.reraId || "");
         setHasGstNumber(d.hasGstNumber || "");
@@ -943,161 +943,174 @@ export default function AddPropertyPage() {
                                     <Input
                                         placeholder="Specify property type (e.g. Guest House, Villa...)"
                                         value={otherPropertyType}
-                                        onChange={(e) => setOtherPropertyType(e.target.value)}
+                                        onChange={(e) => setOtherPropertyType(e.target.value.replace(/[^a-zA-Z0-9\s\-_]/g, ''))}
                                         suppressHydrationWarning
                                         className="h-10 text-[12px] font-bold border-2 border-purple-200 focus:border-purple-400 bg-white"
                                     />
                                     {errors.propertyType && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase italic">{errors.propertyType}</p>}
                                 </div>
                             )}
+                            {!propertyType && <p className="text-[11px] text-amber-600 font-bold mt-2 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5"/> Please select a property type to unlock the rest of the form.</p>}
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-1">
-                                <label className="text-sm font-medium">Property / PG Name <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(letters only)</span></label>
-                                <Input placeholder="e.g. SkyLiv Boys Hostel" value={name}
-                                    onChange={e => {
-                                        const v = e.target.value;
-                                        setName(v);
-                                        const err = v.length > 0 ? validateName(v) : "";
-                                        setFieldErr("name", err);
-                                    }} className={inputErr("name")} suppressHydrationWarning />
-                                {errors.name && <p className="text-xs text-red-600 font-semibold">{errors.name}</p>}
+                        <div className={`transition-all duration-500 space-y-8 ${!propertyType ? 'opacity-40 pointer-events-none grayscale-[50%]' : 'opacity-100'}`}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-1">
+                                    <label className="text-sm font-medium">Property / PG Name <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(letters only)</span></label>
+                                    <Input placeholder="e.g. SkyLiv Boys Hostel" value={name}
+                                        disabled={!propertyType}
+                                        onChange={e => {
+                                            const v = e.target.value.replace(/[^a-zA-Z0-9\s\-_']/g, '');
+                                            setName(v);
+                                            const err = v.length > 0 ? validateName(v) : "";
+                                            setFieldErr("name", err);
+                                        }} className={inputErr("name")} suppressHydrationWarning />
+                                    {errors.name && <p className="text-xs text-red-600 font-semibold">{errors.name}</p>}
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-sm font-medium">Building Owner Name <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(letters only)</span></label>
+                                    <Input placeholder="e.g. Rajesh Kumar" value={ownerName}
+                                        readOnly={true}
+                                        disabled={!propertyType}
+                                        className={`${inputErr("ownerName")} ${readOnlyCls}`} suppressHydrationWarning />
+                                    <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile name. Contact Rentpe Support Team to update.</p>
+                                    {errors.ownerName && <p className="text-xs text-red-600 font-semibold">{errors.ownerName}</p>}
+                                </div>
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-sm font-medium">Building Owner Name <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(letters only)</span></label>
-                                <Input placeholder="e.g. Rajesh Kumar" value={ownerName}
-                                    readOnly={true}
-                                    className={`${inputErr("ownerName")} ${readOnlyCls}`} suppressHydrationWarning />
-                                <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile name. Contact Rentpe Support Team to update.</p>
-                                {errors.ownerName && <p className="text-xs text-red-600 font-semibold">{errors.ownerName}</p>}
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            <div className="space-y-1">
-                                <label className="text-sm font-medium">Business / Entity Name <span className="text-[10px] text-muted-foreground">(Optional)</span></label>
-                                <Input placeholder="e.g. SkyLiv Properties Pvt Ltd" value={businessName}
-                                    onChange={e => setBusinessName(e.target.value)}
-                                    className="h-10 text-sm font-medium" suppressHydrationWarning />
-                                <p className="text-[10px] text-slate-400 font-medium italic uppercase tracking-tighter">Enter legal business name if applicable.</p>
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-sm font-medium">Contact Email</label>
-                                <Input placeholder="owner@example.com" value={ownerEmail}
-                                    readOnly={true}
-                                    className={`${readOnlyCls}`} suppressHydrationWarning />
-                                <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered account email.</p>
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-sm font-medium">Contact Phone <span className="text-red-500">*</span></label>
-                                <Input placeholder="e.g. +919876543210" value={phone}
-                                    readOnly={true}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                <div className="space-y-1">
+                                    <label className="text-sm font-medium">Business / Entity Name <span className="text-[10px] text-muted-foreground">(Optional)</span></label>
+                                    <Input placeholder="e.g. SkyLiv Properties Pvt Ltd" value={businessName}
+                                        disabled={!propertyType}
+                                        onChange={e => setBusinessName(e.target.value.replace(/[^a-zA-Z0-9\s\-_\.,&()]/g, ''))}
+                                        className="h-10 text-sm font-medium" suppressHydrationWarning />
+                                    <p className="text-[10px] text-slate-400 font-medium italic uppercase tracking-tighter">Enter legal business name if applicable.</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-sm font-medium">Contact Email</label>
+                                    <Input placeholder="owner@example.com" value={ownerEmail}
+                                        readOnly={true}
+                                        disabled={!propertyType}
+                                        className={`${readOnlyCls}`} suppressHydrationWarning />
+                                    <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered account email.</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-sm font-medium">Contact Phone <span className="text-red-500">*</span></label>
+                                    <Input placeholder="e.g. +919876543210" value={phone}
+                                        readOnly={true}
+                                        disabled={!propertyType}
                                     maxLength={13} className={`${inputErr("phone")} ${readOnlyCls}`} suppressHydrationWarning />
                                 <p className="text-[10px] text-blue-600 font-medium italic">Locked to verified mobile number.</p>
                                 {errors.phone && <p className="text-xs text-red-600 font-semibold">{errors.phone}</p>}
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-1">
-                                <label className="text-sm font-medium">
-                                    PG/Hostel Licence No. 
-                                    {(propertyType === "PG" || propertyType === "Hostel") && <span className="text-red-500">*</span>}
-                                </label>
-                                <Input 
-                                    placeholder="e.g. GOV-12345-PG" 
-                                    value={licenseNumber} 
-                                    onChange={e => setLicenseNumber(e.target.value)} 
-                                    className={inputErr("licenseNumber")}
-                                    suppressHydrationWarning
-                                />
-                                {errors.licenseNumber && <p className="text-xs text-red-600 font-semibold">{errors.licenseNumber}</p>}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-1">
+                                    <label className="text-sm font-medium">
+                                        PG/Hostel Licence No. 
+                                        {(propertyType === "PG" || propertyType === "Hostel") && <span className="text-red-500">*</span>}
+                                    </label>
+                                    <Input 
+                                        placeholder="e.g. GOV-12345-PG" 
+                                        value={licenseNumber} 
+                                        disabled={!propertyType}
+                                        onChange={e => setLicenseNumber(e.target.value.replace(/[^a-zA-Z0-9\-_/]/g, ''))} 
+                                        className={inputErr("licenseNumber")}
+                                        suppressHydrationWarning
+                                    />
+                                    {errors.licenseNumber && <p className="text-xs text-red-600 font-semibold">{errors.licenseNumber}</p>}
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-sm font-medium">
+                                        RERA ID / Reg No.
+                                        <span className="text-muted-foreground text-xs ml-1">(Highly Recommended)</span>
+                                    </label>
+                                    <Input 
+                                        placeholder="e.g. RERA-KA-2024-001" 
+                                        value={reraId} 
+                                        disabled={!propertyType}
+                                        onChange={e => setReraId(e.target.value.replace(/[^a-zA-Z0-9\-_/]/g, ''))} 
+                                        suppressHydrationWarning
+                                    />
+                                </div>
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-sm font-medium">
-                                    RERA ID / Reg No.
-                                    <span className="text-muted-foreground text-xs ml-1">(Highly Recommended)</span>
-                                </label>
-                                <Input 
-                                    placeholder="e.g. RERA-KA-2024-001" 
-                                    value={reraId} 
-                                    onChange={e => setReraId(e.target.value)} 
-                                    suppressHydrationWarning
-                                />
-                            </div>
-                        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-purple-100 pt-6">
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold flex items-center gap-1.5 text-slate-800">
-                                    Do you have a GST Number? <span className="text-red-500">*</span>
-                                </label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-purple-100 pt-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold flex items-center gap-1.5 text-slate-800">
+                                        Do you have a GST Number? <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="flex gap-3">
+                                        {[
+                                            { val: "yes", label: "Yes" },
+                                            { val: "no", label: "No" }
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.val}
+                                                type="button"
+                                                disabled={!propertyType}
+                                                onClick={() => {
+                                                    setHasGstNumber(opt.val as any);
+                                                    if (opt.val === "no") setGstNumber("");
+                                                }}
+                                                className={`px-5 py-2.5 rounded-xl text-xs font-bold border-2 transition-all active:scale-95 ${
+                                                    hasGstNumber === opt.val
+                                                        ? "bg-purple-600 border-purple-600 text-white shadow-md"
+                                                        : "bg-white border-slate-200 text-slate-500 hover:border-purple-300"
+                                                }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="mt-2 p-3 bg-blue-50/50 border border-blue-100 rounded-xl">
+                                        <p className="text-xs text-blue-800 font-medium leading-relaxed">
+                                            Note: Under GST law, registration is mandatory if your aggregate annual turnover exceeds ₹20 Lakhs. If your turnover falls below this threshold or you are exempted, you may select 'No' to list without a GSTIN.
+                                        </p>
+                                    </div>
+                                    {errors.hasGstNumber && <p className="text-xs text-red-600 font-semibold">{errors.hasGstNumber}</p>}
+                                </div>
+
+                                {hasGstNumber === "yes" && (
+                                    <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <label className="text-sm font-medium text-slate-800">
+                                            GST Number (GSTIN) <span className="text-red-500">*</span>
+                                        </label>
+                                        <Input
+                                            placeholder="e.g. 29AAAAA1111A1Z1"
+                                            value={gstNumber}
+                                            disabled={!propertyType}
+                                            onChange={e => setGstNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())}
+                                            className={inputErr("gstNumber")}
+                                            suppressHydrationWarning
+                                        />
+                                        <p className="text-[10px] text-slate-400 font-medium italic">
+                                            Enter your 15-character GSTIN. Format: 2 State Code, 10 PAN, 1 Entity Code, 1 Blank ('Z'), 1 Checksum digit.
+                                        </p>
+                                        {errors.gstNumber && <p className="text-xs text-red-600 font-semibold">{errors.gstNumber}</p>}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="space-y-2 border-t border-purple-100 pt-6">
+                                <label className="text-sm font-bold flex items-center gap-1.5 text-slate-800">Stay Gender Type <span className="text-red-500">*</span></label>
                                 <div className="flex gap-3">
-                                    {[
-                                        { val: "yes", label: "Yes" },
-                                        { val: "no", label: "No" }
-                                    ].map(opt => (
-                                        <button
-                                            key={opt.val}
-                                            type="button"
-                                            onClick={() => {
-                                                setHasGstNumber(opt.val as any);
-                                                if (opt.val === "no") setGstNumber("");
-                                            }}
-                                            className={`px-5 py-2.5 rounded-xl text-xs font-bold border-2 transition-all active:scale-95 ${
-                                                hasGstNumber === opt.val
-                                                    ? "bg-purple-600 border-purple-600 text-white shadow-md"
-                                                    : "bg-white border-slate-200 text-slate-500 hover:border-purple-300"
-                                            }`}
-                                        >
-                                            {opt.label}
+                                    {["CoLiving(Boys/Girls) both", "Boys", "Girls"].map(g => (
+                                        <button key={g} type="button" onClick={() => setGender(g as any)}
+                                            disabled={!propertyType}
+                                            suppressHydrationWarning
+                                            className={`px-5 py-2 rounded-xl text-sm font-bold border-2 transition-all ${
+                                                gender === g 
+                                                ? "bg-purple-600 border-purple-600 text-white shadow-md active:scale-95" 
+                                                : "bg-white border-slate-200 text-slate-500 hover:border-purple-300 active:scale-95"
+                                            } ${errors.gender ? "border-red-400" : ""}`}>
+                                            {g}
                                         </button>
                                     ))}
                                 </div>
-                                <div className="mt-2 p-3 bg-blue-50/50 border border-blue-100 rounded-xl">
-                                    <p className="text-xs text-blue-800 font-medium leading-relaxed">
-                                        Note: Under GST law, registration is mandatory if your aggregate annual turnover exceeds ₹20 Lakhs. If your turnover falls below this threshold or you are exempted, you may select 'No' to list without a GSTIN.
-                                    </p>
-                                </div>
-                                {errors.hasGstNumber && <p className="text-xs text-red-600 font-semibold">{errors.hasGstNumber}</p>}
+                                {errors.gender && <p className="text-xs text-red-500 font-semibold">{errors.gender}</p>}
                             </div>
-
-                            {hasGstNumber === "yes" && (
-                                <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
-                                    <label className="text-sm font-medium text-slate-800">
-                                        GST Number (GSTIN) <span className="text-red-500">*</span>
-                                    </label>
-                                    <Input
-                                        placeholder="e.g. 29AAAAA1111A1Z1"
-                                        value={gstNumber}
-                                        onChange={e => setGstNumber(e.target.value.toUpperCase())}
-                                        className={inputErr("gstNumber")}
-                                        suppressHydrationWarning
-                                    />
-                                    <p className="text-[10px] text-slate-400 font-medium italic">
-                                        Enter your 15-character GSTIN. Format: 2 State Code, 10 PAN, 1 Entity Code, 1 Blank ('Z'), 1 Checksum digit.
-                                    </p>
-                                    {errors.gstNumber && <p className="text-xs text-red-600 font-semibold">{errors.gstNumber}</p>}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="space-y-2 border-t border-purple-100 pt-6">
-                            <label className="text-sm font-bold flex items-center gap-1.5 text-slate-800">Stay Gender Type <span className="text-red-500">*</span></label>
-                            <div className="flex gap-3">
-                                {["CoLiving(Boys/Girls) both", "Boys", "Girls"].map(g => (
-                                    <button key={g} type="button" onClick={() => setGender(g as any)}
-                                        suppressHydrationWarning
-                                        className={`px-5 py-2 rounded-xl text-sm font-bold border-2 transition-all ${
-                                            gender === g 
-                                            ? "bg-purple-600 border-purple-600 text-white shadow-md active:scale-95" 
-                                            : "bg-white border-slate-200 text-slate-500 hover:border-purple-300 active:scale-95"
-                                        } ${errors.gender ? "border-red-400" : ""}`}>
-                                        {g}
-                                    </button>
-                                ))}
-                            </div>
-                            {errors.gender && <p className="text-xs text-red-500 font-semibold">{errors.gender}</p>}
                         </div>
 
                         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-4 shadow-sm">
