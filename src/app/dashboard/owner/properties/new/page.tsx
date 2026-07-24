@@ -1437,7 +1437,7 @@ export default function AddPropertyPage() {
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                     <div>
                                         <label className="text-xs font-medium text-muted-foreground">Room Number <span className="text-red-500">*</span></label>
-                                        <Input className={`mt-1 ${errors[`room_${i}_number`] ? "border-red-500" : ""}`} placeholder="e.g. 101" value={room.roomNumber} onChange={e => updateRoom(i, "roomNumber", e.target.value)} suppressHydrationWarning />
+                                        <Input className={`mt-1 ${errors[`room_${i}_number`] ? "border-red-500" : ""}`} placeholder="e.g. 101" value={room.roomNumber} onChange={e => updateRoom(i, "roomNumber", e.target.value.replace(/[^a-zA-Z0-9\-_]/g, ''))} suppressHydrationWarning />
                                         {errors[`room_${i}_number`] && <p className="text-[10px] text-red-500 mt-1 font-bold">{errors[`room_${i}_number`]}</p>}
                                     </div>
                                     <div>
