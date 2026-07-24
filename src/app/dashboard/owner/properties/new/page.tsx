@@ -641,10 +641,12 @@ export default function AddPropertyPage() {
         if (docs.livePhotoUrl.length === 0) errs.livePhotoUrl = "Owner Current Photo (Selfie) is mandatory";
 
         rooms.forEach((room, i) => {
-            if (!room.roomNumber.trim()) errs[`room_${i}_number`] = `Room ${i + 1}: Room number required`;
-            if (!room.price || parseFloat(room.price) <= 0) errs[`room_${i}_price`] = `Room ${i + 1}: Valid price required`;
-            if (!room.availability || parseInt(room.availability) <= 0) errs[`room_${i}_avail`] = `Room ${i + 1}: Availability required`;
-            if (!room.securityDeposit || (room.securityDeposit !== '1' && room.securityDeposit !== '2')) errs[`room_${i}_deposit`] = `Room ${i + 1}: Security deposit selection is required`;
+            const roomLabel = room.roomNumber.trim() || `#${i + 1}`;
+            if (!room.roomNumber.trim()) errs[`room_${i}_number`] = `Room ${roomLabel}: Room number required`;
+            if (!room.type) errs[`room_${i}_type`] = `Room ${roomLabel}: Bed type not selected`;
+            if (!room.price || parseFloat(room.price) <= 0) errs[`room_${i}_price`] = `Room ${roomLabel}: Valid price required`;
+            if (room.type && (!room.availability || parseInt(room.availability) <= 0)) errs[`room_${i}_avail`] = `Room ${roomLabel}: Availability required`;
+            if (!room.securityDeposit || (room.securityDeposit !== '1' && room.securityDeposit !== '2')) errs[`room_${i}_deposit`] = `Room ${roomLabel}: Security deposit selection is required`;
         });
 
         setErrors(errs);
@@ -700,10 +702,12 @@ export default function AddPropertyPage() {
         if (step === 5) {
             if (rooms.length === 0) errs.rooms = "Add at least one room";
             rooms.forEach((room, i) => {
-                if (!room.roomNumber.trim()) errs[`room_${i}_number`] = `Room ${i + 1}: Room number required`;
-                if (!room.price || parseFloat(room.price) <= 0) errs[`room_${i}_price`] = `Room ${i + 1}: Valid price required`;
-                if (!room.availability || parseInt(room.availability) <= 0) errs[`room_${i}_avail`] = `Room ${i + 1}: Availability required`;
-                if (!room.securityDeposit || (room.securityDeposit !== '1' && room.securityDeposit !== '2')) errs[`room_${i}_deposit`] = `Room ${i + 1}: Security deposit selection is required`;
+                const roomLabel = room.roomNumber.trim() || `#${i + 1}`;
+                if (!room.roomNumber.trim()) errs[`room_${i}_number`] = `Room ${roomLabel}: Room number required`;
+                if (!room.type) errs[`room_${i}_type`] = `Room ${roomLabel}: Bed type not selected`;
+                if (!room.price || parseFloat(room.price) <= 0) errs[`room_${i}_price`] = `Room ${roomLabel}: Valid price required`;
+                if (room.type && (!room.availability || parseInt(room.availability) <= 0)) errs[`room_${i}_avail`] = `Room ${roomLabel}: Availability required`;
+                if (!room.securityDeposit || (room.securityDeposit !== '1' && room.securityDeposit !== '2')) errs[`room_${i}_deposit`] = `Room ${roomLabel}: Security deposit selection is required`;
             });
         }
         
@@ -1443,7 +1447,7 @@ export default function AddPropertyPage() {
                                     <div>
                                         <label className="text-xs font-medium text-muted-foreground">Bed Type <span className="text-red-500">*</span></label>
                                         <select 
-                                            className="mt-1 w-full border rounded-md p-2 text-sm bg-background" 
+                                            className={`mt-1 w-full border rounded-md p-2 text-sm bg-background transition-all ${errors[`room_${i}_type`] ? "border-red-500 text-red-600 bg-red-50 shadow-[0_0_0_2px_rgba(239,68,68,0.2)]" : "border-input"}`} 
                                             value={room.type} 
                                             onChange={e => {
                                                 const type = e.target.value;
@@ -1576,10 +1580,12 @@ export default function AddPropertyPage() {
                                     className="w-full h-11 border-2 border-green-500 text-green-700 hover:bg-green-50 font-black text-sm tracking-wide transition-all"
                                     onClick={() => {
                                         const errs: Record<string, string> = {};
-                                        if (!room.roomNumber.trim()) errs[`room_${i}_number`] = `Room number required`;
-                                        if (!room.type) errs[`room_${i}_type`] = `Bed type required`;
-                                        if (!room.price || parseFloat(room.price) <= 0) errs[`room_${i}_price`] = `Valid price required`;
-                                        if (!room.securityDeposit) errs[`room_${i}_deposit`] = `Security deposit selection is required`;
+                                        const roomLabel = room.roomNumber.trim() || `#${i + 1}`;
+                                        if (!room.roomNumber.trim()) errs[`room_${i}_number`] = `Room ${roomLabel}: Room number required`;
+                                        if (!room.type) errs[`room_${i}_type`] = `Room ${roomLabel}: Bed type not selected`;
+                                        if (!room.price || parseFloat(room.price) <= 0) errs[`room_${i}_price`] = `Room ${roomLabel}: Valid price required`;
+                                        if (room.type && (!room.availability || parseInt(room.availability) <= 0)) errs[`room_${i}_avail`] = `Room ${roomLabel}: Availability required`;
+                                        if (!room.securityDeposit || (room.securityDeposit !== '1' && room.securityDeposit !== '2')) errs[`room_${i}_deposit`] = `Room ${roomLabel}: Security deposit selection is required`;
                                         if (Object.keys(errs).length > 0) { setErrors(prev => ({ ...prev, ...errs })); return; }
                                         // Clear any room errors on successful save
                                         setErrors(prev => {
