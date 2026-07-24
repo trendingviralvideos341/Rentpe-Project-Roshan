@@ -133,8 +133,9 @@ export function BankDetailsModal({ isOpen, onClose, propertyId, propertyName, on
             return;
         }
 
-        if (errors.bankName || errors.bankAccountNo || errors.confirmBankAccountNo || errors.bankIfsc) {
-            toast.error("Please resolve all validation errors before submitting.");
+        const existingErrors = [errors.bankName, errors.bankAccountNo, errors.confirmBankAccountNo, errors.bankIfsc].filter(Boolean);
+        if (existingErrors.length > 0) {
+            toast.error(existingErrors[0]);
             return;
         }
 
