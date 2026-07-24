@@ -72,7 +72,7 @@ export default function PropertyWizardPage() {
 
   // Step 2: Identity
   const [propName, setPropName] = useState('');
-  const [propertyType, setPropertyType] = useState('PG');
+  const [propertyType, setPropertyType] = useState(''); // Default to empty
   const [genderType, setGenderType] = useState('COED');
   const [businessName, setBusinessName] = useState('');
   const [licenseNumber, setLicenseNumber] = useState('');
@@ -112,7 +112,7 @@ export default function PropertyWizardPage() {
       setAddress(p.address || '');
       setCity(p.city || '');
       setPropName(p.name === 'Untitled Property (Draft)' ? '' : p.name || '');
-      setPropertyType(p.propertyType || 'PG');
+      setPropertyType(p.propertyType || '');
       setGenderType(p.genderType || 'COED');
       setBusinessName((p as any).businessName || '');
       setLicenseNumber((p as any).licenseNumber || '');
@@ -374,54 +374,64 @@ export default function PropertyWizardPage() {
         {currentStep === 2 && (
           <StepShell title="🏢 Tell us about your property" subtitle="Name, type, and legal details.">
             <div className="space-y-5">
+              
               <div>
-                <label className="label-style">Property Name *</label>
-                <Input value={propName} onChange={e => setPropName(e.target.value)}
-                  placeholder="e.g. Green Valley PG for Girls" className="input-style mt-1" />
-                <p className="text-[11px] text-slate-400 mt-1 font-medium">This is what tenants will search for.</p>
-              </div>
-
-              <div>
-                <label className="label-style">Property Type</label>
+                <label className="label-style">Select Property Type <span className="text-red-500">*</span></label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
                   {['PG', 'HOSTEL', 'FLAT', 'ROOM'].map(t => (
                     <button key={t} type="button" onClick={() => setPropertyType(t)}
-                      className={`p-3 rounded-xl border-2 text-sm font-black transition-all ${propertyType === t ? 'border-violet-500 bg-violet-50 text-violet-700' : 'border-slate-200 text-slate-500 hover:border-violet-300'}`}>
+                      className={`p-3 rounded-xl border-2 text-sm font-black transition-all ${propertyType === t ? 'border-violet-500 bg-violet-50 text-violet-700 shadow-md' : 'border-slate-200 text-slate-500 hover:border-violet-300 bg-white'}`}>
                       {t}
                     </button>
                   ))}
                 </div>
+                {!propertyType && <p className="text-xs text-amber-600 font-bold mt-2 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5"/> Please select a property type to unlock the rest of the form.</p>}
               </div>
 
-              <div>
-                <label className="label-style">Gender Preference</label>
-                <div className="grid grid-cols-3 gap-2 mt-2">
-                  {[['COED', '👫 Co-ed'], ['MALE', '👨 Boys'], ['FEMALE', '👩 Girls']].map(([v, l]) => (
-                    <button key={v} type="button" onClick={() => setGenderType(v)}
-                      className={`p-3 rounded-xl border-2 text-sm font-black transition-all ${genderType === v ? 'border-violet-500 bg-violet-50 text-violet-700' : 'border-slate-200 text-slate-500 hover:border-violet-300'}`}>
-                      {l}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <div className={`transition-all duration-500 ${!propertyType ? 'opacity-40 pointer-events-none grayscale-[50%]' : 'opacity-100'}`}>
+                <div className="space-y-5">
+                  <div>
+                    <label className="label-style">Property Name <span className="text-red-500">*</span></label>
+                    <Input value={propName} 
+                      onChange={e => setPropName(e.target.value.replace(/[^a-zA-Z0-9\s\-_']/g, ''))}
+                      placeholder="e.g. Green Valley PG for Girls" className="input-style mt-1" disabled={!propertyType} />
+                    <p className="text-[11px] text-slate-400 mt-1 font-medium">Letters, numbers, spaces, and hyphens only.</p>
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="label-style">Business / Trade Name <span className="text-slate-400 font-normal">(Optional)</span></label>
-                  <Input value={businessName} onChange={e => setBusinessName(e.target.value)}
-                    placeholder="e.g. ABC Hostel Pvt. Ltd." className="input-style mt-1" />
-                </div>
-                <div>
-                  <label className="label-style">Licence No. <span className="text-slate-400 font-normal">(PG/Hostel)</span></label>
-                  <Input value={licenseNumber} onChange={e => setLicenseNumber(e.target.value)}
-                    placeholder="e.g. PG/2024/BLR-001" className="input-style mt-1" />
-                </div>
-              </div>
+                  <div>
+                    <label className="label-style">Gender Preference <span className="text-red-500">*</span></label>
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      {[['COED', '👫 Co-ed'], ['MALE', '👨 Boys'], ['FEMALE', '👩 Girls']].map(([v, l]) => (
+                        <button key={v} type="button" onClick={() => setGenderType(v)} disabled={!propertyType}
+                          className={`p-3 rounded-xl border-2 text-sm font-black transition-all ${genderType === v ? 'border-violet-500 bg-violet-50 text-violet-700' : 'border-slate-200 text-slate-500 hover:border-violet-300 bg-white'}`}>
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-              <div>
-                <label className="label-style">GST Number <span className="text-slate-400 font-normal">(Optional)</span></label>
-                <Input value={gstNumber} onChange={e => setGstNumber(e.target.value.toUpperCase())}
-                  placeholder="e.g. 29AAAAA1111A1Z1" maxLength={15} className="input-style mt-1 font-mono" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="label-style">Business / Trade Name <span className="text-slate-400 font-normal">(Optional)</span></label>
+                      <Input value={businessName} 
+                        onChange={e => setBusinessName(e.target.value.replace(/[^a-zA-Z0-9\s\-_\.,&()]/g, ''))}
+                        placeholder="e.g. ABC Hostel Pvt. Ltd." className="input-style mt-1" disabled={!propertyType} />
+                    </div>
+                    <div>
+                      <label className="label-style">Licence No. / RERA ID <span className="text-slate-400 font-normal">(Optional)</span></label>
+                      <Input value={licenseNumber} 
+                        onChange={e => setLicenseNumber(e.target.value.replace(/[^a-zA-Z0-9\-_/]/g, ''))}
+                        placeholder="e.g. PG/2024/BLR-001" className="input-style mt-1" disabled={!propertyType} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="label-style">GST Number <span className="text-slate-400 font-normal">(Optional)</span></label>
+                    <Input value={gstNumber} 
+                      onChange={e => setGstNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())}
+                      placeholder="e.g. 29AAAAA1111A1Z1" maxLength={15} className="input-style mt-1 font-mono" disabled={!propertyType} />
+                  </div>
+                </div>
               </div>
             </div>
           </StepShell>
