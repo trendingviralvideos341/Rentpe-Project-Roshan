@@ -385,8 +385,20 @@ export default function AdminVerificationsPage() {
                     </button>
                     
                     {/* Separator Line */}
-                    <div className="hidden sm:block w-px h-6 bg-slate-200 mx-2 shrink-0" />
-                    <div className="sm:hidden h-px w-full bg-slate-200 my-2 shrink-0" />
+                    <div className="hidden sm:block w-px h-6 bg-slate-200 mx-1 shrink-0" />
+                    <div className="sm:hidden h-px w-full bg-slate-200 my-1 shrink-0" />
+
+                    <a
+                        href="/dashboard/admin/property-reviews"
+                        className="flex-1 w-full py-2 md:py-2.5 px-4 text-sm md:text-base font-black rounded-xl sm:rounded-full transition-all duration-300 flex items-center justify-center gap-3 text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200"
+                    >
+                        <Building2 className="w-5 h-5 md:w-6 md:h-6 text-violet-600" />
+                        V2 Property Reviews
+                    </a>
+
+                    {/* Separator Line */}
+                    <div className="hidden sm:block w-px h-6 bg-slate-200 mx-1 shrink-0" />
+                    <div className="sm:hidden h-px w-full bg-slate-200 my-1 shrink-0" />
 
                     <button
                         onClick={() => setMainTab("agreements")}

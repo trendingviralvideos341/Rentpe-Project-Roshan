@@ -7,7 +7,8 @@ import {
     Building, Users, IndianRupee, RefreshCcw, TrendingUp, 
     User, Shield, Mail, Phone, Calendar, CheckCircle, Bed, 
     ListFilter, Activity, CreditCard, UserCheck, Lock,
-    AlertCircle, DoorOpen, BarChart3, Bell, Check
+    AlertCircle, DoorOpen, BarChart3, Bell, Check,
+    Sparkles, ChevronRight, FileCheck
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -230,6 +231,49 @@ export default function OwnerDashboard() {
                 </div>
 
                 <TabsContent value="overview" className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+
+                    {/* ── V2 Completeness Banner (only shows for owners with draft/in-review properties) ── */}
+                    {stats?.draftProperties?.length > 0 && (
+                        <div className="rounded-3xl overflow-hidden shadow-xl shadow-violet-100/60 border-0">
+                            <div className="bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 p-5">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <Sparkles className="h-4 w-4 text-violet-200" />
+                                            <span className="text-[11px] font-black text-violet-200 uppercase tracking-widest">Action Required</span>
+                                        </div>
+                                        <p className="text-white font-black text-lg">Complete your property listing</p>
+                                        <p className="text-violet-200 text-sm font-medium mt-0.5">
+                                            {stats.draftProperties.length} draft property — finish the wizard to go live
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-2 shrink-0">
+                                        <Link href={`/dashboard/owner/properties/wizard/${stats.draftProperties[0]?.id}`}>
+                                            <Button size="sm" className="bg-white text-violet-700 hover:bg-violet-50 font-black rounded-xl shadow-lg">
+                                                <ChevronRight className="h-4 w-4 mr-1" /> Continue Wizard
+                                            </Button>
+                                        </Link>
+                                        <Link href="/dashboard/owner/kyc">
+                                            <Button size="sm" variant="outline" className="border-white/30 text-white hover:bg-white/10 font-black rounded-xl">
+                                                <FileCheck className="h-4 w-4 mr-1" /> Upload KYC
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Completeness bar */}
+                            <div className="bg-violet-50 px-5 py-3 flex items-center gap-3">
+                                <div className="flex-1 h-2 bg-violet-100 rounded-full overflow-hidden">
+                                    <div className="h-full bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full transition-all duration-700"
+                                        style={{ width: `${stats.draftProperties[0]?.completenessScore ?? 0}%` }} />
+                                </div>
+                                <span className="text-xs font-black text-violet-700 min-w-[40px]">
+                                    {stats.draftProperties[0]?.completenessScore ?? 0}% done
+                                </span>
+                            </div>
+                        </div>
+                    )}
+
                     {/* ── KPI Cards ── */}
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                         <Card className="xl:col-span-1 bg-gradient-to-br from-violet-600 to-violet-800 border-l-4 border-l-violet-300 text-white">

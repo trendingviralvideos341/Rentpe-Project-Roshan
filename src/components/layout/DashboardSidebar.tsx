@@ -282,8 +282,8 @@ export default function DashboardSidebar(props: SidebarProps) {
         admin: isSuperAdmin ? "Super Admin Dashboard" : "Staff Portal Dashboard",
         student: "Tenant Dashboard",
         staff: "Staff Portal Dashboard",
-        onboarder: "Staff Portal Dashboard",
-        verifier: "Staff Portal Dashboard",
+        onboarder: "Onboarding Team Portal",
+        verifier: "Verification Team Portal",
     };
 
     const filterSectionLinks = (sections: SidebarSection[]) => {
@@ -296,6 +296,10 @@ export default function DashboardSidebar(props: SidebarProps) {
                 
                 if (!link.reqPerm) return true;
                 if (isSuperAdmin) return true;
+                
+                // VERIFIER persona specifically needs these links regardless of explicit JSON permissions
+                if (role === 'verifier' && ['/dashboard/admin/verifications', '/dashboard/admin/owner-kyc', '/dashboard/admin/properties', '/dashboard/admin/fraud'].includes(path)) return true;
+
                 return link.reqPerm.some(p => perms.includes(p));
             })
         })).filter(section => section.links.length > 0);
@@ -306,6 +310,8 @@ export default function DashboardSidebar(props: SidebarProps) {
         admin: filterSectionLinks(adminSections),
         student: studentSections,
         staff: filterSectionLinks(staffSections),
+        verifier: filterSectionLinks(adminSections),
+        onboarder: filterSectionLinks(adminSections),
     };
 
     const currentSections = sectionMap[role] || studentSections;

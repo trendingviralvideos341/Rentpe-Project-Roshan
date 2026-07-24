@@ -43,6 +43,7 @@ export async function getOwnerDashboardStats(fyYearStr?: string) {
             confirmedBookings,
             roomTotalBeds,
             depositsHeldRecords,
+            draftProperties,
         ] = await Promise.all([
             prisma.property.count({ where: { ownerId: userId, status: { in: ['LIVE', 'APPROVED'] } } }),
             prisma.tenant.count({
@@ -94,6 +95,13 @@ export async function getOwnerDashboardStats(fyYearStr?: string) {
                     select: { amount: true, refundAmount: true, refundStatus: true }
                   })
                 : Promise.resolve([]),
+            // V2: Draft properties needing completion — drives the Completeness Banner on dashboard
+            (prisma as any).property.findMany({
+                where: { ownerId: userId, status: 'DRAFT' },
+                select: { id: true, displayId: true, name: true, completenessScore: true, updatedAt: true },
+                orderBy: { updatedAt: 'desc' },
+                take: 3,
+            }),
         ]);
 
         // ── Revenue: group bookings by month ─────────────────────────────
@@ -172,6 +180,7 @@ export async function getOwnerDashboardStats(fyYearStr?: string) {
             pendingBookingCount,
             revenueHistory,
             occupancyStats,
+            draftProperties: draftProperties || [], // V2: Powers the Completeness Banner
             user: {
                 id: ownerUser?.id || userId,
                 name: ownerUser?.name || session.name || 'Owner',

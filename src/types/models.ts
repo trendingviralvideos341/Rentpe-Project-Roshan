@@ -21,7 +21,7 @@ export interface Property {
     description?: string | null;
     amenities: string; // JSON string
     images: string; // JSON string
-    status: string;
+    status: string; // DRAFT | SUBMITTED_FOR_REVIEW | UNDER_REVIEW | VERIFIED | LIVE | REJECTED | PENDING_VERIFICATION | APPROVED
     propertyType: string;
     genderType: string;
     averageRating: number;
@@ -31,6 +31,15 @@ export interface Property {
     updatedAt: Date;
     ownerName?: string | null;
     businessName?: string | null;
+    // V2 State Machine fields
+    completenessScore: number;           // 0-100 progress indicator
+    fraudRiskScore: string;              // LOW | MEDIUM | HIGH
+    propertyVerificationStatus: string;  // NOT_SUBMITTED | PENDING | APPROVED | REJECTED | NEEDS_RESUBMISSION
+    kycVerificationStatus: string;       // NOT_SUBMITTED | PENDING | APPROVED | REJECTED | NEEDS_RESUBMISSION
+    bankVerificationStatus: string;      // NOT_SUBMITTED | PENDING | APPROVED | REJECTED | NEEDS_RESUBMISSION
+    docVerificationStatus: string;       // NOT_SUBMITTED | PENDING | APPROVED | REJECTED | NEEDS_RESUBMISSION
+    platformAgreementVersion?: string | null; // e.g. "v1.2-2026"
+    platformAgreementAcceptedAt?: Date | null;
 }
 
 export interface Room {

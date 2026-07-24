@@ -212,6 +212,32 @@ model Property {
   deactivationRejectedBy     String?
   deactivationRejectedReason String?
   deletedAt                  DateTime?
+
+  // ── V2 STATE MACHINE: Completeness & Risk (V2 Architecture) ──────────────
+  // completenessScore: 0-100 score computed by calculatePropertyCompleteness().
+  // Incremented as owner fills photos, amenities, bank, KYC, agreement etc.
+  // Shown in Owner Dashboard as a premium progress indicator.
+  completenessScore          Int                          @default(0)
+
+  // fraudRiskScore: LOW | MEDIUM | HIGH — set by fraud detection engine.
+  // Computed from: duplicate PAN, VPN usage, disposable email, fake GPS, etc.
+  fraudRiskScore             String                       @default("LOW")
+
+  // ── V2 STATE MACHINE: Granular Independent Verification Statuses ─────────
+  // Each verification domain is tracked independently (not a monolithic boolean).
+  // Valid values: NOT_SUBMITTED | PENDING | APPROVED | REJECTED | NEEDS_RESUBMISSION
+  propertyVerificationStatus String                       @default("NOT_SUBMITTED")
+  kycVerificationStatus      String                       @default("NOT_SUBMITTED")
+  bankVerificationStatus     String                       @default("NOT_SUBMITTED")
+  docVerificationStatus      String                       @default("NOT_SUBMITTED")
+
+  // ── V2 STATE MACHINE: Agreement Versioning ────────────────────────────────
+  // Tracks which legal version of the platform agreement was accepted.
+  // e.g. "v1.2-2026". Never overwrite — create a new record on amendment.
+  platformAgreementVersion   String?
+  platformAgreementAcceptedAt DateTime?
+  platformAgreementIp        String?  // IP logged at moment of acceptance (IT Act S.10A)
+
   bookings                   Booking[]
   foodMenu                   FoodMenu[]
   owner                      User                         @relation(fields: [ownerId], references: [id])
@@ -228,10 +254,13 @@ model Property {
   vacatingNotices            VacatingNotice[]
   maintenanceRequests        MaintenanceRequest[]
   agreements                 Agreement[]
+  propertyReviews            PropertyReview[]  // V2: Admin granular review actions
+  ownerKycDocs               OwnerKycDocument[] // V2: Decoupled KYC documents
   minimumNoticeDays          Int                          @default(30)
 
   @@index([status])
   @@index([ownerId])   // PERF FIX: Owner dashboard queries filter by ownerId on every load
+  @@index([fraudRiskScore]) // V2: Quick fraud filter for Admin dashboard
 }
 
 model Room {
@@ -1650,4 +1679,93 @@ model AgreementMessage {
 
   @@index([agreementId])
   @@map("agreement_messages")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// V2 STATE MACHINE: GRANULAR ADMIN PROPERTY REVIEW LOG
+// ─────────────────────────────────────────────────────────────────────────────
+// Replaces the monolithic single-click "Verify" approach.
+// Each admin action on a property is tracked independently by domain:
+//   - PROPERTY_DETAILS (listing quality, location, description)
+//   - KYC              (PAN, Aadhaar, identity match)
+//   - BANK             (account number, IFSC, cancelled cheque)
+//   - DOCUMENTS        (PG license, fire safety, electricity bill)
+//   - AGREEMENT        (platform terms version accepted)
+//
+// Action types: APPROVE | REJECT | REQUEST_CHANGES | HOLD | ESCALATE | ASSIGN
+// Status is stored on Property.propertyVerificationStatus / kycVerificationStatus
+// etc. rather than here — this table is the AUDIT TRAIL of admin decisions.
+// ─────────────────────────────────────────────────────────────────────────────
+model PropertyReview {
+  id             String   @id @default(cuid())
+  propertyId     String
+  adminId        String   // userId of the Admin/Verifier who took the action
+  adminName      String?  // Snapshot at time of action (denormalized for audit integrity)
+  // Domain being reviewed
+  reviewCategory String   // PROPERTY_DETAILS | KYC | BANK | DOCUMENTS | AGREEMENT
+  // What was decided
+  actionType     String   // APPROVE | REJECT | REQUEST_CHANGES | HOLD | ESCALATE | ASSIGN
+  notes          String?  // Required for REJECT and REQUEST_CHANGES
+  assignedTo     String?  // userId — populated when actionType = ASSIGN
+  // Snapshot context
+  previousStatus String?  // Status before this action (for reversal audit)
+  newStatus      String?  // Status after this action
+  ipAddress      String?  // Admin's IP at time of decision
+  createdAt      DateTime @default(now())
+
+  property       Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+  @@index([adminId])
+  @@index([reviewCategory, actionType])
+  @@map("property_reviews")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// V2 STATE MACHINE: OWNER KYC DOCUMENTS (DECOUPLED & DPDP COMPLIANT)
+// ─────────────────────────────────────────────────────────────────────────────
+// Stores Owner identity documents independently of the Property or User table.
+// Designed for DPDP Act 2023 compliance:
+//   - Aadhaar/PAN scans can be PURGED from this table on "delete account" request
+//     while financial records in Payment/Invoice tables are retained for 7 years
+//     as mandated by Income Tax Act.
+//
+// Document Versioning: uploading a new document does NOT overwrite the old one.
+// Version numbers increment per (ownerId, docType) combination.
+// This creates an immutable audit trail for legal disputes.
+//
+// docType values: PAN | AADHAAR | CANCELLED_CHEQUE | ADDRESS_PROOF | GST_CERT
+//                  PG_LICENSE | FIRE_SAFETY | ELECTRICITY_BILL | OTHER
+//
+// ADDRESS_PROOF accepts ANY of: Electricity Bill, Water Bill, Property Tax,
+//   Registered Rent Agreement, Sale Deed, or Society Letter (flexible, not rigid).
+// ─────────────────────────────────────────────────────────────────────────────
+model OwnerKycDocument {
+  id             String    @id @default(cuid())
+  displayId      String    @unique  // RP-K-XXXXXXXX (via generateSequentialId('KYC'))
+  ownerId        String              // Links to User.id (the owner)
+  propertyId     String?             // Optional: link to specific property if document is property-specific
+  docType        String              // PAN | AADHAAR | CANCELLED_CHEQUE | ADDRESS_PROOF | PG_LICENSE | OTHER
+  fileUrl        String              // Cloudinary private URL — never public. Always generate signed URL.
+  fileName       String?
+  fileSize       Int?                // bytes — enforced <= 5MB at upload time
+  mimeType       String?             // Validated magic number match (not just extension)
+  version        Int       @default(1) // Increments on re-upload — old versions are NEVER deleted
+  isLatest       Boolean   @default(true) // Only the latest version of each docType is active
+  status         String    @default("PENDING") // PENDING | VERIFIED | REJECTED | NEEDS_RESUBMISSION
+  rejectedReason String?
+  verifiedBy     String?             // adminId who approved/rejected
+  verifiedAt     DateTime?
+  // Soft delete only — for DPDP purge requests
+  // Set purgedAt when owner requests data deletion — fileUrl becomes null
+  purgedAt       DateTime?
+  purgedBy       String?             // adminId who processed the purge request
+  uploadedAt     DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  property       Property? @relation(fields: [propertyId], references: [id])
+
+  @@index([ownerId, docType, isLatest]) // Efficient: "give me latest PAN for this owner"
+  @@index([status])
+  @@map("owner_kyc_documents")
 }
