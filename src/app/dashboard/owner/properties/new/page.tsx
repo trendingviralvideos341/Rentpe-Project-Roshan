@@ -265,7 +265,7 @@ export default function AddPropertyPage() {
 
     const addRoom = () => {
         if (rooms.length >= 1) return; // Only 1 room allowed during registration
-        setRooms([...rooms, { roomNumber: "", type: "Single Sharing", price: "", availability: "1", securityDeposit: "" }]);
+        setRooms([...rooms, { roomNumber: "", type: "", price: "", availability: "", securityDeposit: "" }]);
     };
 
     const removeRoom = (i: number) => {
@@ -1453,6 +1453,7 @@ export default function AddPropertyPage() {
                                                 if (type === "Four Sharing") autoAvail = "4";
                                                 if (type === "Five Sharing") autoAvail = "5";
                                                 if (type === "Six Sharing") autoAvail = "6";
+                                                if (!type) autoAvail = "";
                                                 const updated = [...rooms];
                                                 updated[i].type = type;
                                                 updated[i].availability = autoAvail;
@@ -1460,6 +1461,7 @@ export default function AddPropertyPage() {
                                             }} 
                                             suppressHydrationWarning
                                         >
+                                            <option value="" disabled>Select Bed Type</option>
                                             <option value="Single Sharing">Single Sharing (1)</option>
                                             <option value="Double Sharing">Double Sharing (2)</option>
                                             <option value="Three Sharing">Three Sharing (3)</option>
@@ -1479,7 +1481,7 @@ export default function AddPropertyPage() {
                                             type="number" 
                                             readOnly 
                                             className={`mt-1 bg-gray-50 cursor-not-allowed font-bold ${errors[`room_${i}_avail`] ? "border-red-500" : ""}`} 
-                                            placeholder="1" 
+                                            placeholder="Auto-filled" 
                                             value={room.availability} 
                                             suppressHydrationWarning
                                         />
@@ -1575,6 +1577,7 @@ export default function AddPropertyPage() {
                                     onClick={() => {
                                         const errs: Record<string, string> = {};
                                         if (!room.roomNumber.trim()) errs[`room_${i}_number`] = `Room number required`;
+                                        if (!room.type) errs[`room_${i}_type`] = `Bed type required`;
                                         if (!room.price || parseFloat(room.price) <= 0) errs[`room_${i}_price`] = `Valid price required`;
                                         if (!room.securityDeposit) errs[`room_${i}_deposit`] = `Security deposit selection is required`;
                                         if (Object.keys(errs).length > 0) { setErrors(prev => ({ ...prev, ...errs })); return; }
