@@ -441,7 +441,7 @@ export default function AdminPropertiesPage() {
 
                                         {prop.status === 'VERIFYING_DOCUMENTS' && (
                                             <>
-                                                {prop.adminNotes && (
+                                                {prop.adminNotes && prop.adminNotes.split('\n').some((line: string) => !line.trim().startsWith('[SYSTEM:')) && (
                                                     <Button 
                                                         className="w-full h-9 bg-amber-500 hover:bg-amber-600 text-white font-black uppercase tracking-widest text-[9px] rounded-xl animate-pulse shadow-lg shadow-amber-100"
                                                         onClick={async () => {
