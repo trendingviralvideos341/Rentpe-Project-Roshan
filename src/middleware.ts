@@ -53,6 +53,46 @@ export default async function middleware(req: NextRequest) {
             const { success, reset } = await limiter.limit(`${ip}-${session?.userId ?? 'anon'}`);
             if (!success) {
                 const retryAfter = Math.ceil((reset - Date.now()) / 1000);
+                
+                // If it's a page visit (browser), show a friendly HTML screen instead of raw JSON
+                const accept = req.headers.get('accept') || '';
+                if (accept.includes('text/html')) {
+                    const html = `
+                        <!DOCTYPE html>
+                        <html lang="en">
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                            <title>Too Many Requests</title>
+                            <style>
+                                body { font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #f9fafb; color: #111827; }
+                                .container { text-align: center; max-width: 400px; padding: 2rem; background: white; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #e5e7eb; }
+                                h1 { font-size: 1.5rem; margin-bottom: 1rem; color: #dc2626; }
+                                p { margin-bottom: 1.5rem; color: #4b5563; line-height: 1.5; }
+                                .retry-time { font-weight: bold; color: #6d28d9; font-size: 1.25rem; }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="container">
+                                <h1>Wait a Moment! 🛡️</h1>
+                                <p>You've made too many requests. For security reasons, please wait before trying again.</p>
+                                <p>Try again in: <br/><span class="retry-time">${retryAfter} seconds</span></p>
+                            </div>
+                            <script>
+                                setTimeout(() => {
+                                    window.location.reload();
+                                }, ${retryAfter} * 1000);
+                            </script>
+                        </body>
+                        </html>
+                    `;
+                    return new NextResponse(html, {
+                        status: 429,
+                        headers: { 'Content-Type': 'text/html', 'Retry-After': retryAfter.toString() }
+                    });
+                }
+
+                // For API routes and Next.js server actions, return the standard JSON
                 return new NextResponse(
                     JSON.stringify({ error: "Too many requests.", retryAfter }),
                     { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': retryAfter.toString() } }

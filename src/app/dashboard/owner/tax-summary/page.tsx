@@ -177,6 +177,8 @@ export default function TaxSummaryPage() {
         return true;
     });
 
+    const payoutLedgerRows = filteredRows.filter((r: any) => r.type !== 'PROPERTY_ONBOARDING');
+
     // Get the most recent month within selectedFY for per-month download
     const currentDownloadMonth: string = (() => {
         const now = new Date();
@@ -268,7 +270,7 @@ export default function TaxSummaryPage() {
                 'Tenant Name', 'Property', 'Room Type', 'Payment Method',
                 'Gross Amount', 'Rent Amount (Taxable)', 'Security Deposit (Non-Taxable)',
                 'Platform Commission', 'GST Charged (18%)',
-                'TDS Deducted (1%)', 'Owner Net Payout',
+                'TDS Deducted (1%)', 'Owner Net Amount',
                 'Refund Amount', 'Net Revenue',
                 'Status', 'Date'
             ];
@@ -417,7 +419,7 @@ export default function TaxSummaryPage() {
                         {[
                             { id: 'overview', label: 'Financial Overview', icon: TrendingUp },
                             { id: 'monthly', label: 'Monthly Statements', icon: Receipt },
-                            { id: 'transactions', label: 'Payout Ledger', icon: Search },
+                            { id: 'transactions', label: 'Transaction Ledger', icon: Search },
                             { id: 'onboarding', label: 'Onboarding Fees', icon: Building2 },
                         ].map(tab => {
                             const Icon = tab.icon;
@@ -481,7 +483,7 @@ export default function TaxSummaryPage() {
                                 <KpiCard label="Platform Commission" value={fmtShort(s.totalPlatformFeeCharged)} icon={Building2} color="amber" sub="Platform commission charged" />
                                 <KpiCard label="GST Charged (18%)" value={fmtShort(s.totalGstCharged)} icon={Receipt} color="violet" sub="On platform commission only" />
                                 <KpiCard label="TDS Deducted (1%)" value={s.tdsExempt ? '₹0 (Exempt)' : fmtShort(s.totalTdsDeducted)} icon={Shield} color={s.tdsExempt ? 'emerald' : 'rose'} sub="Sec 194-O" />
-                                <KpiCard label="Your Net Payout" value={fmtShort(s.totalOwnerNetPayout)} icon={TrendingUp} color="emerald" sub="After fees + TDS" />
+                                <KpiCard label="Your Net Amount" value={fmtShort(s.totalOwnerNetPayout)} icon={TrendingUp} color="emerald" sub="After fees + TDS" />
                                 <KpiCard label="Total Refunds" value={fmtShort(s.totalRefunds)} icon={Download} color="rose" sub="Processed refunds" />
                                 {s.totalOnboardingPaid > 0 && (
                                     <KpiCard label="Property Onboarding Paid" value={fmtShort(s.totalOnboardingPaid)} icon={Building2} color="indigo" sub={`Incl. ${fmtShort(s.totalOnboardingGst)} GST ITC`} />
@@ -507,7 +509,7 @@ export default function TaxSummaryPage() {
                                 <div className="p-5 border-b border-slate-100 flex items-center justify-between">
                                     <div>
                                         <h3 className="font-black text-slate-900 text-lg">Monthly Tax Breakdown</h3>
-                                        <p className="text-xs text-slate-500 mt-0.5">Month-by-month view of gross rent, platform commission, GST, TDS, and your net payout</p>
+                                        <p className="text-xs text-slate-500 mt-0.5">Month-by-month view of gross rent, platform commission, GST, TDS, and your net amount</p>
                                     </div>
                                     <button
                                         onClick={toggleSelectAll}
@@ -537,7 +539,7 @@ export default function TaxSummaryPage() {
                                                 <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Platform Commission <Tip content="RentPe platform fee commission (expense for owner)" /></th>
                                                 <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">GST (18%) <Tip content="18% GST charged on the platform commission (claimable as Input Tax Credit)" /></th>
                                                 <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">TDS (1%) <Tip content="1% TDS deducted under Section 194-O (sent to Income Tax Dept on your behalf)" /></th>
-                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Your Net Payout <Tip content="Actual money sent to your bank account after platform commission, GST, and TDS" /></th>
+                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Your Net Amount <Tip content="Actual money sent to your bank account after platform commission, GST, and TDS (or negative for fees paid to RentPe)" /></th>
                                                 <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Action <Tip content="Statements and invoice preview options" /></th>
                                             </tr>
                                         </thead>
@@ -609,7 +611,7 @@ export default function TaxSummaryPage() {
                                 <div>
                                     <h3 className="font-black text-slate-900 text-lg mb-1">Export for Your CA / Accountant</h3>
                                     <p className="text-sm text-slate-500 mb-1">
-                                        Downloads include: Booking IDs, Razorpay IDs, GST breakdown (CGST+SGST), TDS deducted (Sec 194-O), and net payout.
+                                        Downloads include: Booking IDs, Razorpay IDs, GST breakdown (CGST+SGST), TDS deducted (Sec 194-O), and net amount.
                                     </p>
                                     <p className="text-xs text-indigo-600 font-bold flex items-center gap-1.5">
                                         <Info className="w-4 h-4 flex-shrink-0" />
@@ -681,7 +683,7 @@ export default function TaxSummaryPage() {
                     </div>
                 )}
 
-                {/* ── Tab 3: Payout Ledger ── */}
+                {/* ── Tab 3: Transaction Ledger ── */}
                 {activeTab === 'transactions' && (
                     <div className="space-y-6 animate-in fade-in duration-300">
                         {/* Summary Banner */}
@@ -690,12 +692,12 @@ export default function TaxSummaryPage() {
                         </div>
 
                         {/* Transaction Preview Table */}
-                        {report?.report?.length > 0 && (
+                        {payoutLedgerRows.length > 0 && (
                             <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                                 <div className="p-5 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4">
                                     <div>
                                         <h3 className="font-black text-slate-900 text-lg">Transaction Preview</h3>
-                                        <p className="text-xs text-slate-500 mt-0.5">Showing {filteredRows.slice(0, 25).length} of {filteredRows.length} records • Use CSV/PDF to download full audit trail</p>
+                                        <p className="text-xs text-slate-500 mt-0.5">Showing {payoutLedgerRows.slice(0, 25).length} of {payoutLedgerRows.length} records • Use CSV/PDF to download full audit trail</p>
                                     </div>
                                 </div>
 
@@ -763,12 +765,12 @@ export default function TaxSummaryPage() {
                                                 <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Platform Commission <Tip content="RentPe platform commission charged on this transaction" /></th>
                                                 <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">GST <Tip content="18% GST on the platform commission" /></th>
                                                 <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">TDS <Tip content="1% TDS withheld under Section 194-O" /></th>
-                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Net Payout <Tip content="Final payout amount sent to your bank account" /></th>
+                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Net Amount <Tip content="Final transaction amount (positive for income, negative for fees paid)" /></th>
                                                 <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Status <Tip content="Current status of the transaction (e.g. CONFIRMED, PAID, etc.)" /></th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-50">
-                                            {filteredRows.slice(0, 25).map((r: any, i: number) => (
+                                            {payoutLedgerRows.slice(0, 25).map((r: any, i: number) => (
                                                 <tr key={i} className="hover:bg-indigo-50/20 transition-colors">
                                                     <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">{new Date(r.date).toLocaleDateString('en-IN')}</td>
                                                     <td className="px-3 py-2.5 font-mono text-indigo-600 font-bold">{r.bookingId}</td>

@@ -26,23 +26,28 @@ export default function LoginPage() {
         setLoading(true);
         setError(null);
 
-        const formData = new FormData();
-        formData.set("email", email);
-        formData.set("password", password);
+        try {
+            const formData = new FormData();
+            formData.set("email", email);
+            formData.set("password", password);
 
-        const result = await login(formData);
+            const result = await login(formData);
 
-        if (result?.require2FA) {
-            setUserId(result.userId);
-            setRequire2FA(true);
+            if (result?.require2FA) {
+                setUserId(result.userId);
+                setRequire2FA(true);
+                setLoading(false);
+            } else if (result?.error) {
+                setError(result.error);
+                setLoading(false);
+            } else {
+                // Success (redirect handled by server action or similar)
+            }
+        } catch (err: any) {
+            console.error("Login error:", err);
+            // Catch Next.js server action errors which often happen on 429 rate limit or network failure
+            setError("Too many requests or network error. Please wait a moment and try again.");
             setLoading(false);
-        } else if (result?.error) {
-            setError(result.error);
-            setLoading(false);
-        } else {
-            // Success (redirect handled by server action or similar)
-            // But since redirect(path) is called in server action, it might throw NEXT_REDIRECT
-            // which is handled by Next.js. If it returns success: true, we can client-redirect.
         }
     }
 
