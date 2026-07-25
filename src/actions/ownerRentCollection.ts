@@ -711,6 +711,7 @@ export interface SettlementDeductions {
     noticePeriod: number;   // Notice period default penalty
     other: number;          // Any other deductions
     notes: string;          // Owner's notes
+    paymentMode?: 'ONLINE' | 'OFFLINE'; // How the refund was paid to the tenant
 }
 
 async function _processDepositSettlement(
@@ -773,21 +774,25 @@ async function _processDepositSettlement(
     const deductionSummary = deductionLines.join(', ') || 'None';
 
     // Update the deposit record with structured deductions
+    const paymentMode = deductions.paymentMode || 'ONLINE';
+    const paymentModeNote = paymentMode === 'OFFLINE' ? ' [PAID OFFLINE DIRECTLY TO TENANT]' : '';
     await (prisma as any).securityDeposit.update({
         where: { id: depositId },
         data: {
             status: finalStatus,
             refundAmount,
             deductionAmount: totalDeductions,
-            deductionReason: deductionSummary + (deductions.notes ? ` — Notes: ${deductions.notes}` : ''),
+            deductionReason: deductionSummary + (deductions.notes ? ` — Notes: ${deductions.notes}` : '') + paymentModeNote,
             deductionDamages: sdDamages,
             deductionUtilities: sdUtilities,
             deductionRent: sdUnpaidRent,
             deductionNotice: sdNoticePeriod,
             deductionOther: sdOther,
-            settlementNotes: deductions.notes 
-                ? (totalDeductions > depositAmount ? `DEFICIT DEBT: Tenant owes an additional ₹${(totalDeductions - depositAmount).toLocaleString('en-IN')}. ` + deductions.notes : deductions.notes)
-                : (totalDeductions > depositAmount ? `DEFICIT DEBT: Tenant owes an additional ₹${(totalDeductions - depositAmount).toLocaleString('en-IN')}.` : null),
+            settlementNotes: [
+                paymentMode === 'OFFLINE' ? `[OFFLINE PAYMENT] Owner confirmed direct payment of ₹${refundAmount.toLocaleString('en-IN')} to tenant.` : null,
+                totalDeductions > depositAmount ? `DEFICIT DEBT: Tenant owes an additional ₹${(totalDeductions - depositAmount).toLocaleString('en-IN')}.` : null,
+                deductions.notes || null,
+            ].filter(Boolean).join(' ') || null,
             settlementDate: new Date(),
             refundDueBy: null,
         }
@@ -822,6 +827,7 @@ async function _processDepositSettlement(
                     </tr>
                   </table>
                 </div>
+                ${paymentMode === 'OFFLINE' ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;margin-bottom:16px;"><p style="color:#166534;font-size:13px;margin:0;"><strong>💵 Paid Offline:</strong> The owner has marked this refund of <strong>${fmtAmt(refundAmount)}</strong> as paid directly to you (Cash / Direct Transfer).</p></div>` : ''}
                 ${deductions.notes ? `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;margin-bottom:16px;"><p style="color:#92400e;font-size:13px;margin:0;"><strong>Owner's Note:</strong> ${deductions.notes}</p></div>` : ''}
                 <p style="color:#6b7280;font-size:13px;">If you believe there is an error, raise a dispute from your student dashboard within 15 days.</p>
                 <a href="https://rentpe.in/dashboard/student" style="display:inline-block;background:#6366f1;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:12px;">View My Deposit Status →</a>
@@ -1124,8 +1130,8 @@ export async function getOwnerAnalytics(fromDate?: string, toDate?: string) {
         .reduce((s: number, inv: any) => s + inv.paidAmount, 0);
 
     const paymentMethodSplit = {
-        cash: 0,
-        online: 0,
+        cash: Math.round((cashCollected + Number.EPSILON) * 100) / 100,
+        online: Math.round((onlineCollected + Number.EPSILON) * 100) / 100,
     };
 
     return { perProperty, monthly, properties, paymentMethodSplit };

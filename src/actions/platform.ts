@@ -722,6 +722,13 @@ const session = await getSession();
         const booking = p.booking || {};
         const owner = booking?.room?.property?.owner || {};
         const property = booking?.room?.property || {};
+        const originalRent = n(fee.grossAmount) || n(p.amount) || 0;
+        const studentFee   = n(fee.customerFee) || 0;
+        const gstStudent   = n(fee.gstOnStudentFee) || 0;
+        
+        // totalCharged = Original Rent + Student Convenience Fee
+        const grossAmountReceived = n(fee.totalCharged) || (originalRent + studentFee);
+
         return {
             // === IDs (Audit Trail) ===
             rentpePaymentId: p.id,
@@ -741,27 +748,29 @@ const session = await getSession();
             ownerName: owner.name || '—',
             ownerId: owner.displayId || '—',
             ownerEmail: owner.email || '—',
-            // === Money Breakdown ===
-            grossAmount: n(fee.grossAmount) || n(p.amount) || 0,
-            rentAmount: p.depositId ? 0 : (n(fee.grossAmount) || n(p.amount) || 0),
-            depositAmount: p.depositId ? (n(fee.grossAmount) || n(p.amount) || 0) : 0,
-            platformFeeStudent: n(fee.customerFee) || 0,
-            platformFeeOwner: n(fee.ownerFee) || 0,
-            gstOnStudentFee: n(fee.gstOnStudentFee) || 0,
-            gstOnOwnerFee: n(fee.gstOnOwnerFee) || 0,
+            // === Waterfall Money Breakdown ===
+            grossAmount:        grossAmountReceived,
+            platformFeeStudent: studentFee,
+            gstOnStudentFee:    gstStudent,
+            originalRent:       originalRent,          // ← Rent after stripping student fee
+            platformFeeOwner:   n(fee.ownerFee) || 0,
+            gstOnOwnerFee:      n(fee.gstOnOwnerFee) || 0,
             cgstStudent: fee.gstOnStudentFee ? Math.round(((fee.gstOnStudentFee / 2) + Number.EPSILON) * 100) / 100 : 0,
             sgstStudent: fee.gstOnStudentFee ? Math.round(((fee.gstOnStudentFee - (fee.gstOnStudentFee / 2)) + Number.EPSILON) * 100) / 100 : 0,
             cgstOwner: fee.gstOnOwnerFee ? Math.round(((fee.gstOnOwnerFee / 2) + Number.EPSILON) * 100) / 100 : 0,
             sgstOwner: fee.gstOnOwnerFee ? Math.round(((fee.gstOnOwnerFee - (fee.gstOnOwnerFee / 2)) + Number.EPSILON) * 100) / 100 : 0,
-            tdsDeducted: n(fee.tdsAmount) || 0,
-            ownerNetPayout: n(fee.ownerNet) || 0,
-            totalCharged: n(fee.totalCharged) || n(p.amount) || 0,
-            platformEarned: n(fee.platformEarned) || 0,
-            sacCode: fee.sacCode || '997312',
-            paymentMethod: p.method || '—',
-            status: p.status,
-            date: p.date,
-            type: 'RENT_COLLECTION',
+            tdsDeducted:        n(fee.tdsAmount) || 0,
+            ownerNetPayout:     n(fee.ownerNet) || 0,
+            // Legacy fields kept for CSV export compatibility
+            rentAmount: p.depositId ? 0 : originalRent,
+            depositAmount: p.depositId ? originalRent : 0,
+            totalCharged:    n(fee.totalCharged) || n(p.amount) || 0,
+            platformEarned:  n(fee.platformEarned) || 0,
+            sacCode:         fee.sacCode || '997312',
+            paymentMethod:   p.method || '—',
+            status:          p.status,
+            date:            p.date,
+            type:            'RENT_COLLECTION',
         };
     });
 
@@ -854,6 +863,9 @@ const session = await getSession();
             platformFeeOwner: 0,
             gstOnStudentFee: 0,
             gstOnOwnerFee: 0,
+            // Cash payments carry no platform fee, so all GST components are zero
+            cgstStudent: 0, sgstStudent: 0,
+            cgstOwner: 0, sgstOwner: 0,
             cgst: 0,
             sgst: 0,
             tdsDeducted: 0,
@@ -897,6 +909,8 @@ const session = await getSession();
                 platformFeeOwner: 0,
                 gstOnStudentFee: 0,
                 gstOnOwnerFee: 0,
+                cgstStudent: 0, sgstStudent: 0,
+                cgstOwner: 0, sgstOwner: 0,
                 cgst: 0,
                 sgst: 0,
                 tdsDeducted: 0,
@@ -934,6 +948,8 @@ const session = await getSession();
                 platformFeeOwner: 0,
                 gstOnStudentFee: 0,
                 gstOnOwnerFee: 0,
+                cgstStudent: 0, sgstStudent: 0,
+                cgstOwner: 0, sgstOwner: 0,
                 cgst: 0,
                 sgst: 0,
                 tdsDeducted: 0,
@@ -999,21 +1015,29 @@ const session = await getSession();
         type: 'PROPERTY_ONBOARDING',
     }));
 
-    const combinedRows = [...rows, ...onboardingRows, ...cashRows].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // ── Transaction Ledger rows: RENT + CASH only. Onboarding goes to its own dedicated tab.
+    const combinedRows = [...rows, ...cashRows].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    // === Aggregate totals ===
-    const rentCollectionRows = combinedRows.filter((r: any) => r.type === 'RENT_COLLECTION' || r.type === 'TOKEN_PAYMENT' || r.type === 'JOINING_PAYMENT');
+    // ── Onboarding rows are kept SEPARATE for the Tax Liability tab totals only.
+    const allRowsForTax = [...rows, ...onboardingRows, ...cashRows];
+
+    // === Aggregate totals (rent-only, excludes onboarding) ===
     const totals = {
-        totalGrossCollected: rentCollectionRows.reduce((s: number, r: any) => s + r.grossAmount, 0),
-        totalPlatformEarned: combinedRows.reduce((s: number, r: any) => s + r.platformEarned, 0),
-        totalGstCollected: combinedRows.reduce((s: number, r: any) => s + r.gstOnStudentFee + r.gstOnOwnerFee, 0),
-        totalCgst: combinedRows.reduce((s: number, r: any) => s + r.cgst, 0),
-        totalSgst: combinedRows.reduce((s: number, r: any) => s + r.sgst, 0),
-        totalTdsWithheld: combinedRows.reduce((s: number, r: any) => s + r.tdsDeducted, 0),
-        totalOwnerPayouts: combinedRows.filter((r: any) => r.type !== 'PROPERTY_ONBOARDING').reduce((s: number, r: any) => s + (r.ownerNetPayout || 0), 0),
-        transactionCount: combinedRows.length,
-        totalOnboardingEarned: onboardingRows.reduce((s: number, r: any) => s + r.platformFeeOwner, 0),
-        totalOnboardingGst: onboardingRows.reduce((s: number, r: any) => s + r.gstOnOwnerFee, 0),
+        totalGrossCollected:    combinedRows.reduce((s: number, r: any) => s + r.grossAmount, 0),
+        totalOriginalRent:      combinedRows.reduce((s: number, r: any) => s + (r.originalRent ?? r.grossAmount), 0),
+        totalStudentFees:       combinedRows.reduce((s: number, r: any) => s + r.platformFeeStudent, 0),
+        totalOwnerCommission:   combinedRows.reduce((s: number, r: any) => s + r.platformFeeOwner, 0),
+        totalPlatformEarned:    combinedRows.reduce((s: number, r: any) => s + r.platformEarned, 0),
+        totalGstCollected:      combinedRows.reduce((s: number, r: any) => s + r.gstOnStudentFee + r.gstOnOwnerFee, 0),
+        totalCgst:              combinedRows.reduce((s: number, r: any) => s + (r.cgstStudent ?? 0) + (r.cgstOwner ?? 0), 0),
+        totalSgst:              combinedRows.reduce((s: number, r: any) => s + (r.sgstStudent ?? 0) + (r.sgstOwner ?? 0), 0),
+        totalTdsWithheld:       combinedRows.reduce((s: number, r: any) => s + r.tdsDeducted, 0),
+        totalOwnerPayouts:      combinedRows.reduce((s: number, r: any) => s + (r.ownerNetPayout || 0), 0),
+        transactionCount:       combinedRows.length,
+        // Onboarding totals kept for Tax tab cross-reference
+        totalOnboardingEarned:  onboardingRows.reduce((s: number, r: any) => s + r.platformFeeOwner, 0),
+        totalOnboardingGst:     onboardingRows.reduce((s: number, r: any) => s + r.gstOnOwnerFee, 0),
+        totalOnboardingCount:   onboardingRows.length,
     };
 
     return { rows: combinedRows, totals, generatedAt: new Date(), from, to };

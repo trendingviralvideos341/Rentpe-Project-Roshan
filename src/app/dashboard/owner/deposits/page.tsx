@@ -163,6 +163,7 @@ function SettlementWizard({ dep, onClose, onSuccess }: { dep: any; onClose: () =
     const [deductions, setDeductions] = useState<SettlementDeductions>({
         damages: 0, utilities: 0, unpaidRent: 0, noticePeriod: 0, other: 0, notes: ''
     });
+    const [paymentMode, setPaymentMode] = useState<'ONLINE' | 'OFFLINE'>('ONLINE');
     const [isPending, startTransition] = useTransition();
     const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
@@ -174,8 +175,11 @@ function SettlementWizard({ dep, onClose, onSuccess }: { dep: any; onClose: () =
         startTransition(async () => {
             try {
                 const action = totalDed === 0 ? 'REFUNDED' : refund > 0 ? 'PARTIALLY_REFUNDED' : 'FORFEITED';
-                await unwrap(processDepositSettlement(dep.id, action, deductions));
-                toast.success('Settlement processed successfully! Tenant has been notified via email.');
+                await unwrap(processDepositSettlement(dep.id, action, { ...deductions, paymentMode }));
+                const msg = paymentMode === 'OFFLINE'
+                    ? 'Offline settlement recorded! Tenant has been notified and a receipt is available in their app.'
+                    : 'Settlement processed successfully! Tenant has been notified via email.';
+                toast.success(msg);
                 onSuccess();
                 onClose();
             } catch (e: any) {
@@ -390,6 +394,47 @@ function SettlementWizard({ dep, onClose, onSuccess }: { dep: any; onClose: () =
                                 <p className="text-xs text-blue-700">The tenant will receive an email with this breakdown. If they dispute it, they can raise a case from their dashboard within 15 days.</p>
                             </div>
 
+                            {/* Payment Mode Selection */}
+                            {refund > 0 && (
+                                <div>
+                                    <p className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2">How are you paying the refund to the tenant?</p>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setPaymentMode('ONLINE')}
+                                            className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 font-bold text-sm transition-all ${
+                                                paymentMode === 'ONLINE'
+                                                    ? 'border-indigo-500 bg-indigo-50 text-indigo-800'
+                                                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                                            }`}
+                                        >
+                                            <span className="text-2xl">💳</span>
+                                            <span>Pay Online</span>
+                                            <span className="text-[10px] font-normal opacity-70">via RentPe / Razorpay</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPaymentMode('OFFLINE')}
+                                            className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 font-bold text-sm transition-all ${
+                                                paymentMode === 'OFFLINE'
+                                                    ? 'border-amber-500 bg-amber-50 text-amber-800'
+                                                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                                            }`}
+                                        >
+                                            <span className="text-2xl">💵</span>
+                                            <span>Paid Offline</span>
+                                            <span className="text-[10px] font-normal opacity-70">Cash / Direct Transfer</span>
+                                        </button>
+                                    </div>
+                                    {paymentMode === 'OFFLINE' && (
+                                        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 mt-3">
+                                            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                                            <p className="text-xs text-amber-700">A settlement receipt will be generated and sent to the tenant's app confirming ₹{refund.toLocaleString('en-IN')} was refunded directly to them. RentPe will record this for audit purposes.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {totalDed >= dep.amount && (
                                 <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3">
                                     <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
@@ -416,13 +461,21 @@ function SettlementWizard({ dep, onClose, onSuccess }: { dep: any; onClose: () =
                             onClick={handleSubmit}
                             disabled={isPending}
                             className={`flex-1 py-3.5 font-black text-sm rounded-2xl text-white disabled:opacity-50 transition-all shadow-lg ${
-                                refund > 0 ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:shadow-emerald-500/25' : 'bg-gradient-to-r from-red-600 to-rose-600 hover:shadow-red-500/25'
+                                refund <= 0
+                                    ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:shadow-red-500/25'
+                                    : paymentMode === 'OFFLINE'
+                                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:shadow-amber-500/25'
+                                        : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:shadow-emerald-500/25'
                             }`}
                         >
                             {isPending ? (
                                 <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Processing...</span>
+                            ) : refund <= 0 ? (
+                                '❌ Confirm Forfeiture'
+                            ) : paymentMode === 'OFFLINE' ? (
+                                `💵 Confirm — Paid Offline ${fmt(refund)}`
                             ) : (
-                                refund > 0 ? `✅ Confirm Refund ${fmt(refund)}` : '❌ Confirm Forfeiture'
+                                `✅ Confirm & Send Receipt ${fmt(refund)}`
                             )}
                         </button>
                     )}
@@ -593,7 +646,7 @@ export default function DepositsPage() {
                             <p className="text-white font-black text-base">⚠️ Action Required: Overdue Deposit Refunds</p>
                             <p className="text-red-100 text-sm mt-1">
                                 You have <strong>{overdueInfo.count}</strong> overdue deposit refund{overdueInfo.count > 1 ? 's' : ''} totalling <strong>{fmt(overdueInfo.totalAmount)}</strong>.
-                                Future rent payouts from RentPe will be adjusted automatically to settle these balances.
+                                Future rent payouts may be held if you do not settle overdue refunds. Please contact RentPe support to resolve this.
                             </p>
                             <div className="mt-2 flex flex-wrap gap-2">
                                 {overdueInfo.deposits.slice(0, 3).map((d: any) => (

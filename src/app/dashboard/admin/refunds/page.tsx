@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { getRefundRequests, approveRefund, rejectRefund } from "@/actions/adminPhase2";
+import { getRefundRequests, approveRefund, rejectRefund, applyOwnerRefundPenalty } from "@/actions/adminPhase2";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
     CreditCard, CheckCircle, XCircle, RefreshCcw, Search,
-    IndianRupee, Filter, Calendar, ChevronDown
+    IndianRupee, Filter, Calendar, ChevronDown, AlertOctagon, ShieldAlert, Clock
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -31,7 +31,7 @@ export default function AdminRefundsPage() {
     const [search, setSearch] = useState("");
     const [dateFilter, setDateFilter] = useState<"ALL" | "7D" | "30D" | "90D">("ALL");
     const [loading, setLoading] = useState(true);
-    const [modal, setModal] = useState<{ type: "approve" | "reject"; refund: any } | null>(null);
+    const [modal, setModal] = useState<{ type: "approve" | "reject" | "penalty"; refund: any } | null>(null);
     const [note, setNote] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
     const [sortBy, setSortBy] = useState<"newest" | "oldest" | "amount_high" | "amount_low">("newest");
@@ -52,15 +52,18 @@ export default function AdminRefundsPage() {
 
     const handleAction = async () => {
         if (!modal) return;
-        if (modal.type === "reject" && !note.trim()) { toast.error("Reason required"); return; }
+        if ((modal.type === "reject" || modal.type === "penalty") && !note.trim()) { toast.error("Reason required"); return; }
         setActionLoading(true);
         try {
             if (modal.type === "approve") {
                 await approveRefund(modal.refund.id, note);
                 toast.success("✅ Refund approved & user notified");
-            } else {
+            } else if (modal.type === "reject") {
                 await rejectRefund(modal.refund.id, note);
                 toast.success("❌ Refund rejected & user notified");
+            } else if (modal.type === "penalty") {
+                await applyOwnerRefundPenalty(modal.refund.id, note);
+                toast.success("✅ Penalty applied successfully");
             }
             setModal(null); setNote(""); fetchData();
         } catch { toast.error("Action failed"); }
@@ -134,6 +137,56 @@ export default function AdminRefundsPage() {
                         </CardContent>
                     </Card>
                 ))}
+            </div>
+
+            {/* 🚨 ALARM BELL: Overdue Deposit Refunds (Admin investigates here BEFORE applying penalty) */}
+            <div className="bg-gradient-to-r from-red-600 to-rose-700 rounded-2xl p-5 shadow-xl shadow-red-500/20">
+                <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center flex-shrink-0">
+                        <AlertOctagon className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-white font-black text-base flex items-center gap-2">
+                            🚨 Overdue Deposit Refunds — Admin Action Required
+                        </p>
+                        <p className="text-red-100 text-xs mt-1 leading-relaxed">
+                            These are security deposit refunds where the owner has NOT paid the tenant after vacating.
+                            <strong className="text-white"> Do NOT apply the penalty automatically.</strong> First call the owner to investigate.
+                            Only click "Apply Penalty" if the owner refuses to refund after investigation.
+                        </p>
+
+                        {/* Overdue deposit rows from SecurityDeposit model */}
+                        {data?.overdueDeposits?.length > 0 ? (
+                            <div className="mt-4 space-y-2">
+                                {data.overdueDeposits.map((od: any) => {
+                                    const daysOverdue = Math.floor((Date.now() - new Date(od.refundDueBy).getTime()) / 86400000);
+                                    return (
+                                        <div key={od.id} className="bg-white/10 border border-white/20 rounded-xl p-3 flex items-center justify-between gap-3 flex-wrap">
+                                            <div>
+                                                <p className="text-white font-black text-sm">{od.tenantName}</p>
+                                                <p className="text-red-200 text-xs">{od.propertyName} · Overdue by <strong>{daysOverdue} days</strong> · Amount: <strong>₹{Number(od.refundAmount || od.amount || 0).toLocaleString('en-IN')}</strong></p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-xl border border-white/30 transition-all flex items-center gap-1.5"
+                                                    onClick={() => setModal({ type: 'penalty' as any, refund: od })}
+                                                >
+                                                    <ShieldAlert className="w-3.5 h-3.5" />
+                                                    Apply Withholding Penalty
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <p className="mt-3 text-red-200 text-xs font-bold flex items-center gap-1.5">
+                                <CheckCircle className="w-4 h-4 text-emerald-300" />
+                                No overdue deposit refunds at this time. Great!
+                            </p>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* Filters Bar */}
@@ -301,82 +354,124 @@ export default function AdminRefundsPage() {
             {modal && (
                 <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-6">
                     <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl p-6 space-y-4 shadow-2xl">
-                        <h3 className="font-black text-lg flex items-center gap-2">
-                            {modal.type === "approve"
-                                ? <><CheckCircle className="h-5 w-5 text-green-500" />Approve Refund</>
-                                : <><XCircle className="h-5 w-5 text-red-500" />Reject Refund</>
-                            }
-                        </h3>
-                        <div className="bg-slate-50 rounded-xl p-4 text-sm space-y-2 border">
-                            <p className="font-black text-xl text-slate-900">{fmt(modal.refund.amount)}</p>
-                            <p className="text-slate-600"><strong>User:</strong> {modal.refund.booking?.user?.name || "—"}</p>
-                            {modal.refund.displayId && (
-                                <p className="font-mono text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded inline-block font-bold">{modal.refund.displayId}</p>
-                            )}
-                            {modal.refund.ticketId && (
-                                <p className="text-xs text-orange-700 font-bold bg-orange-50 px-2 py-0.5 rounded inline-block ml-1">🎫 Support Ticket Linked</p>
-                            )}
-                            <p className="text-muted-foreground text-xs mt-1">{modal.refund.reason}</p>
+                        {modal.type !== 'penalty' && (
+                            <h3 className="font-black text-lg flex items-center gap-2">
+                                {modal.type === "approve"
+                                    ? <><CheckCircle className="h-5 w-5 text-green-500" />Approve Refund</>
+                                    : <><XCircle className="h-5 w-5 text-red-500" />Reject Refund</>
+                                }
+                            </h3>
+                        )}
 
-                            {/* Financial Breakdown */}
-                            {modal.type === "approve" && (
-                                <div className="mt-3 pt-3 border-t space-y-1.5">
-                                    <p className="text-[10px] font-black text-slate-500 uppercase">Refund Breakdown</p>
-                                    <div className="flex justify-between text-xs">
-                                        <span className="text-slate-600">Base Refund (Rent/Deposit)</span>
-                                        <span className="font-bold text-slate-900">{fmt(modal.refund.amount)}</span>
-                                    </div>
-                                    {modal.refund.refundPlatformFee && (
-                                        <>
-                                            <div className="flex justify-between text-xs">
-                                                <span className="text-blue-600">+ Platform Convenience Fee</span>
-                                                <span className="font-bold text-blue-700">{fmt(modal.refund.platformFeeRefunded)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-xs">
-                                                <span className="text-blue-500">+ GST Reversed (CGST+SGST)</span>
-                                                <span className="font-bold text-blue-700">{fmt(modal.refund.gstRefunded)}</span>
-                                            </div>
-                                            <div className="text-[10px] text-blue-500 italic">→ GST Credit Note will be issued: CN/26-27/XXXX</div>
-                                        </>
-                                    )}
-                                    {modal.refund.ownerPenaltyApplied > 0 && (
-                                        <div className="flex justify-between text-xs pt-1 border-t mt-1">
-                                            <span className="text-orange-600">⚡ 2% MDR Penalty (deducted from Owner)</span>
-                                            <span className="font-bold text-orange-700">-{fmt(modal.refund.ownerPenaltyApplied)}</span>
-                                        </div>
-                                    )}
-                                    <div className="flex justify-between text-xs font-black pt-1 border-t">
-                                        <span>Total Student Refund</span>
-                                        <span className="text-green-700">{fmt(
-                                            Number(modal.refund.amount) +
-                                            (modal.refund.refundPlatformFee ? Number(modal.refund.platformFeeRefunded || 0) + Number(modal.refund.gstRefunded || 0) : 0)
-                                        )}</span>
+                        {modal.type === 'penalty' ? (
+                            <div className="space-y-4">
+                                <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-4">
+                                    <AlertOctagon className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-black text-red-800 text-sm">Withholding Penalty — Confirm Before Proceeding</p>
+                                        <p className="text-xs text-red-700 mt-1">You are about to deduct <strong>₹{Number(modal.refund.refundAmount || modal.refund.amount || 0).toLocaleString('en-IN')}</strong> from <strong>{modal.refund.ownerName || 'this owner'}'s</strong> next payout to compensate the tenant. This action is logged and cannot be undone.</p>
                                     </div>
                                 </div>
-                            )}
-                        </div>
-                        <div>
-                            <label className="text-xs font-black text-slate-500 uppercase mb-1 block">
-                                {modal.type === "approve" ? "Admin Note (optional)" : "Rejection Reason (required)"}
-                            </label>
-                            <textarea
-                                className="w-full border rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                                rows={3}
-                                placeholder={modal.type === "approve" ? "e.g. Processed via Razorpay..." : "e.g. Booking was completed successfully..."}
-                                value={note}
-                                onChange={e => setNote(e.target.value)}
-                            />
-                        </div>
-                        <div className="flex gap-3">
-                            <Button variant="outline" className="flex-1" onClick={() => { setModal(null); setNote(""); }}>Cancel</Button>
-                            <Button
-                                className={`flex-1 ${modal.type === "approve" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}
-                                disabled={actionLoading || (modal.type === "reject" && !note.trim())}
-                                onClick={handleAction}
-                            >
-                                {actionLoading ? "Processing..." : modal.type === "approve" ? "Approve & Notify" : "Reject & Notify"}
-                            </Button>
-                        </div>
+                                <div className="bg-slate-50 rounded-xl p-4 text-sm space-y-1">
+                                    <p><strong>Tenant:</strong> {modal.refund.tenantName}</p>
+                                    <p><strong>Property:</strong> {modal.refund.propertyName}</p>
+                                    <p><strong>Refund Amount:</strong> ₹{Number(modal.refund.refundAmount || modal.refund.amount || 0).toLocaleString('en-IN')}</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-black text-slate-500 uppercase mb-1 block">Admin Investigation Note (required)</label>
+                                    <textarea
+                                        className="w-full border rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-300"
+                                        rows={3}
+                                        placeholder="e.g. Owner contacted 3 times, refused to refund. Penalty applied as per T&C Section 8.2..."
+                                        value={note}
+                                        onChange={e => setNote(e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex gap-3">
+                                    <Button variant="outline" className="flex-1" onClick={() => { setModal(null); setNote(''); }}>Cancel</Button>
+                                    <Button
+                                        className="flex-1 bg-red-600 hover:bg-red-700"
+                                        disabled={actionLoading || !note.trim()}
+                                        onClick={handleAction}
+                                    >
+                                        {actionLoading ? 'Processing...' : '🛡️ Apply Penalty & Notify'}
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="bg-slate-50 rounded-xl p-4 text-sm space-y-2 border">
+                                    <p className="font-black text-xl text-slate-900">{fmt(modal.refund.amount)}</p>
+                                    <p className="text-slate-600"><strong>User:</strong> {modal.refund.booking?.user?.name || "—"}</p>
+                                    {modal.refund.displayId && (
+                                        <p className="font-mono text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded inline-block font-bold">{modal.refund.displayId}</p>
+                                    )}
+                                    {modal.refund.ticketId && (
+                                        <p className="text-xs text-orange-700 font-bold bg-orange-50 px-2 py-0.5 rounded inline-block ml-1">🎫 Support Ticket Linked</p>
+                                    )}
+                                    <p className="text-muted-foreground text-xs mt-1">{modal.refund.reason}</p>
+
+                                    {/* Financial Breakdown */}
+                                    {modal.type === "approve" && (
+                                        <div className="mt-3 pt-3 border-t space-y-1.5">
+                                            <p className="text-[10px] font-black text-slate-500 uppercase">Refund Breakdown</p>
+                                            <div className="flex justify-between text-xs">
+                                                <span className="text-slate-600">Base Refund (Rent/Deposit)</span>
+                                                <span className="font-bold text-slate-900">{fmt(modal.refund.amount)}</span>
+                                            </div>
+                                            {modal.refund.refundPlatformFee && (
+                                                <>
+                                                    <div className="flex justify-between text-xs">
+                                                        <span className="text-blue-600">+ Platform Convenience Fee</span>
+                                                        <span className="font-bold text-blue-700">{fmt(modal.refund.platformFeeRefunded)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-xs">
+                                                        <span className="text-blue-500">+ GST Reversed (CGST+SGST)</span>
+                                                        <span className="font-bold text-blue-700">{fmt(modal.refund.gstRefunded)}</span>
+                                                    </div>
+                                                    <div className="text-[10px] text-blue-500 italic">→ GST Credit Note will be issued: CN/26-27/XXXX</div>
+                                                </>
+                                            )}
+                                            {modal.refund.ownerPenaltyApplied > 0 && (
+                                                <div className="flex justify-between text-xs pt-1 border-t mt-1">
+                                                    <span className="text-orange-600">⚡ 2% MDR Penalty (deducted from Owner)</span>
+                                                    <span className="font-bold text-orange-700">-{fmt(modal.refund.ownerPenaltyApplied)}</span>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between text-xs font-black pt-1 border-t">
+                                                <span>Total Student Refund</span>
+                                                <span className="text-green-700">{fmt(
+                                                    Number(modal.refund.amount) +
+                                                    (modal.refund.refundPlatformFee ? Number(modal.refund.platformFeeRefunded || 0) + Number(modal.refund.gstRefunded || 0) : 0)
+                                                )}</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="text-xs font-black text-slate-500 uppercase mb-1 block">
+                                        {modal.type === "approve" ? "Admin Note (optional)" : "Rejection Reason (required)"}
+                                    </label>
+                                    <textarea
+                                        className="w-full border rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                        rows={3}
+                                        placeholder={modal.type === "approve" ? "e.g. Processed via Razorpay..." : "e.g. Booking was completed successfully..."}
+                                        value={note}
+                                        onChange={e => setNote(e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex gap-3">
+                                    <Button variant="outline" className="flex-1" onClick={() => { setModal(null); setNote(""); }}>Cancel</Button>
+                                    <Button
+                                        className={`flex-1 ${modal.type === "approve" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}
+                                        disabled={actionLoading || (modal.type === "reject" && !note.trim())}
+                                        onClick={handleAction}
+                                    >
+                                        {actionLoading ? "Processing..." : modal.type === "approve" ? "Approve & Notify" : "Reject & Notify"}
+                                    </Button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}

@@ -216,29 +216,41 @@ export default function AdminFinancialLedgerPage() {
             }
 
             const headers = [
-                'RentPe Payment ID', 'RentPe Booking ID',
-                'Razorpay Order ID', 'Razorpay Payment ID', 'Transfer ID / Manual Payout UTR',
+                'RentPe Booking ID', 'RentPe Payment ID',
+                'Razorpay Order ID', 'Razorpay Payment ID', 'Transfer ID / Payout UTR',
                 'Student Name', 'Student Email', 'Student ID',
                 'Property Name', 'City', 'Room Type',
                 'Owner Name', 'Owner ID', 'Owner Email',
-                'Gross Amount', 'Convenience Fee (Student)', 'Platform Commission (Owner)',
-                'GST on Student Fee', 'GST on Owner Fee', 
-                'CGST (Student)', 'SGST (Student)', 
-                'CGST (Owner)', 'SGST (Owner)',
-                'TDS Deducted', 'Owner Net Payout', 'Total Charged',
-                'Platform Earned', 'SAC Code', 'Payment Method', 'Status', 'Date'
+                // Waterfall columns
+                'Gross Amount (Total Received from Student)',
+                'Student Convenience Fee (-)',
+                'GST on Student Fee (-)',
+                'Original Rent (Net)',
+                'Owner Commission (-)',
+                'GST on Owner Commission (-)',
+                'TDS Deducted (-)',
+                'Owner Net Payout',
+                // Tax fields for CA
+                'CGST (Student Fee)', 'SGST (Student Fee)',
+                'CGST (Owner Comm)', 'SGST (Owner Comm)',
+                'Platform Earned (Net)', 'SAC Code', 'Payment Method', 'Status', 'Date'
             ];
             const rows = rowsToExport.map((r: any) => [
-                r.rentpePaymentId, r.rentpeBookingId,
+                r.rentpeBookingId, r.rentpePaymentId,
                 r.razorpayOrderId, r.razorpayPaymentId, r.razorpayTransferId,
                 r.studentName, r.studentEmail, r.studentId,
                 r.propertyName, r.propertyCity, r.roomType,
                 r.ownerName, r.ownerId, r.ownerEmail,
-                r.grossAmount, r.platformFeeStudent, r.platformFeeOwner,
-                r.gstOnStudentFee, r.gstOnOwnerFee, 
-                r.cgstStudent, r.sgstStudent, 
+                r.grossAmount,
+                r.platformFeeStudent,
+                r.gstOnStudentFee,
+                r.originalRent,
+                r.platformFeeOwner,
+                r.gstOnOwnerFee,
+                r.tdsDeducted,
+                r.ownerNetPayout,
+                r.cgstStudent, r.sgstStudent,
                 r.cgstOwner, r.sgstOwner,
-                r.tdsDeducted, r.ownerNetPayout, r.totalCharged,
                 r.platformEarned, r.sacCode, r.paymentMethod, r.status,
                 new Date(r.date).toLocaleString('en-IN')
             ]);
@@ -324,24 +336,19 @@ export default function AdminFinancialLedgerPage() {
             autoTable(doc, {
                 startY: y2 + 5,
                 head: [[
-                    'Booking ID', 'RP Order ID', 'RP Payment ID', 'RP Transfer ID',
-                    'Student', 'Property', 'Owner',
-                    'Gross', 'Conv/Comm Fee', 'GST', 'TDS', 'Owner Net', 'Date'
+                    'Date', 'Booking', 'Gross', 'Std Fee (-)', 'GST (S) (-)', 'Net Rent', 'Own Comm (-)', 'GST (O) (-)', 'TDS (-)', 'Payout'
                 ]],
                 body: rowsToExport.map((r: any) => [
-                    r.rentpeBookingId,
-                    r.razorpayOrderId?.slice(-12) || '—',
-                    r.razorpayPaymentId?.slice(-12) || '—',
-                    r.razorpayTransferId?.slice(-12) || '—',
-                    r.studentName,
-                    r.propertyName?.slice(0, 18),
-                    r.ownerName,
-                    fmtShort(r.grossAmount),
-                    fmtShort(r.platformFeeStudent + r.platformFeeOwner),
-                    fmtShort(r.gstOnStudentFee + r.gstOnOwnerFee),
-                    fmtShort(r.tdsDeducted),
-                    fmtShort(r.ownerNetPayout),
                     new Date(r.date).toLocaleDateString('en-IN'),
+                    r.rentpeBookingId?.slice(-6),
+                    fmtShort(r.grossAmount),
+                    r.platformFeeStudent > 0 ? `-${fmtShort(r.platformFeeStudent)}` : '—',
+                    r.gstOnStudentFee > 0 ? `-${fmtShort(r.gstOnStudentFee)}` : '—',
+                    fmtShort(r.originalRent ?? (r.grossAmount - r.platformFeeStudent - r.gstOnStudentFee)),
+                    r.platformFeeOwner > 0 ? `-${fmtShort(r.platformFeeOwner)}` : '—',
+                    r.gstOnOwnerFee > 0 ? `-${fmtShort(r.gstOnOwnerFee)}` : '—',
+                    r.tdsDeducted > 0 ? `-${fmtShort(r.tdsDeducted)}` : '—',
+                    fmtShort(r.ownerNetPayout),
                 ]),
                 styles: { fontSize: 6.5, cellPadding: 2 },
                 headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold', fontSize: 7 },
@@ -432,14 +439,14 @@ export default function AdminFinancialLedgerPage() {
                             desc="This tab shows the total money collected across all properties for the selected financial year. It tells you: how much rent came in, how much RentPe earned in fees, how much GST was collected for the government, and how much TDS was withheld from owners. Your CA will use this tab to file taxes."
                         />
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            <StatCard label="Total Gross Collected" value={fmt(T.totalGrossCollected)} icon={IndianRupee} color="indigo" sub={`${T.transactionCount} transactions`} />
-                            <StatCard label="Platform Earned" value={fmt(T.totalPlatformEarned)} icon={TrendingUp} color="emerald" sub="Convenience fee (net)" />
+                            <StatCard label="Total Gross Collected" value={fmt(T.totalGrossCollected)} icon={IndianRupee} color="indigo" sub={`${T.transactionCount} rent transactions`} />
+                            <StatCard label="Original Rent (Net)" value={fmt(T.totalOriginalRent ?? T.totalGrossCollected)} icon={TrendingUp} color="emerald" sub="After removing student fees" />
+                            <StatCard label="Student Conv. Fees" value={fmt(T.totalStudentFees ?? 0)} icon={Users} color="amber" sub="Convenience fee collected" />
+                            <StatCard label="Owner Commission" value={fmt(T.totalOwnerCommission ?? 0)} icon={Building2} color="violet" sub="Commission charged to owners" />
                             <StatCard label="GST Collected" value={fmt(T.totalGstCollected)} icon={Receipt} color="amber" sub="CGST + SGST (for govt)" />
                             <StatCard label="TDS Withheld" value={fmt(T.totalTdsWithheld)} icon={Shield} color="violet" sub="Sec 194-O (for govt)" />
-                            <StatCard label="CGST (9%)" value={fmt(T.totalCgst)} icon={Receipt} color="cyan" />
-                            <StatCard label="SGST (9%)" value={fmt(T.totalSgst)} icon={Receipt} color="cyan" />
-                            <StatCard label="Owner Payouts" value={fmt(T.totalOwnerPayouts)} icon={Building2} color="rose" sub="After fees + TDS" />
-                            <StatCard label="Transactions" value={T.transactionCount?.toString() || '0'} icon={Users} color="indigo" />
+                            <StatCard label="Owner Payouts" value={fmt(T.totalOwnerPayouts)} icon={Building2} color="rose" sub="After commission + GST + TDS" />
+                            <StatCard label="Platform Earned (Net)" value={fmt(T.totalPlatformEarned)} icon={TrendingUp} color="emerald" sub="Revenue after GST paid to govt" />
                         </div>
 
                         {/* Trend & Payment Split Grid */}
@@ -564,8 +571,8 @@ export default function AdminFinancialLedgerPage() {
                     <TabSummary
                         icon="🧾"
                         color="amber"
-                        title="All Payments — One Row Per Transaction"
-                        desc="Every single payment ever made on RentPe is listed here — like a detailed bank statement. Each row shows who paid, for which property, how much went to the owner, how much was kept as platform fee, and the exact Razorpay IDs for reconciliation. Use Search to find any specific student, property, or Razorpay ID instantly."
+                        title="Rent Transaction Ledger — One Row Per Payment"
+                        desc="Every rent & booking payment on RentPe is listed here. Each row follows the waterfall: Gross Amount received from the student → minus Student Convenience Fee → minus GST on that fee → gives Original Rent. From the Original Rent: minus Owner Commission → minus GST on commission → minus TDS (if applicable) → gives Owner Net Payout. Property Onboarding Fees are in their own dedicated tab."
                     />
                     <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                         <div className="p-5 border-b border-slate-100 flex items-center gap-3 flex-wrap">
@@ -647,21 +654,24 @@ export default function AdminFinancialLedgerPage() {
                                 <thead>
                                     <tr className="bg-slate-900 text-white">
                                         {([
-                                            ['Date', 'The exact date and time this payment was made.'],
-                                            ['Booking ID', 'RentPe internal booking reference number (e.g. RP-B-00010).'],
-                                            ['RP Order ID', 'Razorpay Order ID — created before the student pays. Use this to trace a payment on Razorpay dashboard.'],
-                                            ['RP Payment ID', 'Razorpay Payment ID — generated after the student successfully pays. This is the actual money receipt.'],
-                                            ['RP Transfer ID', 'Razorpay Transfer ID — set when money is sent from RentPe\'s Razorpay account to the owner. Blank if transfer is pending.'],
-                                            ['Student', 'The student (tenant) who made this payment.'],
-                                            ['Property', 'The PG/hostel this payment is for.'],
-                                            ['Owner', 'The property owner who will receive the payout.'],
-                                            ['Gross', 'Total rent amount the student paid (before any deductions).'],
-                                            ['Plat.Fee', 'Platform fee charged — includes convenience fee from student + commission from owner.'],
-                                            ['GST', 'Goods & Services Tax (18%) collected on the platform fee. This goes to the government.'],
-                                            ['TDS', 'Tax Deducted at Source (1% under Section 194-O). Deducted from owner payout and deposited with Income Tax Dept.'],
-                                            ['Owner Net', 'Final amount the owner receives: Gross Rent minus Platform Commission minus TDS.'],
-                                            ['Method', 'Payment method — CASH or ONLINE.'],
-                                            ['Status', 'Payment status — VERIFIED means money received and confirmed.']
+                                            ['Date',         'The exact date this payment was processed.'],
+                                            ['Booking ID',   'RentPe internal booking reference (e.g. RP-B-00010).'],
+                                            ['RP Order ID',  'Razorpay Order ID — created before the student pays. Use to trace on Razorpay dashboard.'],
+                                            ['RP Pay ID',    'Razorpay Payment ID — generated after the student pays. This is the actual money receipt.'],
+                                            ['RP Transfer',  'Razorpay Transfer ID — set when money is sent to the owner. Blank means payout is pending.'],
+                                            ['Student',      'The tenant who made this rent payment.'],
+                                            ['Property',     'The PG / hostel this payment is for.'],
+                                            ['Owner',        'The property owner who will receive the net payout.'],
+                                            ['Gross Amt',    'Total amount received from the student via Razorpay. This is what your Razorpay dashboard will show — matches exactly for reconciliation.'],
+                                            ['Student Fee',  'Convenience fee charged to the student (e.g. ₹9 flat). This is RentPe\'s charge on the student — does NOT affect the owner.'],
+                                            ['GST (Student)','18% GST on the student convenience fee. Collected by RentPe and deposited with the government.'],
+                                            ['Orig. Rent',   'The actual pure rent amount = Gross Amount − Student Fee − GST on Student Fee. This is what the tenant was contractually paying as rent.'],
+                                            ['Owner Comm.',  'Platform commission charged to the owner (calculated on Original Rent). This is RentPe\'s cut from the owner side.'],
+                                            ['GST (Owner)',  '18% GST on the owner commission. RentPe collects this and deposits it with the government.'],
+                                            ['TDS',          'Tax Deducted at Source @ 1% under Section 194-O (e-commerce aggregator rule). Deducted from owner payout, deposited with Income Tax Dept.'],
+                                            ['Owner Net',    'Final amount the owner receives = Original Rent − Owner Commission − GST on Comm − TDS. This should exactly match the Razorpay payout transfer.'],
+                                            ['Method',       'Payment method — CASH (owner collected directly) or RAZORPAY (online via RentPe).'],
+                                            ['Status',       'Payment status — SUCCESS / VERIFIED means money confirmed received.']
                                         ] as [string, string][]).map(([h, tip]) => (
                                             <th key={h} className="px-3 py-3 text-left font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">
                                                 <span className="flex items-center gap-0.5">{h}<Tip text={tip} /></span>
@@ -671,29 +681,57 @@ export default function AdminFinancialLedgerPage() {
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
                                     {filteredRows.length === 0 ? (
-                                        <tr><td colSpan={14} className="p-8 text-center text-slate-400">No transactions found.</td></tr>
+                                        <tr><td colSpan={18} className="p-8 text-center text-slate-400">No rent transactions found.</td></tr>
                                     ) : filteredRows.map((r: any, i: number) => (
                                         <tr key={i} className="hover:bg-indigo-50/30 transition-colors">
-                                            <td className="px-3 py-2.5 whitespace-nowrap text-slate-500">{new Date(r.date).toLocaleDateString('en-IN')}</td>
-                                            <td className="px-3 py-2.5 font-mono text-indigo-600 font-bold">{r.rentpeBookingId}</td>
-                                            <td className="px-3 py-2.5 font-mono text-slate-400 max-w-[100px] truncate">{r.razorpayOrderId}</td>
-                                            <td className="px-3 py-2.5 font-mono text-slate-400 max-w-[100px] truncate">{r.razorpayPaymentId}</td>
-                                            <td className="px-3 py-2.5 font-mono text-slate-400 max-w-[100px] truncate">{r.razorpayTransferId}</td>
+                                            <td className="px-3 py-2.5 whitespace-nowrap text-slate-500 text-xs">{new Date(r.date).toLocaleDateString('en-IN')}</td>
+                                            <td className="px-3 py-2.5 font-mono text-indigo-600 font-bold text-xs">{r.rentpeBookingId}</td>
+                                            <td className="px-3 py-2.5 font-mono text-slate-400 max-w-[90px] truncate text-xs">{r.razorpayOrderId}</td>
+                                            <td className="px-3 py-2.5 font-mono text-slate-400 max-w-[90px] truncate text-xs">{r.razorpayPaymentId}</td>
+                                            <td className="px-3 py-2.5 font-mono text-slate-400 max-w-[90px] truncate text-xs">{r.razorpayTransferId}</td>
                                             <td className="px-3 py-2.5">
-                                                <div className="font-bold text-slate-800">{r.studentName}</div>
+                                                <div className="font-bold text-slate-800 text-xs">{r.studentName}</div>
                                                 <div className="text-[10px] text-slate-400">{r.studentEmail}</div>
                                                 <div className="text-[10px] text-indigo-600 font-black mt-0.5">{r.studentId}</div>
                                             </td>
                                             <td className="px-3 py-2.5">
-                                                <div className="font-medium text-slate-700">{r.propertyName}</div>
+                                                <div className="font-medium text-slate-700 text-xs">{r.propertyName}</div>
                                                 <div className="text-[10px] text-slate-400">{r.propertyCity}</div>
                                             </td>
-                                            <td className="px-3 py-2.5 text-slate-600">{r.ownerName}</td>
-                                            <td className="px-3 py-2.5 font-black text-slate-900">{fmtShort(r.grossAmount)}</td>
-                                            <td className="px-3 py-2.5 font-bold text-indigo-600">{fmtShort(r.platformFeeStudent + r.platformFeeOwner)}</td>
-                                            <td className="px-3 py-2.5 font-bold text-amber-600">{fmtShort(r.gstOnStudentFee + r.gstOnOwnerFee)}</td>
-                                            <td className="px-3 py-2.5 font-bold text-violet-600">{fmtShort(r.tdsDeducted)}</td>
-                                            <td className={`px-3 py-2.5 font-bold ${r.ownerNetPayout < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{fmtShort(r.ownerNetPayout)}</td>
+                                            <td className="px-3 py-2.5 text-slate-600 text-xs">{r.ownerName}</td>
+
+                                            {/* ── WATERFALL COLUMNS ── */}
+                                            {/* Col 1: Gross Amount — neutral black */}
+                                            <td className="px-3 py-2.5 font-black text-slate-900 text-xs whitespace-nowrap">{fmtShort(r.grossAmount)}</td>
+                                            {/* Col 2: Student Fee — red (deduction from gross) */}
+                                            <td className="px-3 py-2.5 font-bold text-rose-600 text-xs whitespace-nowrap">
+                                                {r.platformFeeStudent > 0 ? `-${fmtShort(r.platformFeeStudent)}` : <span className="text-slate-300">—</span>}
+                                            </td>
+                                            {/* Col 3: GST on Student Fee — red (deduction) */}
+                                            <td className="px-3 py-2.5 font-bold text-rose-400 text-xs whitespace-nowrap">
+                                                {r.gstOnStudentFee > 0 ? `-${fmtShort(r.gstOnStudentFee)}` : <span className="text-slate-300">—</span>}
+                                            </td>
+                                            {/* Col 4: Original Rent — bold black (the clean rent) */}
+                                            <td className="px-3 py-2.5 whitespace-nowrap">
+                                                <span className="font-black text-slate-900 text-xs bg-slate-100 px-2 py-0.5 rounded-md">{fmtShort(r.originalRent ?? r.grossAmount)}</span>
+                                            </td>
+                                            {/* Col 5: Owner Commission — orange (deduction from original rent) */}
+                                            <td className="px-3 py-2.5 font-bold text-orange-600 text-xs whitespace-nowrap">
+                                                {r.platformFeeOwner > 0 ? `-${fmtShort(r.platformFeeOwner)}` : <span className="text-slate-300">—</span>}
+                                            </td>
+                                            {/* Col 6: GST on Owner Commission — orange (deduction) */}
+                                            <td className="px-3 py-2.5 font-bold text-orange-400 text-xs whitespace-nowrap">
+                                                {r.gstOnOwnerFee > 0 ? `-${fmtShort(r.gstOnOwnerFee)}` : <span className="text-slate-300">—</span>}
+                                            </td>
+                                            {/* Col 7: TDS — purple (government deduction) */}
+                                            <td className="px-3 py-2.5 font-bold text-violet-600 text-xs whitespace-nowrap">
+                                                {r.tdsDeducted > 0 ? `-${fmtShort(r.tdsDeducted)}` : <span className="text-slate-300">—</span>}
+                                            </td>
+                                            {/* Col 8: Owner Net — green (final payout) */}
+                                            <td className={`px-3 py-2.5 font-black text-xs whitespace-nowrap ${r.ownerNetPayout < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                                                {fmtShort(r.ownerNetPayout)}
+                                            </td>
+
                                             <td className="px-3 py-2.5">
                                                 <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
                                                     r.paymentMethod === 'CASH' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-50 text-blue-700 border border-blue-200'

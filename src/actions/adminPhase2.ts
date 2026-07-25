@@ -237,9 +237,42 @@ export async function getRefundRequests(status?: string) {
         .filter((r: any) => r.status === 'PROCESSED')
         .reduce((s: number, r: any) => s + Number(r.amount), 0);
 
+    const rawOverdue = await (prisma as any).securityDeposit.findMany({
+        where: { status: 'REFUND_OVERDUE' },
+        orderBy: { refundDueBy: 'asc' },
+        include: {
+            billingProfile: {
+                select: {
+                    propertyId: true,
+                    tenant: { select: { name: true, roomNumber: true } },
+                }
+            }
+        }
+    });
+
+    // Fetch property names for overdue deposits
+    const overduePropertyIds = [...new Set(rawOverdue.map((od: any) => od.billingProfile?.propertyId).filter(Boolean))];
+    const overdueProperties = overduePropertyIds.length > 0
+        ? await prisma.property.findMany({ where: { id: { in: overduePropertyIds as string[] } }, select: { id: true, name: true } })
+        : [];
+    const overduePropertyMap: Record<string, string> = {};
+    for (const p of overdueProperties) overduePropertyMap[p.id] = p.name;
+
+    const overdueDeposits = rawOverdue.map((od: any) => ({
+        id: od.id,
+        amount: Number(od.amount || 0),
+        refundAmount: Number(od.refundAmount || od.amount || 0),
+        refundDueBy: od.refundDueBy,
+        status: od.status,
+        tenantName: od.billingProfile?.tenant?.name || 'Unknown Tenant',
+        propertyName: overduePropertyMap[od.billingProfile?.propertyId] || 'Unknown Property',
+        roomNumber: od.billingProfile?.tenant?.roomNumber || '—',
+    }));
+
     return {
         refunds: enriched,
-        stats: { pendingCount, processedAmount, rejectedCount, totalAmount }
+        stats: { pendingCount, processedAmount, rejectedCount, totalAmount },
+        overdueDeposits
     };
 }
 
@@ -482,15 +515,16 @@ export async function approveRefund(refundId: string, note?: string) {
     // ── Owner 2% Razorpay MDR Penalty: Debit from owner's next payout ───────
     if ((refund as any).ownerPenaltyApplied > 0 && (refund as any).ownerPenaltyOwnerId) {
         try {
+            // displayId is REQUIRED + UNIQUE on OwnerPayout — generate a deterministic MDR ID
+            const mdrDisplayId = `MDR-${new Date().toISOString().slice(0, 7).replace('-', '')}-${Math.floor(Math.random() * 900000) + 100000}`;
             // Record the MDR loss as a negative payout adjustment against the owner
             await (prisma as any).ownerPayout.create({
                 data: {
+                    displayId:        mdrDisplayId,
                     ownerId:          (refund as any).ownerPenaltyOwnerId,
                     period:           new Date().toISOString().slice(0, 7), // "2026-07"
                     grossAmount:      0,
                     commissionAmount: 0,
-                    gstOnCommission:  0,
-                    tds:              0,
                     netAmount:        -Math.abs((refund as any).ownerPenaltyApplied), // Negative = deduction
                     status:           'PENDING',
                     notes:            `2% Razorpay MDR gateway fee penalty — Owner caused dispute. Refund ID: ${ (refund as any).displayId }`,
@@ -566,6 +600,14 @@ export async function rejectRefund(refundId: string, reason: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
+    // SECURITY FIX: Guard against rejecting a refund that was already processed or is mid-flight.
+    // Without this, a race condition could mark a PROCESSED refund as REJECTED, corrupting ledger.
+    const existingRefund = await prisma.refundRecord.findUnique({ where: { id: refundId }, select: { status: true, amount: true } });
+    if (!existingRefund) throw new Error("Refund not found");
+    if (existingRefund.status === 'PROCESSED') throw new Error("Cannot reject a refund that has already been processed and paid out.");
+    if (existingRefund.status === 'PROCESSING') throw new Error("Refund is currently being processed by Razorpay. Cannot reject mid-flight.");
+    if (existingRefund.status === 'REJECTED') throw new Error("This refund has already been rejected.");
+
     const refund = await prisma.refundRecord.update({
         where: { id: refundId },
         data: {
@@ -608,6 +650,107 @@ export async function rejectRefund(refundId: string, reason: string) {
 // ─────────────────────────────────────────────────────────
 // CITY / AREA MANAGEMENT
 // ─────────────────────────────────────────────────────────
+
+export async function applyOwnerRefundPenalty(depositId: string, note: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const deposit = await prisma.securityDeposit.findUnique({
+        where: { id: depositId },
+        include: {
+            billingProfile: {
+                select: { 
+                    propertyId: true, 
+                    tenantId: true,
+                    tenant: { select: { bookingId: true } }
+                }
+            }
+        }
+    });
+
+    if (!deposit) throw new Error("Deposit not found");
+    if (deposit.status === 'REFUNDED_VIA_WITHHOLDING') throw new Error("Penalty already applied to this deposit. Cannot apply twice.");
+    if (deposit.status !== 'REFUND_OVERDUE') throw new Error("Deposit is not overdue. Current status: " + deposit.status);
+
+    const propertyId = deposit.billingProfile?.propertyId;
+    if (!propertyId) throw new Error("Property not linked to deposit");
+
+    const property = await prisma.property.findUnique({ where: { id: propertyId }, select: { ownerId: true } });
+    const ownerId = property?.ownerId;
+    if (!ownerId) throw new Error("Property owner not found");
+
+    const penaltyAmount = Number(deposit.amount);
+
+    // Create a negative payout to dock the owner's balance
+    await prisma.ownerPayout.create({
+        data: {
+            displayId: `PEN-${Math.floor(Math.random() * 900000) + 100000}`,
+            ownerId,
+            period: new Date().toISOString().substring(0, 7), // YYYY-MM
+            grossAmount: 0,
+            commissionAmount: 0,
+            netAmount: -penaltyAmount,
+            status: 'PENDING',
+            notes: `[PENALTY] Withheld security deposit for overdue refund. Deposit ID: ${depositId}. Note: ${note}`,
+        }
+    });
+
+    // Update deposit to reflect that the admin has seized the funds for refund
+    await (prisma as any).securityDeposit.update({
+        where: { id: depositId },
+        data: {
+            status: 'REFUNDED_VIA_WITHHOLDING',
+            settlementNotes: `Admin withheld ₹${penaltyAmount} from owner payout on ${new Date().toLocaleDateString()}. Note: ${note}`,
+            updatedAt: new Date()
+        }
+    });
+
+    // CRITICAL FIX: The owner was docked, but the tenant needs to actually receive the money.
+    // We create a PENDING RefundRecord here. The Admin Finance team will see this in their
+    // Refund Management dashboard and click "Approve" to send the money via Razorpay to the tenant.
+    const bookingId = deposit.billingProfile?.tenant?.bookingId;
+    if (bookingId) {
+        // Use generateSequentialId for collision-safe, GST-compliant displayId (RP-RFND-26-27-XXXXXX)
+        const refundDisplayId = await generateSequentialId('REFUND');
+        await prisma.refundRecord.create({
+            data: {
+                displayId: refundDisplayId,
+                bookingId,
+                amount: penaltyAmount,
+                reason: `Overdue Deposit Refund (Withheld from Owner Payout). Admin Note: ${note}`,
+                refundType: 'FULL',
+                status: 'PENDING',
+                initiatedBy: (session as any).userId,
+                notes: `System Auto-Generated via Penalty Enforcement on Deposit ${depositId}`
+            }
+        });
+    }
+
+    await logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'PAYOUT',
+        entityId: ownerId,
+        description: `Applied ₹${penaltyAmount} penalty to owner for overdue deposit ${depositId}. Queued tenant refund.`,
+    });
+
+    // Notify the owner of the penalty
+    try {
+        const { createNotification } = await import('@/actions/notifications');
+        await createNotification(
+            ownerId,
+            'SYSTEM',
+            `⚠️ ALERT: A penalty of ₹${penaltyAmount} has been deducted from your next payout due to an overdue security deposit refund (ID: ${depositId}). Admin Note: ${note}`
+        );
+    } catch (e: any) {
+        console.warn('Failed to send penalty notification to owner', e.message);
+    }
+
+    revalidatePath('/dashboard/admin/refunds');
+    return { success: true };
+}
 
 export async function getServiceCities() {
     const session = await getSession();
