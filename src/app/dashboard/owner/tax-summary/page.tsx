@@ -427,8 +427,8 @@ export default function TaxSummaryPage() {
                                 <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
                                     className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
                                         activeTab === tab.id
-                                            ? 'bg-white text-indigo-700 shadow-lg'
-                                            : 'text-white/80 bg-white/5 hover:text-white hover:bg-white/20 ring-1 ring-white/10'
+                                            ? 'bg-white text-indigo-700 shadow-lg ring-1 ring-white'
+                                            : 'bg-white/20 text-white ring-1 ring-white/40 hover:bg-white/30 backdrop-blur-sm'
                                     }`}>
                                     <Icon className="w-4 h-4" />
                                     <span>{tab.label}</span>
