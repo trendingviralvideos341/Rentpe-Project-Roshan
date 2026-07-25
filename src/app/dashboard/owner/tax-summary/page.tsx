@@ -415,7 +415,7 @@ export default function TaxSummaryPage() {
                     <div className="w-full h-px bg-white/20 my-6" />
 
                     {/* Tab Navigation */}
-                    <div className="flex gap-1.5 bg-white/10 rounded-2xl p-1 w-fit flex-wrap">
+                    <div className="flex gap-2 bg-slate-900/30 backdrop-blur-xl rounded-2xl p-1.5 w-fit flex-wrap border border-white/10 shadow-inner">
                         {[
                             { id: 'overview', label: 'Financial Overview', icon: TrendingUp },
                             { id: 'monthly', label: 'Monthly Statements', icon: Receipt },
@@ -893,11 +893,7 @@ export default function TaxSummaryPage() {
                                                 </tr>
                                             );
                                         })}
-                                        {filteredRows.filter((r: any) => r.type === 'PROPERTY_ONBOARDING').length === 0 && (
-                                            <tr>
-                                                <td colSpan={6} className="px-4 py-8 text-center text-slate-400 text-sm font-bold">No onboarding fees found for this period.</td>
-                                            </tr>
-                                        )}
+
                                     </tbody>
                                 </table>
                             </div>
