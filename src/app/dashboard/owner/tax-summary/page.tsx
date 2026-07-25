@@ -504,7 +504,7 @@ export default function TaxSummaryPage() {
                         </div>
 
                         {/* Monthly Tax Breakdown Table */}
-                        {monthly.length > 0 && (
+                        {monthly.length > 0 ? (
                             <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                                 <div className="p-5 border-b border-slate-100 flex items-center justify-between">
                                     <div>
@@ -603,6 +603,14 @@ export default function TaxSummaryPage() {
                                     </table>
                                 </div>
                             </div>
+                        ) : (
+                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden flex flex-col items-center justify-center p-16 text-center">
+                                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-5">
+                                    <Receipt className="w-10 h-10 text-slate-400" />
+                                </div>
+                                <h3 className="text-xl font-black text-slate-900">No Monthly Statements Yet</h3>
+                                <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">There are no completed rent transactions for this financial period. Monthly tax breakdowns will automatically appear here once your tenants begin paying rent.</p>
+                            </div>
                         )}
 
                         {/* Export Section */}
@@ -692,7 +700,7 @@ export default function TaxSummaryPage() {
                         </div>
 
                         {/* Transaction Preview Table */}
-                        {payoutLedgerRows.length > 0 && (
+                        {payoutLedgerRows.length > 0 ? (
                             <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                                 <div className="p-5 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4">
                                     <div>
@@ -814,6 +822,14 @@ export default function TaxSummaryPage() {
                                     )}
                                 </div>
                             </div>
+                        ) : (
+                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden flex flex-col items-center justify-center p-16 text-center">
+                                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-5">
+                                    <Search className="w-10 h-10 text-slate-400" />
+                                </div>
+                                <h3 className="text-xl font-black text-slate-900">No Transactions Found</h3>
+                                <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">No rent payouts or refunds were processed matching your current filters. Try adjusting your date range or property selection.</p>
+                            </div>
                         )}
                     </div>
                 )}
@@ -826,6 +842,7 @@ export default function TaxSummaryPage() {
                             <span>One-time property setup fees and GST invoices. This is a B2B expense and you can claim the 18% GST as Input Tax Credit (ITC).</span>
                         </div>
                         
+                        {filteredRows.filter((r: any) => r.type === 'PROPERTY_ONBOARDING').length > 0 ? (
                         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
                                 <div>
@@ -870,6 +887,15 @@ export default function TaxSummaryPage() {
                                 </table>
                             </div>
                         </div>
+                        ) : (
+                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden flex flex-col items-center justify-center p-16 text-center">
+                                <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-5">
+                                    <Building2 className="w-10 h-10 text-blue-400" />
+                                </div>
+                                <h3 className="text-xl font-black text-slate-900">No Onboarding Fees</h3>
+                                <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">You have not paid any property onboarding fees in this period. When you onboard a new property to RentPe, the setup fee and GST invoice will appear here.</p>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
