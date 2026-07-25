@@ -504,8 +504,7 @@ export default function TaxSummaryPage() {
                         </div>
 
                         {/* Monthly Tax Breakdown Table */}
-                        {monthly.length > 0 ? (
-                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+                        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                                 <div className="p-5 border-b border-slate-100 flex items-center justify-between">
                                     <div>
                                         <h3 className="font-black text-slate-900 text-lg">Monthly Tax Breakdown</h3>
@@ -544,7 +543,19 @@ export default function TaxSummaryPage() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-50">
-                                            {monthly.map((m: any) => {
+                                            {monthly.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={9} className="p-0">
+                                                        <div className="flex flex-col items-center justify-center p-16 text-center w-full">
+                                                            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-5">
+                                                                <Receipt className="w-10 h-10 text-slate-400" />
+                                                            </div>
+                                                            <h3 className="text-xl font-black text-slate-900">No Monthly Statements Yet</h3>
+                                                            <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">There are no completed rent transactions for this financial period. Monthly tax breakdowns will automatically appear here once your tenants begin paying rent.</p>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ) : monthly.map((m: any) => {
                                                 const isSelected = selectedMonths.includes(String(m.key));
                                                 return (
                                                     <tr key={m.key} className={`transition-colors duration-150 ${isSelected ? 'bg-indigo-50/20' : 'hover:bg-slate-50/50'}`}>
@@ -603,15 +614,6 @@ export default function TaxSummaryPage() {
                                     </table>
                                 </div>
                             </div>
-                        ) : (
-                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden flex flex-col items-center justify-center p-16 text-center">
-                                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-5">
-                                    <Receipt className="w-10 h-10 text-slate-400" />
-                                </div>
-                                <h3 className="text-xl font-black text-slate-900">No Monthly Statements Yet</h3>
-                                <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">There are no completed rent transactions for this financial period. Monthly tax breakdowns will automatically appear here once your tenants begin paying rent.</p>
-                            </div>
-                        )}
 
                         {/* Export Section */}
                         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6">
@@ -700,8 +702,7 @@ export default function TaxSummaryPage() {
                         </div>
 
                         {/* Transaction Preview Table */}
-                        {payoutLedgerRows.length > 0 ? (
-                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+                        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                                 <div className="p-5 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4">
                                     <div>
                                         <h3 className="font-black text-slate-900 text-lg">Transaction Preview</h3>
@@ -778,7 +779,19 @@ export default function TaxSummaryPage() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-50">
-                                            {payoutLedgerRows.slice(0, 25).map((r: any, i: number) => (
+                                            {payoutLedgerRows.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={13} className="p-0">
+                                                        <div className="flex flex-col items-center justify-center p-16 text-center w-full">
+                                                            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-5">
+                                                                <Search className="w-10 h-10 text-slate-400" />
+                                                            </div>
+                                                            <h3 className="text-xl font-black text-slate-900">No Transactions Found</h3>
+                                                            <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">No rent payouts or refunds were processed matching your current filters. Try adjusting your date range or property selection.</p>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ) : payoutLedgerRows.slice(0, 25).map((r: any, i: number) => (
                                                 <tr key={i} className="hover:bg-indigo-50/20 transition-colors">
                                                     <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">{new Date(r.date).toLocaleDateString('en-IN')}</td>
                                                     <td className="px-3 py-2.5 font-mono text-indigo-600 font-bold">{r.bookingId}</td>
@@ -822,15 +835,6 @@ export default function TaxSummaryPage() {
                                     )}
                                 </div>
                             </div>
-                        ) : (
-                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden flex flex-col items-center justify-center p-16 text-center">
-                                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-5">
-                                    <Search className="w-10 h-10 text-slate-400" />
-                                </div>
-                                <h3 className="text-xl font-black text-slate-900">No Transactions Found</h3>
-                                <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">No rent payouts or refunds were processed matching your current filters. Try adjusting your date range or property selection.</p>
-                            </div>
-                        )}
                     </div>
                 )}
 
@@ -842,7 +846,6 @@ export default function TaxSummaryPage() {
                             <span>One-time property setup fees and GST invoices. This is a B2B expense and you can claim the 18% GST as Input Tax Credit (ITC).</span>
                         </div>
                         
-                        {filteredRows.filter((r: any) => r.type === 'PROPERTY_ONBOARDING').length > 0 ? (
                         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
                                 <div>
@@ -862,8 +865,20 @@ export default function TaxSummaryPage() {
                                             <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Total Paid</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-50">
-                                        {filteredRows.filter((r: any) => r.type === 'PROPERTY_ONBOARDING').map((r: any, i: number) => {
+                                        <tbody className="divide-y divide-slate-50">
+                                            {filteredRows.filter((r: any) => r.type === 'PROPERTY_ONBOARDING').length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={6} className="p-0">
+                                                        <div className="flex flex-col items-center justify-center p-16 text-center w-full">
+                                                            <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-5">
+                                                                <Building2 className="w-10 h-10 text-blue-400" />
+                                                            </div>
+                                                            <h3 className="text-xl font-black text-slate-900">No Onboarding Fees</h3>
+                                                            <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">You have not paid any property onboarding fees in this period. When you onboard a new property to RentPe, the setup fee and GST invoice will appear here.</p>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ) : filteredRows.filter((r: any) => r.type === 'PROPERTY_ONBOARDING').map((r: any, i: number) => {
                                             const feeAmount = Math.abs(r.ownerNetPayout || 99);
                                             const gst = r.gstCharged || 15.10;
                                             const base = feeAmount - gst;
@@ -887,15 +902,6 @@ export default function TaxSummaryPage() {
                                 </table>
                             </div>
                         </div>
-                        ) : (
-                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden flex flex-col items-center justify-center p-16 text-center">
-                                <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-5">
-                                    <Building2 className="w-10 h-10 text-blue-400" />
-                                </div>
-                                <h3 className="text-xl font-black text-slate-900">No Onboarding Fees</h3>
-                                <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">You have not paid any property onboarding fees in this period. When you onboard a new property to RentPe, the setup fee and GST invoice will appear here.</p>
-                            </div>
-                        )}
                     </div>
                 )}
             </div>
