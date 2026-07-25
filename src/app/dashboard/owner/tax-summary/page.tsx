@@ -428,7 +428,7 @@ export default function TaxSummaryPage() {
                                     className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
                                         activeTab === tab.id
                                             ? 'bg-white text-indigo-700 shadow-lg'
-                                            : 'text-indigo-100 hover:text-white hover:bg-white/10'
+                                            : 'text-white/80 bg-white/5 hover:text-white hover:bg-white/20 ring-1 ring-white/10'
                                     }`}>
                                     <Icon className="w-4 h-4" />
                                     <span>{tab.label}</span>
@@ -532,14 +532,14 @@ export default function TaxSummaryPage() {
                                         <thead>
                                             <tr className="bg-slate-50 border-b border-slate-100">
                                                 <th className="px-4 py-3 text-left w-12"></th>
-                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Month <Tip content="Billing month for rent collection" /></th>
-                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Transactions <Tip content="Number of completed bookings processed this month" /></th>
-                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Gross Rent <Tip content="Total money collected from students before any platform commission or TDS" /></th>
-                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Platform Commission <Tip content="RentPe platform fee commission (expense for owner)" /></th>
-                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">GST (18%) <Tip content="18% GST charged on the platform commission (claimable as Input Tax Credit)" /></th>
-                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">TDS (1%) <Tip content="1% TDS deducted under Section 194-O (sent to Income Tax Dept on your behalf)" /></th>
-                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Your Net Amount <Tip content="Actual money sent to your bank account after platform commission, GST, and TDS (or negative for fees paid to RentPe)" /></th>
-                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Action <Tip content="Statements and invoice preview options" /></th>
+                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600">Month <Tip content="Billing month for rent collection" /></th>
+                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600">Transactions <Tip content="Number of completed bookings processed this month" /></th>
+                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600">Gross Rent <Tip content="Total money collected from students before any platform commission or TDS" /></th>
+                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600">Platform Commission <Tip content="RentPe platform fee commission (expense for owner)" /></th>
+                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600">GST (18%) <Tip content="18% GST charged on the platform commission (claimable as Input Tax Credit)" /></th>
+                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600">TDS (1%) <Tip content="1% TDS deducted under Section 194-O (sent to Income Tax Dept on your behalf)" /></th>
+                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600">Your Net Amount <Tip content="Actual money sent to your bank account after platform commission, GST, and TDS (or negative for fees paid to RentPe)" /></th>
+                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600">Action <Tip content="Statements and invoice preview options" /></th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-50">
@@ -857,12 +857,12 @@ export default function TaxSummaryPage() {
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="bg-slate-50 border-b border-slate-100">
-                                            <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Date</th>
-                                            <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Property</th>
-                                            <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Base Fee</th>
-                                            <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">CGST (9%)</th>
-                                            <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">SGST (9%)</th>
-                                            <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Total Paid</th>
+                                            <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600">Date</th>
+                                            <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600">Property</th>
+                                            <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600">Base Fee</th>
+                                            <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600">CGST (9%)</th>
+                                            <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600">SGST (9%)</th>
+                                            <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600">Total Paid</th>
                                         </tr>
                                     </thead>
                                         <tbody className="divide-y divide-slate-50">
