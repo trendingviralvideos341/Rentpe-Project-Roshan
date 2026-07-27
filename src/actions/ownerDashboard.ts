@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalBeds, revalidateGlobalPayments, revalidateOwnerSettings } from "@/lib/cache";
 import { createNotification } from "@/actions/notifications";
 import { logAuditEvent } from "@/lib/audit";
 import { TENANT_STATUS } from "@/lib/constants/statuses";
@@ -269,7 +269,7 @@ export async function markBedMaintenance(bedId: string, reason: string) {
         where: { id: bedId },
         data: { status: 'MAINTENANCE', maintenanceReason: reason, maintenanceSince: new Date() }
     });
-    revalidatePath('/dashboard/owner/rooms');
+    revalidateGlobalBeds();
     return updated;
 }
 
@@ -281,7 +281,7 @@ export async function clearBedMaintenance(bedId: string) {
         where: { id: bedId },
         data: { status: 'AVAILABLE', maintenanceReason: null, maintenanceSince: null }
     });
-    revalidatePath('/dashboard/owner/rooms');
+    revalidateGlobalBeds();
     return updated;
 }
 
@@ -324,8 +324,7 @@ export async function initiateRefund(data: {
         description: `₹${data.amount} ${data.refundType} refund. Reason: ${data.reason}`,
     });
 
-    revalidatePath('/dashboard/owner/payments');
-    revalidatePath('/dashboard/admin');
+    revalidateGlobalPayments();
     return refund;
 }
 
@@ -384,7 +383,8 @@ export async function updateOwnerProfile(data: {
         data: { businessName: data.businessName?.trim(), profilePhoto: data.profilePhoto }
     });
 
-    revalidatePath('/dashboard/owner/settings');
+    // TODO: Add to cache.ts
+    revalidateOwnerSettings();
     return { success: true };
 }
 

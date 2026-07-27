@@ -1,8 +1,8 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateAdminDashboard } from "@/lib/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { sendEmail } from "@/lib/email";
 import { generateMasterId } from "@/lib/ids";
@@ -166,8 +166,7 @@ export async function raiseDepositDispute(depositId: string, reason: string, det
         }).catch(err => console.error('[DISPUTE EMAIL] Failed:', err));
     }
 
-    revalidatePath('/dashboard/student');
-    revalidatePath('/dashboard/admin');
+     revalidateAdminDashboard();
 
     return { success: true, disputeId: dispute.id, displayId };
 }
@@ -220,8 +219,7 @@ export async function resolveDepositDispute(
         newValue: { status: 'RESOLVED', action, resolution }
     });
 
-    revalidatePath('/dashboard/admin');
-    revalidatePath('/dashboard/student');
+     revalidateAdminDashboard();
     return { success: true };
 }
 

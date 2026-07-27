@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalPayments } from "@/lib/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { generateMasterId } from "@/lib/ids";
 import { sendEmail } from "@/lib/email";
@@ -322,7 +322,7 @@ async function _markInvoiceAsCashPaid(invoiceId: string, note?: string) {
         description: `Cash payment of ₹${invoice.amount} confirmed for ${tenant?.name || 'tenant'} (${invoice.month}). Note: ${note || 'None'}`,
     });
 
-    revalidatePath('/dashboard/owner/payments');
+    revalidateGlobalPayments();
     return { tenantName: tenant?.name, amount: invoice.amount };
 }
 
@@ -850,7 +850,7 @@ async function _processDepositSettlement(
         newValue: { status: finalStatus, refundAmount, totalDeductions },
     });
 
-    revalidatePath('/dashboard/owner/deposits');
+    revalidateGlobalPayments();
     return { success: true, finalStatus, refundAmount, totalDeductions };
 }
 
@@ -990,8 +990,7 @@ async function _generateBulkInvoices(month: string, tenantIds: string[]) {
         description: `Bulk invoices generated for ${month}. Created: ${results.filter(r => r.status === 'CREATED').length}, Skipped: ${results.filter(r => r.status === 'SKIPPED').length}, Errors: ${results.filter(r => r.status === 'ERROR').length}`,
     });
 
-    revalidatePath('/dashboard/owner/payments');
-    revalidatePath('/dashboard/owner/rent-collection');
+    revalidateGlobalPayments();
     return results;
 }
 
@@ -1195,8 +1194,7 @@ async function _checkDepositRefundCompliance() {
         }
     }
 
-    revalidatePath('/dashboard/owner/deposits');
-    revalidatePath('/dashboard/admin');
+    revalidateGlobalPayments();
     return { processed: overdueDeposits.length, results };
 }
 

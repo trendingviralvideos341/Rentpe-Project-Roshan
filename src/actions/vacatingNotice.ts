@@ -2,7 +2,7 @@
 
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
-import { revalidatePath } from 'next/cache';
+import { revalidateGlobalVacatingNotices } from '@/lib/cache';
 import { logAuditEvent } from '@/lib/audit';
 import { generateSequentialId } from '@/lib/ids';
 import { withSafeAction } from '@/lib/safe-action';
@@ -78,8 +78,7 @@ export const fileVacatingNotice = withSafeAction(async function _fileVacatingNot
         description: `Vacating notice filed. Planned move-out: ${data.plannedMoveOut}. Days notice: ${daysDiff}.`,
     });
 
-    revalidatePath('/dashboard/student');
-    revalidatePath('/dashboard/owner/tenants');
+    revalidateGlobalVacatingNotices();
     return notice;
 }
 );
@@ -124,8 +123,7 @@ export const acknowledgeVacatingNotice = withSafeAction(async function _acknowle
         description: `Vacating notice acknowledged. ${approvedMoveOutDate ? `Approved date: ${approvedMoveOutDate}` : ''}`,
     });
 
-    revalidatePath('/dashboard/owner/tenants');
-    revalidatePath('/dashboard/student');
+    revalidateGlobalVacatingNotices();
     return notice;
 }
 );
@@ -151,7 +149,7 @@ export const setPropertyNoticePeriod = withSafeAction(async function _setPropert
         description: `Minimum notice period changed to ${noticeDays} days.`,
     });
 
-    revalidatePath('/dashboard/owner/settings');
+    revalidateGlobalVacatingNotices();
     return updated;
 });
 
@@ -233,7 +231,6 @@ export const ownerInitiateEviction = withSafeAction(async function _ownerInitiat
         description: `Owner initiated eviction. Planned move-out: ${data.plannedMoveOut}. Reason: ${data.reason}`,
     });
 
-    revalidatePath('/dashboard/owner/tenants');
-    revalidatePath('/dashboard/student');
+    revalidateGlobalVacatingNotices();
     return notice;
 });

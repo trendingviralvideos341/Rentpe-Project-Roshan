@@ -1,10 +1,10 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { generate2FASecret, generate2FAQRCode, verify2FAToken } from "@/lib/2fa";
 import { encrypt, decrypt, decryptIfPresent } from "@/lib/crypto";
-import { revalidatePath } from "next/cache";
+import { revalidateAdminDashboard } from "@/lib/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { withSafeAction } from "@/lib/safe-action";
 
@@ -68,7 +68,7 @@ export const confirm2FA = withSafeAction(async function _confirm2FA(token: strin
         description: 'Two-factor authentication enabled successfully.',
     });
 
-    revalidatePath('/dashboard/admin/settings');
+     revalidateAdminDashboard();
     return { success: true };
 }
 );
@@ -104,6 +104,6 @@ export const disable2FA = withSafeAction(async function _disable2FA(token: strin
         description: 'Two-factor authentication disabled by user.',
     });
 
-    revalidatePath('/dashboard/admin/settings');
+     revalidateAdminDashboard();
     return { success: true };
 });

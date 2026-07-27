@@ -1,9 +1,9 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { requirePermission } from "@/actions/rbac";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalDisputes, revalidateGlobalSupportDisputes } from "@/lib/cache";
 import { createNotification } from "@/actions/notifications";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -40,7 +40,7 @@ export async function raiseDispute(data: {
     // Notify Super Admin / Support
     await createNotification('system-admin', 'ADMIN_ALERT', `A new ${data.type} dispute (${displayId}) has been raised regarding ${data.subject}.`);
 
-    revalidatePath('/dashboard/support/disputes');
+    revalidateGlobalSupportDisputes();
     return dispute;
 }
 
@@ -64,7 +64,7 @@ export async function resolveDispute(disputeId: string, resolution: string, admi
     // Notify the person who raised it
     await createNotification(dispute.raisedById, 'INFO', `Your dispute (${dispute.displayId}) has been resolved. Outcome: ${resolution}`);
 
-    revalidatePath('/dashboard/admin/disputes');
+     revalidateGlobalDisputes();
     return dispute;
 }
 

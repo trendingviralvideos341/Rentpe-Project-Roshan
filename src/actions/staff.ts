@@ -3,7 +3,7 @@ import crypto from "crypto";
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateAdminDashboard } from "@/lib/cache";
 import { logAuditEvent } from "@/lib/audit";
 import bcrypt from "bcryptjs";
 import { generateSequentialId } from "@/lib/ids";
@@ -130,7 +130,7 @@ export async function addOwnerStaff(data: {
         description: `Invited staff ${data.name} as ${data.designation} with ${data.propertyIds.length} properties`,
     });
 
-    revalidatePath('/dashboard/owner/staff');
+     revalidateAdminDashboard();
 
     const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/join-team?token=${inviteToken}`;
     
@@ -158,7 +158,7 @@ export async function updateStaffStatus(id: string, status: 'ACTIVE' | 'BLOCKED'
         description: reason,
     });
 
-    revalidatePath('/dashboard/owner/staff');
+     revalidateAdminDashboard();
     return staff;
 }
 

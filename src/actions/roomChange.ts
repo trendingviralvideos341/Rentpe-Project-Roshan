@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalRoomChanges } from "@/lib/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { generateMasterId } from "@/lib/ids";
 import { withSafeAction } from "@/lib/safe-action";
@@ -68,7 +68,8 @@ export const createRoomChangeRequest = withSafeAction(async function _createRoom
         description: `Room change request filed. Reason: ${data.reason}`,
     });
 
-    revalidatePath('/dashboard/student/room-change');
+    // TODO: Add to cache.ts
+    revalidateGlobalRoomChanges();
     return request;
 });
 
@@ -161,6 +162,7 @@ export const updateRoomChangeStatus = withSafeAction(async function _updateRoomC
         description: `Room change request ${status}. Note: ${ownerNote || 'None'}`,
     });
 
-    revalidatePath('/dashboard/owner/room-changes');
+    // TODO: Add to cache.ts
+    revalidateGlobalRoomChanges();
     return updated;
 });

@@ -2,7 +2,7 @@
 
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
-import { revalidatePath } from 'next/cache';
+import { revalidateGlobalAgreements } from '@/lib/cache';
 import { headers } from 'next/headers';
 import { logAuditEvent } from '@/lib/audit';
 import { generateSequentialId } from '@/lib/ids';
@@ -233,8 +233,7 @@ export async function createAgreement(bookingId: string) {
     newValue: { displayId, bookingId, status: 'PENDING_TENANT_VERIFICATION' },
   });
 
-  revalidatePath('/dashboard/student');
-  revalidatePath('/dashboard/owner/agreements');
+  revalidateGlobalAgreements();
 
   return agreement;
 }
@@ -347,8 +346,7 @@ export async function verifyTenantAgreementOTP(agreementId: string, otp: string)
     newValue: { status: 'TENANT_VERIFIED', tenantVerifiedAt: new Date() },
   });
 
-  revalidatePath('/dashboard/student');
-  revalidatePath('/dashboard/owner/agreements');
+  revalidateGlobalAgreements();
 
   return { success: true };
 }
@@ -400,7 +398,7 @@ export async function sendSignerAgreementOTP(agreementId: string) {
     newValue: { signerType, staffMemberId: staffMember?.id || null },
   });
 
-  revalidatePath('/dashboard/owner/agreements');
+  revalidateGlobalAgreements();
 
   const email = session.email || 'your-email@example.com';
   let maskedEmail = email;
@@ -499,8 +497,7 @@ export async function verifySignerAgreementOTP(agreementId: string, otp: string)
     console.error(`[PDF_GEN] Failed to generate PDF for agreement ${agreementId}:`, err);
   });
 
-  revalidatePath('/dashboard/student');
-  revalidatePath('/dashboard/owner/agreements');
+  revalidateGlobalAgreements();
 
   return { success: true };
 }
@@ -1202,8 +1199,7 @@ async function generateAgreementPDF(agreementId: string): Promise<void> {
     newValue: { status: 'AGREEMENT_READY_FOR_DOWNLOAD', agreementPdfGeneratedAt: new Date() },
   });
 
-  revalidatePath('/dashboard/student');
-  revalidatePath('/dashboard/owner/agreements');
+  revalidateGlobalAgreements();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1349,9 +1345,7 @@ export async function uploadSignedAgreement(
     newValue: { status: 'AGREEMENT_COMPLETED' },
   });
 
-  revalidatePath('/dashboard/student');
-  revalidatePath('/dashboard/owner/agreements');
-  revalidatePath('/dashboard/admin/agreements');
+  revalidateGlobalAgreements();
 
   return { success: true };
 }
@@ -1401,8 +1395,7 @@ export async function verifyUploadedAgreement(agreementId: string): Promise<{ su
     newValue: { tenantFinalAccepted: true },
   });
 
-  revalidatePath('/dashboard/student');
-  revalidatePath('/dashboard/student/agreements');
+  revalidateGlobalAgreements();
 
   return { success: true };
 }
@@ -1661,8 +1654,7 @@ export async function terminateAgreement(agreementId: string, reason: string): P
     newValue: { status: 'TERMINATED', terminationReason: reason.trim(), terminatedAt: new Date() },
   });
 
-  revalidatePath('/dashboard/student');
-  revalidatePath('/dashboard/owner/agreements');
+  revalidateGlobalAgreements();
 
   return { success: true };
 }

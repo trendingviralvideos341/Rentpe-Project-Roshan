@@ -1,8 +1,8 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalProperty, revalidateGlobalTenants, revalidateGlobalPayments, revalidateAdminDashboard } from "@/lib/cache";
 import { logAuditEvent } from "@/lib/audit";
 
 // --- Food Menu ---
@@ -62,7 +62,7 @@ export async function updateFoodMenu(propertyId: string, day: string, data: any)
         description: `Food menu slots updated for ${day}`,
     });
 
-    revalidatePath('/dashboard/owner/food-menu');
+     revalidateAdminDashboard();
     return { success: true };
 }
 
@@ -181,9 +181,7 @@ export async function createStudentTicket(data: {
         }
     });
 
-    revalidatePath('/dashboard/student/tickets');
-    revalidatePath('/dashboard/owner/tickets');
-    revalidatePath('/dashboard/admin/tickets');
+     revalidateAdminDashboard();
     return ticket;
 }
 
@@ -319,8 +317,7 @@ export async function createOwnerTicket(data: {
         }
     });
 
-    revalidatePath('/dashboard/owner/tickets');
-    revalidatePath('/dashboard/admin/tickets');
+     revalidateAdminDashboard();
     return ticket;
 }
 
@@ -357,9 +354,7 @@ export async function resolveTicket(id: string, notes?: string) {
         description: notes || `Ticket #${id.slice(0, 8)} resolved by ${session.role}`,
     });
 
-    revalidatePath('/dashboard/owner/tickets');
-    revalidatePath('/dashboard/admin/tickets');
-    revalidatePath('/dashboard/student/tickets');
+     revalidateAdminDashboard();
     return ticket;
 }
 
@@ -382,8 +377,7 @@ export async function escalateTicketToAdmin(id: string) {
         description: `Ticket escalated to Admin by Owner`,
     });
 
-    revalidatePath('/dashboard/owner/tickets');
-    revalidatePath('/dashboard/admin/tickets');
+     revalidateAdminDashboard();
     return ticket;
 }
 
@@ -454,9 +448,7 @@ export async function replyToTicket(id: string, message: string) {
         });
     }
 
-    revalidatePath('/dashboard/owner/tickets');
-    revalidatePath('/dashboard/student/tickets');
-    revalidatePath('/dashboard/admin/tickets');
+     revalidateAdminDashboard();
     return updated;
 }
 
@@ -516,9 +508,7 @@ export async function updateTicketStatus(
         description: `Ticket ${ticket.displayId} status updated to ${status}. Note: ${note || 'None'}`,
     });
 
-    revalidatePath('/dashboard/owner/tickets');
-    revalidatePath('/dashboard/admin/tickets');
-    revalidatePath('/dashboard/student/tickets');
+     revalidateAdminDashboard();
     return updated;
 }
 
@@ -553,9 +543,7 @@ export async function adminRouteTicket(id: string, targetTeam: 'ADMIN' | 'OWNER'
         data: { targetTeam }
     });
 
-    revalidatePath('/dashboard/owner/tickets');
-    revalidatePath('/dashboard/admin/tickets');
-    revalidatePath('/dashboard/student/tickets');
+     revalidateAdminDashboard();
     return updated;
 }
 
@@ -582,7 +570,7 @@ export async function updateTicketPriority(id: string, priority: 'UNASSIGNED' | 
         description: `Admin manually updated ticket ${ticket.displayId} priority to ${priority}.`,
     });
 
-    revalidatePath('/dashboard/admin/tickets');
+     revalidateAdminDashboard();
     return updated;
 }
 

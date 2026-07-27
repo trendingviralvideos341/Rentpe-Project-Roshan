@@ -1,6 +1,7 @@
 'use server';
 
 import { unstable_noStore as noStore } from 'next/cache';
+import { revalidateGlobalRooms } from "@/lib/cache";
 
 
 import prisma from "@/lib/prisma";
@@ -88,15 +89,15 @@ export async function getAvailableRooms(propertyId?: string) {
 
 export async function deleteRoomByOwner(roomId: string) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') {
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) {
         throw new Error("Unauthorized");
     }
 
-    // Verify the room belongs to this owner's property
+    // Verify the room exists and get its propertyId
     const room = await prisma.room.findUnique({
         where: { id: roomId },
         include: { 
-            property: { select: { ownerId: true, status: true } },
+            property: { select: { id: true, ownerId: true, status: true } },
             tenants: { where: { status: { notIn: ['MOVED_OUT'] } } },
             bookings: { where: { status: { notIn: ['CANCELLED', 'REJECTED', 'COMPLETED'] } } },
             beds:    { where: { status: { notIn: ['AVAILABLE', 'MAINTENANCE'] } } }
@@ -104,7 +105,11 @@ export async function deleteRoomByOwner(roomId: string) {
     });
 
     if (!room) throw new Error("Room not found.");
-    if (room.property.ownerId !== session.userId) throw new Error("You do not own this room.");
+
+    // Enforce Granular Security using verifyPropertyAccess
+    const { verifyPropertyAccess } = await import('@/actions/properties');
+    await verifyPropertyAccess(session, room.property.id);
+
     if (room.property.status !== 'APPROVED') throw new Error("Rooms can only be deleted from approved properties.");
 
     // Block 1: Active tenants living in this room
@@ -141,6 +146,8 @@ export async function deleteRoomByOwner(roomId: string) {
         previousValue: { roomNumber: room.roomNumber, type: room.type, price: (room as any).price },
     });
 
+    revalidateGlobalRooms(room.property.id);
+
     return { success: true };
 }
 
@@ -176,41 +183,104 @@ export async function updateRoomByOwner(roomId: string, data: {
         throw new Error("Unauthorized");
     }
 
-    // Verify ownership
+    // Verify the room exists and get its propertyId
     const room = await prisma.room.findUnique({
         where: { id: roomId },
-        include: { property: { select: { ownerId: true } } }
-    });
-
-    if (!room) throw new Error("Room not found.");
-    if (session.role === 'OWNER' && room.property.ownerId !== session.userId) {
-        throw new Error("You do not own this room.");
-    }
-
-    const updated = await prisma.room.update({
-        where: { id: roomId },
-        data: {
-            roomNumber: data.roomNumber,
-            type: data.type,
-            price: data.price,
-            availability: data.availability,
+        include: { 
+            property: { select: { id: true, ownerId: true } },
+            beds: { orderBy: { bedNumber: 'desc' } }
         }
     });
 
-    // Audit Log: update room — captured in Owner Activity Log + Admin Audit Log
-    logAuditEvent({
-        actorId: session.userId,
-        actorRole: session.role,
-        actorName: session.name || 'Owner',
-        actionType: 'UPDATE',
-        entityType: 'ROOM',
-        entityId: roomId,
-        description: `Room "${data.roomNumber}" updated by ${session.role}. Type: ${data.type}, Price: ₹${data.price}, Beds: ${data.availability}.`,
-        previousValue: { roomNumber: room.roomNumber, type: room.type, price: (room as any).price, availability: room.availability },
-        newValue: data as any,
+    if (!room) throw new Error("Room not found.");
+
+    // Enforce Granular Security using verifyPropertyAccess
+    const { verifyPropertyAccess } = await import('@/actions/properties');
+    await verifyPropertyAccess(session, room.property.id);
+
+    if (data.roomNumber) {
+        data.roomNumber = data.roomNumber.toString().replace(/[^a-zA-Z0-9\-_]/g, '');
+        if (!data.roomNumber.trim()) throw new Error("Valid Room Number is required.");
+    }
+    if (data.price && data.price <= 0) {
+        throw new Error("Valid monthly rent is required.");
+    }
+    if (data.type && !data.type.trim()) {
+        throw new Error("Bed Type cannot be empty.");
+    }
+
+    const oldAvailability = room.availability;
+    const newAvailability = data.availability;
+
+    const transactionResult = await prisma.$transaction(async (tx) => {
+        const updated = await tx.room.update({
+            where: { id: roomId },
+            data: {
+                roomNumber: data.roomNumber,
+                type: data.type,
+                price: data.price,
+                availability: newAvailability,
+                totalBeds: newAvailability
+            }
+        });
+
+        // 1. If availability increased, add more beds
+        if (newAvailability > oldAvailability) {
+            const bedsToAdd = newAvailability - oldAvailability;
+            const { generateSequentialId } = await import('@/lib/ids');
+            const bedIdsList = await Promise.all(Array(bedsToAdd).fill(0).map(() => generateSequentialId('BED')));
+            
+            const bedsData = Array(bedsToAdd).fill(0).map((_, i) => ({
+                displayId: bedIdsList[i],
+                roomId: roomId,
+                bedNumber: `${updated.roomNumber}-${String.fromCharCode(64 + oldAvailability + i + 1)}`,
+                status: 'AVAILABLE'
+            }));
+            await (tx as any).bed.createMany({ data: bedsData });
+        }
+
+        // 2. If availability decreased, safely remove beds from the end (A, B, C -> remove C)
+        if (newAvailability < oldAvailability) {
+            const bedsToRemoveCount = oldAvailability - newAvailability;
+            let removedCount = 0;
+            
+            for (const bed of room.beds) {
+                if (removedCount >= bedsToRemoveCount) break;
+                if (bed.status !== 'AVAILABLE' && bed.status !== 'MAINTENANCE') {
+                    throw new Error(`Cannot decrease beds. Bed ${bed.bedNumber} is currently occupied or reserved. Free it first.`);
+                }
+                await tx.bed.delete({ where: { id: bed.id } });
+                removedCount++;
+            }
+        }
+
+        // Audit Log
+        const { logAuditEvent } = await import('@/lib/audit');
+        logAuditEvent({
+            actorId: session.userId,
+            actorRole: session.role,
+            actorName: session.name || 'User',
+            actionType: 'UPDATE',
+            entityType: 'ROOM',
+            entityId: roomId,
+            description: `Room "${data.roomNumber}" updated. Type: ${data.type}, Beds changed: ${oldAvailability} -> ${newAvailability}.`,
+            previousValue: { roomNumber: room.roomNumber, type: room.type, price: (room as any).price, availability: oldAvailability },
+            newValue: data as any,
+        });
+
+        // Return the fresh room with beds so UI state updates correctly
+        const result = await tx.room.findUnique({
+            where: { id: roomId },
+            include: { beds: { orderBy: { bedNumber: 'asc' } } }
+        });
+
+        return result;
     });
 
-    return updated;
+    // CACHE INVALIDATION: ensure updates reflect across the entire app
+    revalidateGlobalRooms(room.property.id);
+
+    return transactionResult;
 }
 
 /** Get rooms for the allocation modal â€” filtered by type with available bed count */

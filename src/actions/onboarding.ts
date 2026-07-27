@@ -1,8 +1,8 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalProperty, revalidateGlobalVerifications, revalidateAdminDashboard, revalidateGlobalOnboarding } from "@/lib/cache";
 import { uploadToCloudinary, batchUploadToCloudinary } from "@/lib/upload";
 
 // ── helpers ──────────────────────────────────────────
@@ -61,7 +61,7 @@ export async function selfSubmitOnboarding(data: {
         },
     });
 
-    revalidatePath("/dashboard/onboarder/queue");
+    revalidateGlobalOnboarding();
     return record;
 }
 
@@ -128,7 +128,7 @@ export async function teamSubmitOnboarding(data: {
         },
     });
 
-    revalidatePath("/dashboard/verifier/reviews");
+    revalidateGlobalOnboarding();
     return record;
 }
 
@@ -185,8 +185,7 @@ export async function acceptOnboarding(id: string, updates: {
         },
     });
 
-    revalidatePath("/dashboard/onboarder/queue");
-    revalidatePath("/dashboard/verifier/reviews");
+    revalidateGlobalOnboarding();
     return updated;
 }
 
@@ -210,7 +209,7 @@ export async function rejectByOnboarder(id: string, reason: string) {
         data: { status: "REJECTED", rejectedReason: reason, auditTrail },
     });
 
-    revalidatePath("/dashboard/onboarder/queue");
+    revalidateGlobalOnboarding();
     return updated;
 }
 
@@ -286,8 +285,7 @@ export async function verifyOnboarding(id: string, edits?: Partial<{
         },
     });
 
-    revalidatePath("/dashboard/verifier/reviews");
-    revalidatePath("/dashboard/admin");
+     revalidateAdminDashboard();
     return updated;
 }
 
@@ -311,7 +309,7 @@ export async function rejectByVerifier(id: string, reason: string) {
         data: { status: "REJECTED", rejectedReason: reason, auditTrail },
     });
 
-    revalidatePath("/dashboard/verifier/reviews");
+    revalidateGlobalOnboarding();
     return updated;
 }
 

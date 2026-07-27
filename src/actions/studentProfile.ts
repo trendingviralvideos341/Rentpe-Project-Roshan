@@ -1,8 +1,8 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalTenants } from "@/lib/cache";
 import { createNotification } from "@/actions/notifications";
 import { logAuditEvent } from "@/lib/audit";
 import { withSafeAction } from "@/lib/safe-action";
@@ -83,7 +83,7 @@ export const updateStudentProfile = withSafeAction(async function _updateStudent
         }
     });
 
-    revalidatePath('/dashboard/student/profile');
+     revalidateGlobalTenants();
     return { success: true };
 });
 
@@ -129,7 +129,7 @@ export const updateNotifPrefs = withSafeAction(async function _updateNotifPrefs(
         data: { notifPrefs: JSON.stringify({ ...currentPrefs, ...prefs }) }
     });
 
-    revalidatePath('/dashboard/student/settings');
+     revalidateGlobalTenants();
     return { success: true };
 });
 

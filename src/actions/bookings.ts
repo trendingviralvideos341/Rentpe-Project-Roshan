@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalBookings, revalidateGlobalTenants, revalidateGlobalAvailability, revalidateGlobalAgreements, revalidateGlobalVerifications } from "@/lib/cache";
 import { NotificationService } from "@/lib/notifications";
 import { sendEmail } from "@/lib/email";
 import { logAuditEvent } from "@/lib/audit";
@@ -205,8 +205,7 @@ async function _createBooking(data: {
         'Occupancy': data.occupancy,
     }).catch(err => console.error('[Slack] Booking request notification failed:', err));
 
-    revalidatePath('/dashboard/student');
-    revalidatePath('/dashboard/owner/bookings');
+    revalidateGlobalBookings();
     return booking;
 }
 
@@ -584,9 +583,7 @@ export async function approveBooking(id: string, data: {
         console.error("Approval Notification Error:", e);
     }
 
-    revalidatePath('/dashboard/owner/bookings');
-    revalidatePath('/dashboard/owner/properties');
-    revalidatePath('/dashboard/student');
+    revalidateGlobalBookings();
     return booking;
 }
 
@@ -757,9 +754,7 @@ export async function rejectBooking(id: string, reason?: string) {
         console.error("Booking Rejection Notification Error:", e);
     }
 
-    revalidatePath('/dashboard/owner/bookings');
-    revalidatePath('/dashboard/owner/properties');
-    revalidatePath('/dashboard/student');
+    revalidateGlobalBookings();
     return { ...booking, refundStatus, refundTxnId };
 }
 
@@ -780,8 +775,7 @@ export async function updateBookingStatus(id: string, status: string) {
         data
     });
 
-    revalidatePath('/dashboard/owner/bookings');
-    revalidatePath('/dashboard/student');
+    revalidateGlobalBookings();
     return booking;
 }
 
@@ -819,8 +813,7 @@ export async function registerCashIntent(id: string) {
         newValue: { paymentStatus: 'CASH_PENDING', paymentMethod: 'CASH' }
     });
 
-    revalidatePath('/dashboard/student');
-    revalidatePath('/dashboard/owner/bookings');
+    revalidateGlobalBookings();
     return booking;
 }
 
@@ -1058,9 +1051,8 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
         }
     }
 
-    revalidatePath('/dashboard/owner/bookings');
-    revalidatePath('/dashboard/owner/tenants');
-    revalidatePath('/dashboard/student');
+    revalidateGlobalBookings();
+    revalidateGlobalTenants();
 
     try {
         const property = await prisma.property.findUnique({ where: { id: booking.propertyId || '' } });
@@ -1344,9 +1336,8 @@ export async function checkInBooking(id: string) {
     // ──────────────────────────────────────────────────────────────────────────
 
 
-    revalidatePath('/dashboard/owner/bookings');
-    revalidatePath('/dashboard/owner/tenants');
-    revalidatePath('/dashboard/student');
+    revalidateGlobalBookings();
+    revalidateGlobalTenants();
 
     // Notify about check-in
     try {
@@ -1515,11 +1506,8 @@ export async function cancelBooking(id: string, reason?: string) {
         description: `Booking ${booking.displayId} cancelled. Reason: ${reason || 'N/A'}`,
     });
 
-    revalidatePath('/dashboard/student');
-    revalidatePath('/dashboard/owner/bookings');
-    revalidatePath('/dashboard/owner/properties');
-    revalidatePath('/dashboard/owner');
-    revalidatePath('/dashboard/owner/availability');
+    revalidateGlobalBookings();
+    revalidateGlobalAvailability();
     return updated;
 }
 
@@ -1746,8 +1734,7 @@ export async function signAgreement(id: string, agreementMeta?: {
         newValue: { agreementId, version: AGREEMENT_VERSION, ip: realIp, signedAt: signedAt.toISOString() }
     });
 
-    revalidatePath('/dashboard/student');
-    revalidatePath('/dashboard/owner/bookings');
+    revalidateGlobalBookings();
     return updated;
 }
 
@@ -1856,9 +1843,7 @@ export async function countersignAgreement(bookingId: string) {
         newValue: { countersignedBy: countersignerName, role: roleLabel, countersignedAt: countersignedAt.toISOString() }
     });
 
-    revalidatePath('/dashboard/owner');
-    revalidatePath('/dashboard/staff');
-    revalidatePath('/dashboard/student');
+    revalidateGlobalAgreements();
     return { success: true, countersignedBy: `${countersignerName} (${roleLabel})` };
 }
 
@@ -1993,8 +1978,7 @@ export async function payTokenAmount(bookingId: string, paymentMethod: 'ONLINE' 
         description: `Token paid via ${paymentMethod}. Reservation expires ${reservationExpiry.toDateString()}.`,
     });
 
-    revalidatePath('/dashboard/student');
-    revalidatePath('/dashboard/owner/bookings');
+    revalidateGlobalBookings();
     return updated;
 }
 
@@ -2034,12 +2018,11 @@ export async function markTokenCashPaid(bookingId: string) {
         description: `Cash token marked by owner. Room reserved.`,
     });
 
-    revalidatePath('/dashboard/owner/bookings');
-    revalidatePath('/dashboard/student');
+    revalidateGlobalBookings();
     return updated;
 }
 
-/** Owner/Admin verifies all KYC â†’ moves to AGREEMENT_PENDING */
+/** Owner/Admin verifies all KYC → moves to AGREEMENT_PENDING */
 export async function verifyKycAndProceed(bookingId: string) {
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
@@ -2069,8 +2052,7 @@ export async function verifyKycAndProceed(bookingId: string) {
         description: `All KYC documents verified. Moved to AGREEMENT_PENDING.`,
     });
 
-    revalidatePath('/dashboard/owner/bookings');
-    revalidatePath('/dashboard/student');
+    revalidateGlobalBookings();
     return updated;
 }
 
@@ -2107,8 +2089,7 @@ export async function markKycFailed(bookingId: string, reason: string) {
         description: `KYC rejected. Reason: ${reason}`,
     });
 
-    revalidatePath('/dashboard/owner/bookings');
-    revalidatePath('/dashboard/student');
+    revalidateGlobalBookings();
     return updated;
 }
 
@@ -2158,9 +2139,7 @@ export async function ownerCounterSignAgreement(bookingId: string) {
         description: `Owner/Admin countersigned rental agreement. Agreement now fully executed by both parties.`,
     });
 
-    revalidatePath('/dashboard/owner/bookings');
-    revalidatePath('/dashboard/admin/bookings');
-    revalidatePath('/dashboard/student');
+    revalidateGlobalBookings();
     return updated;
 }
 
@@ -2211,9 +2190,7 @@ export async function updateMoveInDate(bookingId: string, newDate: string) {
         }
     } catch (e) { console.error('Move-in date notification error:', e); }
 
-    revalidatePath('/dashboard/owner/bookings');
-    revalidatePath('/dashboard/admin/bookings');
-    revalidatePath('/dashboard/student');
+    revalidateGlobalBookings();
     return updated;
 }
 
@@ -2238,7 +2215,7 @@ export async function addToWaitlist(data: { propertyId: string; roomType?: strin
         });
     }
 
-    revalidatePath('/dashboard/student');
+    revalidateGlobalBookings();
     return entry;
 }
 
@@ -2375,11 +2352,9 @@ export async function completeVacate(bookingId: string) {
         description: `Tenant ${booking.guestName} completed vacate. Booking marked COMPLETED.`,
     });
 
-    revalidatePath('/dashboard/student');
-    revalidatePath('/dashboard/owner/bookings');
-    revalidatePath('/dashboard/owner/tenants');
-    revalidatePath('/dashboard/owner');
-    revalidatePath('/dashboard/owner/availability');
+    revalidateGlobalBookings();
+    revalidateGlobalTenants();
+    revalidateGlobalAvailability();
 
     // Return settlement data for PDF
     const rentRecords = tenant?.rentRecords || [];
@@ -2489,9 +2464,7 @@ export async function updateSharingType(bookingId: string, data: {
         newValue: { occupancy: data.newOccupancy, amount: data.newAmount }
     });
 
-    revalidatePath('/dashboard/owner/bookings');
-    revalidatePath('/dashboard/admin/onboarding');
-    revalidatePath('/dashboard/student');
+    revalidateGlobalBookings();
     return updated;
 }
 
@@ -2584,8 +2557,6 @@ export async function markPhysicalKycVerified(bookingId: string) {
         newValue: { kycVerified: true, kycVerifiedBy: session.userId }
     });
 
-    revalidatePath('/dashboard/owner/verifications');
-    revalidatePath('/dashboard/staff/verifications');
-    revalidatePath('/dashboard/admin/verifications');
+    revalidateGlobalVerifications();
     return updated;
 }

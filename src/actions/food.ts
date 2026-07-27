@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalPayments } from "@/lib/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { z } from "zod";
 import { randomUUID } from "crypto";
@@ -182,7 +182,7 @@ export async function changeFoodPreference(
                 newValue: { foodSelected, effectiveFrom: today.toISOString() },
             });
 
-            revalidatePath('/dashboard/student');
+            revalidateGlobalPayments();
             return { success: true, effectiveFrom: today.toISOString() };
         }
 
@@ -232,7 +232,7 @@ export async function changeFoodPreference(
                 newValue: { status: 'PENDING_USER', effectiveFrom: effectiveFrom.toISOString() },
             });
 
-            revalidatePath('/dashboard/owner');
+            revalidateGlobalPayments();
             return { success: true, pendingConfirmation: true, effectiveFrom: effectiveFrom.toISOString() };
         }
 
@@ -266,7 +266,7 @@ export async function changeFoodPreference(
                 newValue: { foodSelected: false, effectiveFrom: effectiveFrom.toISOString() },
             });
 
-            revalidatePath('/dashboard/owner');
+            revalidateGlobalPayments();
             return { success: true, effectiveFrom: effectiveFrom.toISOString() };
         }
 
@@ -304,8 +304,7 @@ export async function changeFoodPreference(
                 newValue: { foodSelected, effectiveFrom: effectiveFrom.toISOString(), adminNotes: notes },
             });
 
-            revalidatePath('/dashboard/admin');
-            revalidatePath('/dashboard/student');
+            revalidateGlobalPayments();
             return { success: true, effectiveFrom: effectiveFrom.toISOString() };
         }
 
@@ -397,7 +396,7 @@ export async function confirmFoodRequest(
             newValue: { foodSelected: true, effectiveFrom: pref.effectiveFrom.toISOString() },
         });
 
-        revalidatePath('/dashboard/student');
+        revalidateGlobalPayments();
         return { success: true };
     } else {
         // Reject: REJECTED
@@ -414,7 +413,7 @@ export async function confirmFoodRequest(
             newValue: { foodSelected: prevFoodSelected, status: 'REJECTED' },
         });
 
-        revalidatePath('/dashboard/student');
+        revalidateGlobalPayments();
         return { success: true };
     }
 }

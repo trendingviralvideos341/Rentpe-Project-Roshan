@@ -1,9 +1,9 @@
-'use server';
+﻿'use server';
 import { withSafeAction } from "@/lib/safe-action";
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateAdminDashboard } from "@/lib/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { generateSequentialId } from "@/lib/ids";
 import bcrypt from "bcryptjs";
@@ -176,7 +176,7 @@ async function _updateAdminEmployee(id: string, data: {
         });
     }
 
-    revalidatePath('/dashboard/admin/staff');
+     revalidateAdminDashboard();
     return employee;
 }
 

@@ -1,9 +1,9 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
-import { revalidatePath } from "next/cache";
+import { revalidateAdminDashboard, revalidateGlobalTenants } from "@/lib/cache";
 import { generateSequentialId } from "@/lib/ids";
 
 // ─── 1. Student requests Owner role upgrade ───────────────────────────────────
@@ -80,7 +80,7 @@ export async function requestOwnerUpgrade(
         description: `User requested Owner role upgrade. Property Type: ${propertyType}, Estimated Rooms: ${estimatedRooms}.`,
     });
 
-    revalidatePath('/dashboard/student');
+     revalidateGlobalTenants();
     return { success: true, requestId: upgradeRequest.id };
 }
 
@@ -206,8 +206,7 @@ export async function processRoleUpgradeRequest(
         });
     }
 
-    revalidatePath('/dashboard/admin/role-upgrades');
-    revalidatePath('/dashboard/student');
+     revalidateAdminDashboard();
     return { success: true, decision };
 }
 

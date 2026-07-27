@@ -1,10 +1,10 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { withSafeAction } from "@/lib/safe-action";
 import { requirePermission } from "@/actions/rbac";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalPayments, revalidateAdminDashboard } from "@/lib/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { encryptIfPresent, decryptIfPresent, maskBankAccount } from "@/lib/crypto";
 
@@ -67,7 +67,7 @@ export async function createPayoutBatch(data: {
         description: `Payout ₹${netAmount} created for owner ${data.ownerId} — Period: ${data.period}`,
     });
 
-    revalidatePath('/dashboard/admin/payouts');
+     revalidateAdminDashboard();
     return payout;
 }
 
@@ -94,7 +94,7 @@ export async function approvePayoutBatch(payoutId: string) {
         description: `Payout ${payout.displayId} approved. Net: ₹${payout.netAmount}`,
     });
 
-    revalidatePath('/dashboard/admin/payouts');
+     revalidateAdminDashboard();
     return payout;
 }
 
@@ -121,8 +121,7 @@ export async function markPayoutPaid(payoutId: string, txnReference: string) {
         description: `Payout ${payout.displayId} marked PAID. Txn: ${txnReference}`,
     });
 
-    revalidatePath('/dashboard/admin/payouts');
-    revalidatePath('/dashboard/owner/payouts');
+     revalidateAdminDashboard();
     return payout;
 }
 

@@ -274,12 +274,12 @@ export default function AdminPropertyDetailPage() {
     const [carouselIdx, setCarouselIdx] = useState(0);
 
     // ── Admin Room Management State ──────────────────────────────────────────
-    const [roomForm, setRoomForm] = useState({ roomNumber: '', type: 'Single Sharing (1)', price: '', availability: '1', depositMonths: 0 as 0 | 1 | 2 });
+    const [roomForm, setRoomForm] = useState({ roomNumber: '', type: '', price: '', availability: '', depositMonths: 0 as 0 | 1 | 2 });
     const [roomFormErrors, setRoomFormErrors] = useState<Record<string, string>>({});
     const [savingRoom, setSavingRoom] = useState(false);
     const [editRoomOpen, setEditRoomOpen] = useState(false);
     const [editRoomId, setEditRoomId] = useState<string | null>(null);
-    const [editRoomForm, setEditRoomForm] = useState({ roomNumber: '', type: 'Single Sharing (1)', price: '', availability: '1', depositMonths: 1 as 0 | 1 | 2 });
+    const [editRoomForm, setEditRoomForm] = useState({ roomNumber: '', type: '', price: '', availability: '', depositMonths: 1 as 0 | 1 | 2 });
     const [editRoomErrors, setEditRoomErrors] = useState<Record<string, string>>({});
     const [savingEditRoom, setSavingEditRoom] = useState(false);
 
@@ -454,6 +454,7 @@ export default function AdminPropertyDetailPage() {
     const handleAdminSaveRoom = async () => {
         const errs: Record<string, string> = {};
         if (!roomForm.roomNumber.trim()) errs.roomNumber = 'Room number is required';
+        if (!roomForm.type) errs.type = 'Bed type is required';
         if (!roomForm.price || parseFloat(roomForm.price) <= 0) errs.price = 'Valid monthly rent is required';
         if (roomForm.depositMonths === 0) errs.depositMonths = 'Security deposit selection is mandatory';
         if (Object.keys(errs).length > 0) { setRoomFormErrors(errs); return; }
@@ -468,7 +469,7 @@ export default function AdminPropertyDetailPage() {
                 depositMonths: roomForm.depositMonths,
             });
             setProperty((prev: any) => ({ ...prev, rooms: [...(prev.rooms || []), newRoom] }));
-            setRoomForm({ roomNumber: '', type: 'Single Sharing (1)', price: '', availability: '1', depositMonths: 0 });
+            setRoomForm({ roomNumber: '', type: '', price: '', availability: '', depositMonths: 0 });
             toast.success('Room added successfully!');
         } catch (e: any) { toast.error(`Error: ${e.message}`); }
         finally { setSavingRoom(false); }
@@ -491,6 +492,7 @@ export default function AdminPropertyDetailPage() {
         if (!editRoomId) return;
         const errs: Record<string, string> = {};
         if (!editRoomForm.roomNumber.trim()) errs.roomNumber = 'Room number is required';
+        if (!editRoomForm.type) errs.type = 'Bed type is required';
         if (!editRoomForm.price || parseFloat(editRoomForm.price) <= 0) errs.price = 'Valid monthly rent is required';
         if (editRoomForm.depositMonths === 0) errs.depositMonths = 'Security deposit selection is mandatory';
         if (Object.keys(errs).length > 0) { setEditRoomErrors(errs); return; }
@@ -938,7 +940,7 @@ export default function AdminPropertyDetailPage() {
                                             }`}
                                             placeholder="e.g. 101, B-4"
                                             value={roomForm.roomNumber}
-                                            onChange={e => { setRoomForm({...roomForm, roomNumber: e.target.value}); setRoomFormErrors(p => { const n={...p}; delete n.roomNumber; return n; }); }}
+                                            onChange={e => { setRoomForm({...roomForm, roomNumber: e.target.value.replace(/[^a-zA-Z0-9\-_]/g, '')}); setRoomFormErrors(p => { const n={...p}; delete n.roomNumber; return n; }); }}
                                         />
                                         {roomFormErrors.roomNumber && <p className="text-[10px] text-red-600 font-bold">{roomFormErrors.roomNumber}</p>}
                                     </div>
@@ -946,12 +948,14 @@ export default function AdminPropertyDetailPage() {
                                     <div className="space-y-1.5">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Bed Type <span className="text-red-500">*</span></label>
                                         <select
-                                            className="w-full h-11 rounded-xl border-2 border-slate-100 bg-white px-3 font-bold text-slate-800 focus:border-emerald-300 focus:outline-none"
+                                            className={`w-full h-11 rounded-xl border-2 px-3 font-bold text-slate-800 focus:outline-none transition-all ${roomFormErrors.type ? 'border-red-400 text-red-600 bg-red-50' : 'border-slate-100 bg-white focus:border-emerald-300'}`}
                                             value={roomForm.type}
-                                            onChange={e => { const type = e.target.value; const match = type.match(/(\d+)/); const count = match ? match[1] : '1'; setRoomForm({...roomForm, type, availability: count}); }}
+                                            onChange={e => { const type = e.target.value; const match = type.match(/(\d+)/); const count = match ? match[1] : '1'; setRoomForm({...roomForm, type, availability: count}); setRoomFormErrors(p => { const n={...p}; delete n.type; return n; }); }}
                                         >
-                                            {['Single Sharing (1)','Double Sharing (2)','Three Sharing (3)','Four Sharing (4)','Five Sharing (5)','Six Sharing (6)'].map(t => <option key={t}>{t}</option>)}
+                                            <option value="" disabled>Select Bed Type</option>
+                                            {['Single Sharing (1)','Double Sharing (2)','Three Sharing (3)','Four Sharing (4)','Five Sharing (5)','Six Sharing (6)'].map(t => <option key={t} value={t}>{t}</option>)}
                                         </select>
+                                        {roomFormErrors.type && <p className="text-[10px] text-red-600 font-bold mt-1">{roomFormErrors.type}</p>}
                                     </div>
                                     {/* Rent + Beds */}
                                     <div className="grid grid-cols-2 gap-3">
@@ -1809,19 +1813,21 @@ export default function AdminPropertyDetailPage() {
                                             editRoomErrors.roomNumber ? 'border-red-400 bg-red-50' : 'border-slate-100 focus:border-indigo-300'
                                         }`}
                                         value={editRoomForm.roomNumber}
-                                        onChange={e => { setEditRoomForm({...editRoomForm, roomNumber: e.target.value}); setEditRoomErrors(p => { const n={...p}; delete n.roomNumber; return n; }); }}
+                                        onChange={e => { setEditRoomForm({...editRoomForm, roomNumber: e.target.value.replace(/[^a-zA-Z0-9\-_]/g, '')}); setEditRoomErrors(p => { const n={...p}; delete n.roomNumber; return n; }); }}
                                     />
                                     {editRoomErrors.roomNumber && <p className="text-[10px] text-red-600 font-bold">{editRoomErrors.roomNumber}</p>}
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Bed Type</label>
                                     <select
-                                        className="w-full h-11 rounded-xl border-2 border-slate-100 bg-white px-3 font-bold text-slate-800 focus:border-indigo-300 focus:outline-none"
+                                        className={`w-full h-11 rounded-xl border-2 px-3 font-bold text-slate-800 focus:outline-none transition-all ${editRoomErrors.type ? 'border-red-400 text-red-600 bg-red-50' : 'border-slate-100 bg-white focus:border-indigo-300'}`}
                                         value={editRoomForm.type}
-                                        onChange={e => { const type = e.target.value; const match = type.match(/(\d+)/); const count = match ? match[1] : editRoomForm.availability; setEditRoomForm({...editRoomForm, type, availability: count}); }}
+                                        onChange={e => { const type = e.target.value; const match = type.match(/(\d+)/); const count = match ? match[1] : editRoomForm.availability; setEditRoomForm({...editRoomForm, type, availability: count}); setEditRoomErrors(p => { const n={...p}; delete n.type; return n; }); }}
                                     >
-                                        {['Single Sharing (1)','Double Sharing (2)','Three Sharing (3)','Four Sharing (4)','Five Sharing (5)','Six Sharing (6)'].map(t => <option key={t}>{t}</option>)}
+                                        <option value="" disabled>Select Bed Type</option>
+                                        {['Single Sharing (1)','Double Sharing (2)','Three Sharing (3)','Four Sharing (4)','Five Sharing (5)','Six Sharing (6)'].map(t => <option key={t} value={t}>{t}</option>)}
                                     </select>
+                                    {editRoomErrors.type && <p className="text-[10px] text-red-600 font-bold mt-1">{editRoomErrors.type}</p>}
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-3">

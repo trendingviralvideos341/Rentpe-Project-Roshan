@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalVerifications } from "@/lib/cache";
 import { NotificationService } from "@/lib/notifications";
 import { uploadToCloudinary } from "@/lib/upload";
 import { logAuditEvent } from "@/lib/audit";
@@ -329,10 +329,7 @@ export async function verifyDocument(docId: string, status: 'VERIFIED' | 'REJECT
         console.error("Doc Verification Notification Error:", e);
     }
 
-    revalidatePath('/dashboard/owner/verifications');
-    revalidatePath('/dashboard/owner/properties');
-    revalidatePath('/dashboard/admin/doc-verification');
-    revalidatePath('/dashboard/admin/properties');
+    revalidateGlobalVerifications();
     return doc;
 }
 

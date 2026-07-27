@@ -1,8 +1,8 @@
-﻿'use server';
+'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalPayments, revalidateGlobalDisputes } from "@/lib/cache";
 import { createNotification } from "@/actions/notifications";
 import { sendEmail } from "@/lib/email";
 import { logAuditEvent } from "@/lib/audit";
@@ -63,9 +63,8 @@ export async function raiseDispute(data: {
         description: `${data.type} dispute raised by ${session.role}: ${data.subject}`,
     });
 
-    revalidatePath('/dashboard/student');
-    revalidatePath('/dashboard/owner');
-    revalidatePath('/dashboard/admin/disputes');
+    // TODO: Add to cache.ts
+    revalidateGlobalDisputes();
     return dispute;
 }
 
@@ -83,7 +82,8 @@ export async function reviewDispute(disputeId: string, adminNotes?: string) {
 
     await createNotification(dispute.raisedById, 'TICKET', `Your dispute "${dispute.subject}" is now under review by our team.`);
 
-    revalidatePath('/dashboard/admin/disputes');
+    // TODO: Add to cache.ts
+    revalidateGlobalDisputes();
     return dispute;
 }
 
@@ -126,7 +126,8 @@ export async function resolveDispute(disputeId: string, resolution: string) {
         description: `Dispute resolved. Resolution: ${resolution}`,
     });
 
-    revalidatePath('/dashboard/admin/disputes');
+    // TODO: Add to cache.ts
+    revalidateGlobalDisputes();
     return dispute;
 }
 
@@ -142,7 +143,8 @@ export async function closeDispute(disputeId: string, notes?: string) {
         data: { status: 'CLOSED', adminNotes: notes, resolvedAt: new Date(), resolvedById: (session as any).userId }
     });
 
-    revalidatePath('/dashboard/admin/disputes');
+    // TODO: Add to cache.ts
+    revalidateGlobalDisputes();
     return dispute;
 }
 
@@ -249,7 +251,7 @@ export async function overrideFoodBilling(
                 newValue: { creditNoteAmount: amount, type: 'ADMIN_OVERRIDE' },
             });
 
-            revalidatePath('/dashboard/admin');
+            revalidateGlobalPayments();
             return { success: true };
         }
 
@@ -296,7 +298,7 @@ export async function overrideFoodBilling(
                 newValue: { refundAmount: amount, invoiceId: latestInvoice?.id },
             });
 
-            revalidatePath('/dashboard/admin');
+            revalidateGlobalPayments();
             return { success: true };
         }
 
@@ -340,8 +342,7 @@ export async function overrideFoodBilling(
                 newValue: { foodSelected: false, effectiveFrom: effectiveFrom.toISOString(), adminOverride: true },
             });
 
-            revalidatePath('/dashboard/admin');
-            revalidatePath('/dashboard/student');
+            revalidateGlobalPayments();
             return { success: true };
         }
 

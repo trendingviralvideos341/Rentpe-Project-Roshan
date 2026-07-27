@@ -1,8 +1,8 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateAdminDashboard, revalidateGlobalDisputes, revalidateGlobalProperty } from "@/lib/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { createNotification } from "@/actions/notifications";
 import { sendEmail } from "@/lib/email";
@@ -126,12 +126,7 @@ export async function verifyDocument(propertyId: string, docType: string) {
         newValue: { verifiedDocs } as any
     });
 
-    revalidatePath('/dashboard/admin/kyc');
-    revalidatePath('/dashboard/admin/properties');
-    revalidatePath(`/dashboard/admin/properties/${propertyId}`);
-    revalidatePath('/dashboard/owner/properties');
-    revalidatePath(`/dashboard/owner/properties/${propertyId}`);
-    revalidatePath('/dashboard/owner/verifications');
+     revalidateGlobalProperty(propertyId);
     return { success: true };
 }
 
@@ -187,12 +182,7 @@ export async function rejectDocument(propertyId: string, docType: string, reason
         description: `Admin rejected ${docType} for property "${property.name}". Reason: ${reason}`
     });
 
-    revalidatePath('/dashboard/admin/kyc');
-    revalidatePath('/dashboard/admin/properties');
-    revalidatePath(`/dashboard/admin/properties/${propertyId}`);
-    revalidatePath('/dashboard/owner/properties');
-    revalidatePath(`/dashboard/owner/properties/${propertyId}`);
-    revalidatePath('/dashboard/owner/verifications');
+     revalidateGlobalProperty(propertyId);
     return { success: true };
 }
 
@@ -360,8 +350,7 @@ export async function createRefundFromTicket(input: {
         newValue:    { displayId, ticketId: input.ticketId, bookingId: input.bookingId } as any,
     });
 
-    revalidatePath('/dashboard/admin/refunds');
-    revalidatePath('/dashboard/admin/tickets');
+     revalidateAdminDashboard();
     return { success: true, refund };
 }
 
@@ -591,8 +580,7 @@ export async function approveRefund(refundId: string, note?: string) {
         description: `Refund of ₹${refund.amount} approved and processed via Razorpay. Note: ${note || 'N/A'}. Refund Ref: ${finalTxnRef}`,
     });
 
-    revalidatePath('/dashboard/admin/refunds');
-    revalidatePath('/dashboard/admin/transactions');
+     revalidateAdminDashboard();
     return { success: true };
 }
 
@@ -643,7 +631,7 @@ export async function rejectRefund(refundId: string, reason: string) {
         description: `Refund of ₹${refund.amount} rejected. Reason: ${reason}`,
     });
 
-    revalidatePath('/dashboard/admin/refunds');
+     revalidateAdminDashboard();
     return { success: true };
 }
 
@@ -748,7 +736,7 @@ export async function applyOwnerRefundPenalty(depositId: string, note: string) {
         console.warn('Failed to send penalty notification to owner', e.message);
     }
 
-    revalidatePath('/dashboard/admin/refunds');
+     revalidateAdminDashboard();
     return { success: true };
 }
 
@@ -806,8 +794,7 @@ export async function addServiceCity(data: {
         description: `Admin added service city: ${data.name}, ${data.state}`,
     });
 
-    revalidatePath('/dashboard/admin/cities');
-    revalidatePath('/search');
+     revalidateAdminDashboard();
     return city;
 }
 
@@ -830,7 +817,7 @@ export async function updateServiceCity(id: string, data: {
         }
     });
 
-    revalidatePath('/dashboard/admin/cities');
+     revalidateAdminDashboard();
     return updated;
 }
 
@@ -853,8 +840,7 @@ export async function toggleCityStatus(id: string, isActive: boolean) {
         description: `Service city ${updated.name} ${isActive ? 'activated' : 'deactivated'}`,
     });
 
-    revalidatePath('/dashboard/admin/cities');
-    revalidatePath('/search');
+     revalidateAdminDashboard();
     return updated;
 }
 
@@ -909,7 +895,7 @@ export async function updateCommissionConfig(data: {
         description: `Commission config updated: ${data.propertyType} → ${data.feePercent}%${data.flatFee ? ` / ₹${data.flatFee} flat` : ''}`,
     });
 
-    revalidatePath('/dashboard/admin/settings/commission');
+     revalidateAdminDashboard();
     return config;
 }
 
@@ -998,7 +984,7 @@ export async function sendBulkNotification(
         description: `Bulk notification sent to ${sent} users. Audience: ${audience}. Title: "${title}". Channel: ${channel}`,
     });
 
-    revalidatePath('/dashboard/admin');
+     revalidateAdminDashboard();
     return { success: true, recipientCount: sent };
 }
 
@@ -1075,7 +1061,7 @@ export async function sendDisputeMessage(disputeId: string, message: string) {
         }
     });
 
-    revalidatePath(`/dashboard/admin/disputes/${disputeId}`);
+     revalidateGlobalDisputes();
     return msg;
 }
 
@@ -1088,8 +1074,7 @@ export async function updateDisputePriority(disputeId: string, priority: string)
         data: { priority }
     });
 
-    revalidatePath(`/dashboard/admin/disputes/${disputeId}`);
-    revalidatePath('/dashboard/admin/disputes');
+     revalidateGlobalDisputes();
     return dispute;
 }
 
@@ -1195,7 +1180,7 @@ export async function processOwnerPayout(payoutId: string) {
         }
     }
 
-    revalidatePath('/dashboard/admin/payouts');
+     revalidateAdminDashboard();
     return payout;
 }
 
@@ -1210,7 +1195,7 @@ export async function processBulkPayouts(payoutIds: string[]) {
     const succeeded = results.filter(r => r.status === 'fulfilled').length;
     const failed = results.filter(r => r.status === 'rejected').length;
 
-    revalidatePath('/dashboard/admin/payouts');
+     revalidateAdminDashboard();
     return { succeeded, failed, total: payoutIds.length };
 }
 

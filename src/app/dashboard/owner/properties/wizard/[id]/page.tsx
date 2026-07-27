@@ -510,7 +510,7 @@ export default function PropertyWizardPage() {
                     <div>
                       <label className="label-style text-[11px]">Room Number/Name *</label>
                       <Input value={room.roomNumber} onChange={e => {
-                        const u = [...rooms]; u[i].roomNumber = e.target.value; setRooms(u);
+                        const u = [...rooms]; u[i].roomNumber = e.target.value.replace(/[^a-zA-Z0-9\-_]/g, ''); setRooms(u);
                       }} placeholder="e.g. A1 or 101" className="input-style mt-1 text-sm" />
                     </div>
                     <div>

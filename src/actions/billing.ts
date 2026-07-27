@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalTenants, revalidateGlobalPayments, revalidateAdminDashboard } from "@/lib/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { randomUUID } from "crypto";
 import {
@@ -276,8 +276,9 @@ export async function generateInvoice(tenantId: string, month: string) {
 
     const result = await internalGenerateInvoice(tenantId, month, (session as any).userId);
 
-    revalidatePath('/dashboard/owner/tenants');
-    revalidatePath('/dashboard/admin');
+    revalidateGlobalTenants();
+    revalidateGlobalPayments();
+    revalidateAdminDashboard();
     return result;
 }
 
@@ -378,7 +379,7 @@ export async function recordInvoicePayment(
         return result;
     });
 
-    revalidatePath('/dashboard/owner/tenants');
+    revalidateGlobalTenants();
     return updated;
 }
 

@@ -92,7 +92,16 @@ export async function searchProperties(query?: string, filters?: {
                     totalAvailableBeds: totalAvailable,
                     // Industry standard: show as full/waitlist, not hidden
                     isFull: totalAvailable === 0,
-                    amenities: (() => { try { return JSON.parse(p.amenities || '[]'); } catch { return []; } })(),
+                    amenities: (() => {
+                        const val = p.amenities;
+                        if (!val) return [];
+                        if (Array.isArray(val)) return val;
+                        try {
+                            const parsed = JSON.parse(val);
+                            if (Array.isArray(parsed)) return parsed;
+                        } catch {}
+                        return String(val).replace(/^\[/, '').replace(/\]$/, '').split(',').map(s => s.replace(/^["'\s]+|["'\s]+$/g, '').trim()).filter(Boolean);
+                    })(),
                     image: allPhotos[0] || '',
                     buildingPhotos,
                     commonAreaPhotos,
@@ -149,7 +158,20 @@ export async function getSearchFilterOptions() {
         const cities = [...new Set(properties.map(p => p.city))].sort();
         const amenitySet = new Set<string>();
         properties.forEach(p => {
-            try { JSON.parse(p.amenities || '[]').forEach((a: string) => amenitySet.add(a)); } catch {}
+            const val = p.amenities;
+            if (!val) return;
+            if (Array.isArray(val)) {
+                val.forEach(a => amenitySet.add(a));
+                return;
+            }
+            try {
+                const parsed = JSON.parse(val);
+                if (Array.isArray(parsed)) {
+                    parsed.forEach((a: string) => amenitySet.add(a));
+                    return;
+                }
+            } catch {}
+            String(val).replace(/^\[/, '').replace(/\]$/, '').split(',').map(s => s.replace(/^["'\s]+|["'\s]+$/g, '').trim()).filter(Boolean).forEach(a => amenitySet.add(a));
         });
 
         return {

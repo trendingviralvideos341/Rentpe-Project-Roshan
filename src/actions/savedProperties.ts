@@ -1,8 +1,8 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalTenants } from "@/lib/cache";
 
 /** Save a property to student's wishlist */
 export async function saveProperty(propertyId: string, note?: string) {
@@ -17,7 +17,7 @@ export async function saveProperty(propertyId: string, note?: string) {
     const saved = await (prisma as any).savedProperty.create({
         data: { userId: (session as any).userId, propertyId, note }
     });
-    revalidatePath('/dashboard/student/saved');
+     revalidateGlobalTenants();
     return saved;
 }
 
@@ -30,7 +30,7 @@ export async function unsaveProperty(propertyId: string) {
         where: { userId: (session as any).userId, propertyId },
         data: { status: 'CANCELLED', deletedAt: new Date() }
     });
-    revalidatePath('/dashboard/student/saved');
+     revalidateGlobalTenants();
     return { success: true };
 }
 

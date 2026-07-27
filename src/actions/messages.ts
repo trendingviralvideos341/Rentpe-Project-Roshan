@@ -1,8 +1,8 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalTenants } from "@/lib/cache";
 import { createNotification } from "@/actions/notifications";
 import { sendEmail } from "@/lib/email";
 
@@ -61,8 +61,7 @@ export async function sendMessage(data: {
         }).catch(err => console.error('Failed to email message notification:', err));
     }
 
-    revalidatePath('/dashboard/student/messages');
-    revalidatePath('/dashboard/owner/messages');
+     revalidateGlobalTenants();
     return message;
 }
 
@@ -171,6 +170,6 @@ export async function deleteMessage(messageId: string) {
         : { deletedByReceiver: true };
 
     await (prisma as any).message.update({ where: { id: messageId }, data: update });
-    revalidatePath('/dashboard/student/messages');
+     revalidateGlobalTenants();
     return { success: true };
 }

@@ -3,7 +3,7 @@
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalTenants, revalidateGlobalPayments, revalidateGlobalBookings, revalidateGlobalAvailability } from "@/lib/cache";
 import { createNotification } from "@/actions/notifications";
 import { logAuditEvent } from "@/lib/audit";
 import { firstMonthRent, lastMonthRent } from "@/utils/billingUtils";
@@ -450,8 +450,8 @@ export async function confirmMoveIn(tenantId: string) {
             description: `Tenant ${tenant.name} moved in ${moveInDate.getDate()} ${firstMonthLabel}. First invoice: â‚¹${firstInvoiceAmount} (${note}). Billing anchor: 1st of every month.`,
         });
 
-        revalidatePath('/dashboard/owner/tenants');
-        revalidatePath('/dashboard/owner/financials');
+        revalidateGlobalTenants();
+        revalidateGlobalPayments();
         return { success: true };
     });
 }
@@ -531,9 +531,8 @@ export async function markRentAsPaid(recordId: string, paymentMethod: 'CASH' | '
         description: `Rent for ${record.month} marked as paid via Admin Override. Mode: ${paymentMethod}. Reason: ${reason}`,
     });
 
-    revalidatePath('/dashboard/owner/tenants');
-    revalidatePath('/dashboard/owner/payments');
-    revalidatePath('/dashboard/admin/tenants');
+    revalidateGlobalTenants();
+    revalidateGlobalPayments();
     return record;
 }
 
@@ -617,9 +616,8 @@ export async function markRentAsUnpaid(
         description: `Rent for ${record.month} reversed to Unpaid. Reason: ${actualReason}. Note: ${actualNote}`,
     });
 
-    revalidatePath('/dashboard/owner/tenants');
-    revalidatePath('/dashboard/owner/payments');
-    revalidatePath('/dashboard/admin/tenants');
+    revalidateGlobalTenants();
+    revalidateGlobalPayments();
     return record;
 }
 
@@ -656,7 +654,7 @@ export async function unblockTenant(tenantId: string, note: string) {
         description: `Unblocked. Reason: ${note}`,
     });
 
-    revalidatePath('/dashboard/owner/tenants');
+    revalidateGlobalTenants();
     return tenant;
 }
 
@@ -700,9 +698,9 @@ export async function generateNextRentRecord(tenantId: string, month: string) {
         description: `Generated rent invoice for ${month} (â‚¹${tenant.rent})`,
     });
 
-    revalidatePath('/dashboard/owner/tenants');
-    revalidatePath('/dashboard/owner/payments');
-    revalidatePath('/dashboard/student');
+    revalidateGlobalTenants();
+    revalidateGlobalPayments();
+    revalidateGlobalBookings();
     return record;
 }
 
@@ -743,7 +741,7 @@ export async function requestMoveOut(tenantId: string, data: { date: string, rea
             description: `Move-out requested for ${data.date}. Reason: ${data.reason}`,
         });
 
-        revalidatePath('/dashboard/owner/tenants');
+        revalidateGlobalTenants();
         return request;
     });
 }
@@ -785,7 +783,7 @@ export async function approveMoveOutRequest(requestId: string, approved: boolean
             description: `Move-out request ${status} by ${session.role}.`,
         });
 
-        revalidatePath('/dashboard/owner/tenants');
+        revalidateGlobalTenants();
         return { success: true };
     });
 }
@@ -970,12 +968,8 @@ Note: ${note}
             description: `Move-out finalized. Settlement: Refund â‚¹${finalRefund}. Notice marked VACATED.`,
         });
 
-        revalidatePath('/dashboard/owner/tenants');
-        revalidatePath('/dashboard/admin/tenants');
-        revalidatePath('/dashboard/owner');
-        revalidatePath('/dashboard/owner/availability');
-        revalidatePath('/dashboard/owner/notices');
-        revalidatePath('/dashboard/student/notice');
+        revalidateGlobalTenants();
+        revalidateGlobalAvailability();
         return { success: true };
     });
 }
@@ -1220,8 +1214,7 @@ export async function updateTenantProfile(
             description: `Profile edited. Ticket: ${audit.ticketId || 'N/A'}. Reason: ${audit.reason}`,
         });
 
-        revalidatePath('/dashboard/admin/tenants');
-        revalidatePath('/dashboard/owner/tenants');
+        revalidateGlobalTenants();
         return { success: true };
     });
 }
@@ -1321,9 +1314,8 @@ export async function verifyAndUpdateSelfService(
             cookieStore.delete('rentpe_session');
         }
 
-        revalidatePath('/dashboard/admin/tenants');
-        revalidatePath('/dashboard/owner/tenants');
-        revalidatePath('/dashboard/student');
+        revalidateGlobalTenants();
+        revalidateGlobalBookings();
         return { success: true };
     });
 }

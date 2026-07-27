@@ -1,8 +1,8 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalTenants } from "@/lib/cache";
 import { logAuditEvent } from "@/lib/audit";
 
 const DEFAULT_CHECKLIST_ITEMS = [
@@ -84,6 +84,6 @@ export async function updateChecklistItem(bookingId: string, itemId: string, don
         }
     });
 
-    revalidatePath(`/dashboard/student/bookings/${bookingId}/checklist`);
+     revalidateGlobalTenants();
     return { ...result, items: updated };
 }

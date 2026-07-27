@@ -1,8 +1,8 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateAdminDashboard, revalidateOwnerSettings } from "@/lib/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { requirePermission } from "@/actions/rbac";
 import { getISTDate } from "@/lib/date";
@@ -61,7 +61,7 @@ export async function updatePlatformSettings(data: {
         description: `Fees ${data.feesEnabled !== undefined ? (data.feesEnabled ? 'ENABLED' : 'DISABLED') : 'rates updated'}`,
     });
 
-    revalidatePath('/dashboard/admin/platform-fees');
+     revalidateAdminDashboard();
     return settings;
 }
 
@@ -576,7 +576,7 @@ export async function addFeeExemption(data: {
         description: `Fee exemption added: ${data.propertyName || 'All PGs'} / ${data.userId || 'All Users'}. Reason: ${data.reason}`,
     });
 
-    revalidatePath('/dashboard/admin/platform-fees');
+     revalidateAdminDashboard();
     return exemption;
 }
 
@@ -600,7 +600,7 @@ export async function removeFeeExemption(id: string) {
         description: `Fee exemption ${id} removed.`,
     });
 
-    revalidatePath('/dashboard/admin/platform-fees');
+     revalidateAdminDashboard();
 }
 
 /** Get all submitted/live properties (for exemption property picker) */
@@ -659,7 +659,7 @@ export async function updateOwnerRazorpayAccount(accountId: string | null) {
         data: { razorpayAccountId: accountId }
     });
 
-    revalidatePath('/dashboard/owner/settings/payment');
+     revalidateOwnerSettings();
     return { success: true };
 }
 

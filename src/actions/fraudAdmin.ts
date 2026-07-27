@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 
 /**
  * Fraud Admin Actions — Admin-only APIs for managing fraud flags,
@@ -8,7 +8,7 @@
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { logAuditEvent } from '@/lib/audit';
-import { revalidatePath } from 'next/cache';
+import { revalidateAdminDashboard, revalidateGlobalUsers } from "@/lib/cache";
 
 async function ensureAdmin() {
     const session = await getSession();
@@ -64,7 +64,7 @@ export async function resolveFraudFlag(flagId: string, resolution: string) {
         entityId: flagId,
         description: `Admin resolved fraud flag. Resolution: ${resolution}`
     });
-    revalidatePath('/dashboard/admin/fraud');
+     revalidateAdminDashboard();
     return flag;
 }
 
@@ -93,7 +93,7 @@ export async function blockFraudUser(userId: string, reason: string) {
         description: `Fraud: Account blocked. Reason: ${reason}`
     });
 
-    revalidatePath('/dashboard/admin/fraud');
+     revalidateAdminDashboard();
     return { success: true };
 }
 
@@ -122,7 +122,7 @@ export async function freezeUserPayouts(ownerId: string, reason: string) {
         description: `Fraud: Payouts frozen for owner. Reason: ${reason}`
     });
 
-    revalidatePath('/dashboard/admin/fraud');
+     revalidateAdminDashboard();
     return { success: true };
 }
 
@@ -151,7 +151,7 @@ export async function approveFlaggedBooking(bookingId: string, note: string) {
         description: `Admin override: Approved flagged booking. Note: ${note}`
     });
 
-    revalidatePath('/dashboard/admin/fraud');
+     revalidateAdminDashboard();
     return { success: true };
 }
 

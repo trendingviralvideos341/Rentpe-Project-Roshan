@@ -1,8 +1,8 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalEmployees } from "@/lib/cache";
 import { logAuditEvent } from "@/lib/audit";
 
 // NOTE: TeamMember model was DROPPED (July 2026 audit cleanup).
@@ -65,7 +65,7 @@ export async function addTeamMember(data: { name: string, email: string, phone: 
         description: `${member.name} (${member.designation})`,
     });
 
-    revalidatePath('/dashboard/admin/team');
+     revalidateGlobalEmployees();
     return member;
 }
 
@@ -103,7 +103,7 @@ export async function updateTeamMemberStatus(id: string, status: 'ACTIVE' | 'REV
         description: reason,
     });
 
-    revalidatePath('/dashboard/admin/team');
+     revalidateGlobalEmployees();
     return member;
 }
 
@@ -132,6 +132,6 @@ export async function updateTeamMemberPermissions(id: string, permissions: strin
         description: `Updated ${member.name}: designation=${role}, permissions=${permissions.join(', ')}`,
     });
 
-    revalidatePath('/dashboard/admin/team');
+     revalidateGlobalEmployees();
     return member;
 }

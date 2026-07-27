@@ -1,8 +1,8 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateAdminDashboard } from "@/lib/cache";
 import bcrypt from "bcryptjs";
 import { createNotification } from "@/actions/notifications";
 import { logAuditEvent } from "@/lib/audit";
@@ -80,7 +80,7 @@ async function _createStaffMember(data: {
         description: `Staff ${data.name} created by owner ${ownerId} with permissions: ${data.permissions.join(', ')}`,
     });
 
-    revalidatePath('/dashboard/owner/team');
+     revalidateAdminDashboard();
     return { success: true, staffId: staff.id };
 }
 
@@ -111,7 +111,7 @@ async function _updateStaffMemberPermissions(staffId: string, permissions: strin
         description: `New permissions: ${permissions.join(', ')}`,
     });
 
-    revalidatePath('/dashboard/owner/team');
+     revalidateAdminDashboard();
     return { success: true };
 }
 
@@ -142,7 +142,7 @@ async function _deleteStaffMember(staffId: string) {
         description: `Staff member ${staff.name} removed by owner`,
     });
 
-    revalidatePath('/dashboard/owner/team');
+     revalidateAdminDashboard();
     return { success: true };
 }
 

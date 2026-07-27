@@ -33,7 +33,7 @@ import { getSession } from '@/lib/auth';
 import { uploadToCloudinary } from '@/lib/upload';
 import { generateSequentialId } from '@/lib/ids';
 import { logAuditEvent } from '@/lib/audit';
-import { revalidatePath } from 'next/cache';
+import { revalidateGlobalVerifications } from '@/lib/cache';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -189,8 +189,7 @@ export async function uploadOwnerKycDocument(data: {
     newValue: { displayId, docType: data.docType, version: nextVersion, status: 'PENDING' },
   });
 
-  revalidatePath('/dashboard/owner/kyc');
-  revalidatePath('/dashboard/admin/owner-kyc');
+  revalidateGlobalVerifications();
 
   return { success: true, document: kycDoc };
 }
@@ -343,8 +342,7 @@ export async function adminReviewKycDocument(
     newValue: { status: decision, notes },
   });
 
-  revalidatePath('/dashboard/admin/owner-kyc');
-  revalidatePath('/dashboard/owner/kyc');
+  revalidateGlobalVerifications();
 
   return { success: true, document: updated };
 }
@@ -478,6 +476,6 @@ export async function requestKycPurge(kycDocId: string) {
     description: `Owner invoked DPDP erasure right for KYC document ${doc.displayId} (${doc.docType}).`,
   });
 
-  revalidatePath('/dashboard/owner/kyc');
+  revalidateGlobalVerifications();
   return { success: true };
 }

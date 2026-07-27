@@ -3,7 +3,7 @@
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalVacatingNotices } from "@/lib/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { NotificationService } from "@/lib/notifications";
 import { generateMasterId } from "@/lib/ids";
@@ -89,7 +89,7 @@ export async function fileVacatingNotice(data: {
         newValue: { reason: data.reason, plannedMoveOut: data.plannedMoveOut, tenantComment: data.tenantComment }
     });
 
-    revalidatePath('/dashboard/student/notice');
+    revalidateGlobalVacatingNotices();
     return notice;
 }
 
@@ -168,8 +168,7 @@ export async function ownerFileVacatingNotice(data: {
         newValue: { reason: data.reason, plannedMoveOut: data.plannedMoveOut, tenantId: data.tenantId }
     });
 
-    revalidatePath('/dashboard/owner/notices');
-    revalidatePath('/dashboard/student/notice');
+    revalidateGlobalVacatingNotices();
     return notice;
 }
 
@@ -207,7 +206,7 @@ export async function withdrawVacatingNotice(noticeId: string) {
         description: 'Vacating notice withdrawn by tenant.',
     });
 
-    revalidatePath('/dashboard/student/notice');
+    revalidateGlobalVacatingNotices();
     return updated;
 }
 
@@ -268,7 +267,7 @@ export async function acknowledgeVacatingNotice(noticeId: string, ownerNote?: st
         description: `Vacating notice acknowledged. Note: ${ownerNote || 'None'}`,
     });
 
-    revalidatePath('/dashboard/owner/notices');
+    revalidateGlobalVacatingNotices();
     return updated;
 }
 

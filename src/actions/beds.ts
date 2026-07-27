@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalBeds, revalidateGlobalBookings, revalidateGlobalRooms } from "@/lib/cache";
 import { generateSequentialId } from "@/lib/ids";
 import { logAuditEvent } from "@/lib/audit";
 import { TENANT_STATUS } from "@/lib/constants/statuses";
@@ -65,7 +65,7 @@ export async function releaseBedLock(bedId: string) {
         data: { status: 'AVAILABLE', lockedByBookingId: null, lockedAt: null, lockExpiresAt: null }
     });
 
-    revalidatePath('/dashboard/owner/bookings');
+    revalidateGlobalBeds();
     return released;
 }
 
@@ -179,7 +179,7 @@ export async function createBedsForRoom(roomId: string, count: number) {
             }
         });
     }
-    revalidatePath('/dashboard/owner/properties');
+    revalidateGlobalBeds();
 
     // ✅ Audit Log: beds created for a room
     logAuditEvent({
@@ -250,10 +250,8 @@ export async function deleteBookingAndFreeBed(bookingId: string, bedId: string) 
         newValue: { bedStatus: 'AVAILABLE' },
     });
 
-    revalidatePath('/dashboard/owner');
-    revalidatePath('/dashboard/owner/bookings');
-    revalidatePath('/dashboard/owner/properties');
-    revalidatePath('/dashboard/student');
+    revalidateGlobalBeds();
+    revalidateGlobalBookings();
 
     return { success: true };
 }

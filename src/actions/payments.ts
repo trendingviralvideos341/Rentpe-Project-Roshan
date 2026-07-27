@@ -3,7 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { razorpay } from "@/lib/razorpay";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalPayments, revalidateAdminDashboard } from "@/lib/cache";
 import { sendEmail } from "@/lib/email";
 import { logAuditEvent } from "@/lib/audit";
 import { sendSlackNotification } from "@/lib/slack";
@@ -326,9 +326,7 @@ async function _verifyPayment(data: {
             console.error('[SIDE EFFECTS] Error:', sideErr);
         }
 
-        revalidatePath("/dashboard/student");
-        revalidatePath("/dashboard/owner/bookings");
-        revalidatePath("/dashboard/owner/financials");
+        revalidateGlobalPayments();
 
         return res;
     });
@@ -790,7 +788,7 @@ export async function releaseTransferToOwner(paymentId: string) {
         newValue: { transferStatus: 'RELEASED', transferId, isDummy }
     });
 
-    revalidatePath('/dashboard/admin');
+    revalidateAdminDashboard();
     return { success: true, transferId, isDummy, amount: transferAmount / 100 };
 }
 
@@ -873,7 +871,7 @@ export async function applyRentWithholding(depositId: string, withholdAmount: nu
         newValue: { withheldFromPayouts: newTotal, newStatus }
     });
 
-    revalidatePath('/dashboard/admin');
-    revalidatePath('/dashboard/owner/deposits');
+    revalidateAdminDashboard();
+    revalidateGlobalPayments();
     return { success: true, newStatus, totalWithheld: newTotal };
 }

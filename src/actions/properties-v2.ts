@@ -31,7 +31,7 @@ import { getSession } from '@/lib/auth';
 import { generateSequentialId } from '@/lib/ids';
 import { logAuditEvent } from '@/lib/audit';
 import { uploadToCloudinary, batchUploadToCloudinary } from '@/lib/upload';
-import { revalidatePath } from 'next/cache';
+import { revalidateGlobalProperty, revalidateAdminDashboard } from '@/lib/cache';
 import { randomUUID } from 'crypto';
 import { recalculateCompletenessScore } from './kyc';
 
@@ -168,7 +168,7 @@ export async function createDraftProperty() {
     newValue: { displayId, status: 'DRAFT' },
   });
 
-  revalidatePath('/dashboard/owner/properties');
+  revalidateGlobalProperty(draft.id);
 
   return {
     success: true,
@@ -196,7 +196,7 @@ export async function saveWizardStep1(propertyId: string, data: WizardStep1Data)
     } as any,
   });
 
-  revalidatePath(`/dashboard/owner/properties/wizard/${propertyId}`);
+  revalidateGlobalProperty(propertyId);
   return { success: true, step: 1 };
 }
 
@@ -223,7 +223,7 @@ export async function saveWizardStep2(propertyId: string, data: WizardStep2Data)
   });
 
   await recalculateCompletenessScore(session.userId as string, propertyId);
-  revalidatePath(`/dashboard/owner/properties/wizard/${propertyId}`);
+  revalidateGlobalProperty(propertyId);
   return { success: true, step: 2 };
 }
 
@@ -249,7 +249,7 @@ export async function saveWizardStep3(propertyId: string, data: WizardStep3Data)
   });
 
   await recalculateCompletenessScore(session.userId as string, propertyId);
-  revalidatePath(`/dashboard/owner/properties/wizard/${propertyId}`);
+  revalidateGlobalProperty(propertyId);
   return { success: true, step: 3 };
 }
 
@@ -297,11 +297,18 @@ export async function saveWizardStep4(propertyId: string, rooms: WizardStep4Room
     const roomId = randomUUID();
     const depositMonths = Math.max(0, Math.min(r.securityDeposit || 1, 24));
 
+    if (!r.roomNumber || !r.type || !r.price) {
+        throw new Error(`Room Number, Bed Type, and Rent Price are required for all rooms.`);
+    }
+    const safeRoomNumber = r.roomNumber.toString().replace(/[^a-zA-Z0-9\-_]/g, '');
+    if (!safeRoomNumber.trim()) throw new Error(`Valid Room Number is required for all rooms.`);
+    if (r.price <= 0) throw new Error(`Valid monthly rent is required for all rooms.`);
+
     roomsToCreate.push({
       id: roomId,
       displayId: roomIds[i],
       propertyId,
-      roomNumber: String(r.roomNumber),
+      roomNumber: safeRoomNumber,
       type: r.type,
       price: r.price,
       availability: r.availability,
@@ -329,7 +336,7 @@ export async function saveWizardStep4(propertyId: string, rooms: WizardStep4Room
   });
 
   await recalculateCompletenessScore(session.userId as string, propertyId);
-  revalidatePath(`/dashboard/owner/properties/wizard/${propertyId}`);
+  revalidateGlobalProperty(propertyId);
   return { success: true, step: 4, roomsCreated: rooms.length, bedsCreated: totalBeds };
 }
 
@@ -387,7 +394,7 @@ export async function saveWizardStep5(propertyId: string, data: WizardStep5Data)
   await prisma.property.update({ where: { id: propertyId }, data: updateData });
 
   await recalculateCompletenessScore(session.userId as string, propertyId);
-  revalidatePath(`/dashboard/owner/properties/wizard/${propertyId}`);
+  revalidateGlobalProperty(propertyId);
   return { success: true, step: 5 };
 }
 
@@ -490,8 +497,8 @@ export async function submitDraftForReview(propertyId: string) {
     newValue: { status: 'SUBMITTED_FOR_REVIEW', completenessScore: score },
   });
 
-  revalidatePath('/dashboard/owner/properties');
-  revalidatePath('/dashboard/admin/property-approval');
+    revalidateGlobalProperty(propertyId);
+    revalidateAdminDashboard();
   return { success: true, status: 'SUBMITTED_FOR_REVIEW', completenessScore: score };
 }
 
@@ -573,7 +580,7 @@ export async function deleteDraftProperty(propertyId: string) {
     description: `[V2 WIZARD] Owner deleted property draft ${propertyId}.`,
   });
 
-  revalidatePath('/dashboard/owner/properties');
+  revalidateGlobalProperty(propertyId);
   return { success: true };
 }
 
@@ -763,7 +770,7 @@ export async function reviewV2PropertyDomain(params: {
     newValue: { category, actionType, notes, risk },
   });
 
-  revalidatePath('/dashboard/admin/property-reviews');
+  revalidateAdminDashboard();
   return { success: true, category, actionType, fraudRiskScore: risk };
 }
 
@@ -829,8 +836,8 @@ export async function approveOrRejectV2Property(params: {
     },
   });
 
-  revalidatePath('/dashboard/admin/property-reviews');
-  revalidatePath('/dashboard/owner/properties');
+  revalidateAdminDashboard();
+  revalidateGlobalProperty(propertyId);
   return { success: true, status: targetStatus };
 }
 

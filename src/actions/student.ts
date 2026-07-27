@@ -1,8 +1,8 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalTenants } from "@/lib/cache";
 
 /**
  * Fetches the complete student profile including recent activity and document status.
@@ -143,7 +143,7 @@ export async function updateStudentProfile(data: {
             }
         });
 
-        revalidatePath('/dashboard/student');
+     revalidateGlobalTenants();
         return { success: true, user: updated };
     } catch (e) {
         console.error("updateStudentProfile Error:", e);

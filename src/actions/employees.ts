@@ -1,7 +1,7 @@
 ﻿"use server";
 
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { revalidateAdminDashboard } from "@/lib/cache";
 import { getCurrentUser } from "./auth";
 import { generateSequentialId } from "@/lib/ids";
 import { logAuditEvent } from "@/lib/audit";
@@ -62,7 +62,7 @@ export async function createOwnerStaffMember(data: {
         description: `Created new employee ${employee.name} (${employee.displayId})`
     });
 
-    revalidatePath("/dashboard/owner/staff");
+     revalidateAdminDashboard();
     return employee;
 }
 
@@ -86,7 +86,7 @@ export async function updateOwnerStaffMember(id: string, data: any) {
         description: `Updated employee ${employee.name} details`
     });
 
-    revalidatePath("/dashboard/owner/staff");
+     revalidateAdminDashboard();
     return employee;
 }
 
@@ -114,7 +114,7 @@ export async function assignStaffMemberToProperty(staffMemberId: string, propert
         description: `Assigned employee ${assignment.staffMember.name} to property ${assignment.property.name}`
     });
 
-    revalidatePath("/dashboard/owner/staff");
+     revalidateAdminDashboard();
     return assignment;
 }
 
@@ -141,7 +141,7 @@ export async function removeStaffMemberFromProperty(staffMemberId: string, prope
         description: `Removed employee ${assignment.staffMember.name} from property ${assignment.property.name}`
     });
 
-    revalidatePath("/dashboard/owner/staff");
+     revalidateAdminDashboard();
     return assignment;
 }
 

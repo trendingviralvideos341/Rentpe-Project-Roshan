@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalProperty } from "@/lib/cache";
 import { logAuditEvent } from "@/lib/audit";
 
 export async function submitReview(
@@ -84,8 +84,7 @@ export async function submitReview(
             description: `Tenant ${tenantId} left a ${rating}-star review for Property ${propertyId}`,
         });
 
-        revalidatePath(`/property/${propertyId}`);
-        revalidatePath(`/dashboard/student`);
+        revalidateGlobalProperty(propertyId);
         return review;
     });
 }
@@ -140,7 +139,7 @@ export async function flagReview(reviewId: string, reason: string) {
         }
     });
 
-    revalidatePath(`/property/${review.propertyId}`);
+    revalidateGlobalProperty(review.propertyId);
     return updated;
 }
 
@@ -175,8 +174,7 @@ export async function updateReviewStatus(reviewId: string, status: "PUBLISHED" |
             }
         });
 
-        revalidatePath(`/property/${review.propertyId}`);
-        revalidatePath(`/dashboard/admin/reviews`); // If we build a distinct review tab
+        revalidateGlobalProperty(review.propertyId); // If we build a distinct review tab
         return updated;
     });
 }

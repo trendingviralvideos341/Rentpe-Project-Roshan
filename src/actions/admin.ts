@@ -1,10 +1,10 @@
-'use server';
+﻿'use server';
 import { withSafeAction } from "@/lib/safe-action";
 import Razorpay from 'razorpay';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalProperty, revalidateGlobalRooms, revalidateGlobalUsers, revalidateGlobalEmployees, revalidateAdminDashboard, revalidateAdminDataManagement } from "@/lib/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { generateSequentialId } from "@/lib/ids";
 import { stripImmutableFields } from "@/lib/sanitize";
@@ -185,8 +185,8 @@ async function _updateUserStatus(userId: string, status: string, reason: string)
         newValue: { status, reason }
     });
 
-    revalidatePath('/dashboard/admin/users');
-    revalidatePath('/dashboard/admin/property-approval');
+    revalidateGlobalUsers();
+    revalidateAdminDashboard();
     return user;
 }
 
@@ -219,8 +219,7 @@ async function _adminUpdateUserProfile(userId: string, data: { name?: string; em
         newValue: data as any
     });
 
-    revalidatePath('/dashboard/admin/users');
-    revalidatePath(`/dashboard/admin/users/${userId}`);
+    revalidateGlobalUsers(userId);
     return user;
 }
 
@@ -625,7 +624,7 @@ async function _adminDeleteUser(userId: string) {
         description: `User ${userId} archived (soft-deleted) by admin`,
     });
 
-    revalidatePath('/dashboard/admin/data-management');
+    revalidateAdminDataManagement();
 }
 
 async function _adminRestoreUser(userId: string) {
@@ -648,7 +647,7 @@ async function _adminRestoreUser(userId: string) {
         description: `User ${userId} restored from archive by admin`,
     });
 
-    revalidatePath('/dashboard/admin/data-management');
+    revalidateAdminDataManagement();
 }
 
 async function _adminPurgeUser(userId: string) {
@@ -674,7 +673,7 @@ async function _adminPurgeUser(userId: string) {
         description: `User ${userId} PERMANENTLY PURGED by admin`,
     });
 
-    revalidatePath('/dashboard/admin/data-management');
+    revalidateAdminDataManagement();
 }
 
 async function _adminDeleteBooking(bookingId: string) {
@@ -698,7 +697,7 @@ async function _adminDeleteBooking(bookingId: string) {
         description: `Booking ${bookingId} archived (soft-deleted) by admin`,
     });
 
-    revalidatePath('/dashboard/admin/data-management');
+    revalidateAdminDataManagement();
 }
 
 async function _adminRestoreBooking(bookingId: string) {
@@ -721,7 +720,7 @@ async function _adminRestoreBooking(bookingId: string) {
         description: `Booking ${bookingId} restored from archive by admin`,
     });
 
-    revalidatePath('/dashboard/admin/data-management');
+    revalidateAdminDataManagement();
 }
 
 async function _adminPurgeBooking(bookingId: string) {
@@ -745,7 +744,7 @@ async function _adminPurgeBooking(bookingId: string) {
         description: `Booking ${bookingId} PERMANENTLY PURGED by admin`,
     });
 
-    revalidatePath('/dashboard/admin/data-management');
+    revalidateAdminDataManagement();
 }
 
 async function _adminDeleteTenant(tenantId: string) {
@@ -772,7 +771,7 @@ async function _adminDeleteTenant(tenantId: string) {
         description: `Tenant ${tenantId} permanently deleted by admin`,
     });
 
-    revalidatePath('/dashboard/admin');
+    revalidateAdminDashboard();
 }
 
 async function _adminDeleteProperty(propertyId: string) {
@@ -797,7 +796,7 @@ async function _adminDeleteProperty(propertyId: string) {
         description: `Property ${propertyId} permanently deleted by admin`,
     });
 
-    revalidatePath('/dashboard/admin');
+    revalidateAdminDashboard();
 }
 
 // ── Role Assignment ───────────────────────────────────
@@ -854,7 +853,7 @@ async function _assignRole(targetUserId: string, newRole: "ONBOARDER" | "VERIFIE
         description: `Role assigned: ${newRole} (${displayId})`,
     });
 
-    revalidatePath('/dashboard/admin/team');
+    revalidateGlobalEmployees();
     return updated;
 }
 
@@ -881,7 +880,7 @@ async function _revokeRole(targetUserId: string) {
         description: `Role revoked from ${target.role} → USER`,
     });
 
-    revalidatePath('/dashboard/admin/team');
+    revalidateGlobalEmployees();
     return updated;
 }
 
@@ -950,8 +949,7 @@ async function _upgradeUserToOwner(userId: string) {
         newValue: { roles: updatedRoles, primaryRole: 'OWNER', isOwner: true } as any,
     });
 
-    revalidatePath('/dashboard/admin/users');
-    revalidatePath(`/dashboard/admin/users/${userId}`);
+    revalidateGlobalUsers(userId);
     return { success: true };
 }
 // ── Property Approval ────────────────────────────────
@@ -1059,6 +1057,13 @@ async function _adminAddRoomToProperty(propertyId: string, roomData: any) {
     const property = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!property) throw new Error("Property not found");
 
+    if (!roomData.roomNumber || !roomData.type || !roomData.price) {
+        throw new Error("Room Number, Bed Type, and Rent Price are required.");
+    }
+    roomData.roomNumber = roomData.roomNumber.toString().replace(/[^a-zA-Z0-9\-_]/g, '');
+    if (!roomData.roomNumber.trim()) throw new Error("Valid Room Number is required.");
+    if (parseFloat(roomData.price) <= 0) throw new Error("Valid monthly rent is required.");
+
     const availability = parseInt(roomData.availability) || 1;
     const depositMonths = Math.min(parseInt(roomData.depositMonths) || 1, 2);
 
@@ -1067,7 +1072,7 @@ async function _adminAddRoomToProperty(propertyId: string, roomData: any) {
         Promise.all(Array(availability).fill(0).map(() => generateSequentialId('BED'))),
     ]);
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
         const room = await tx.room.create({
             data: {
                 displayId: roomDisplayId,
@@ -1110,6 +1115,11 @@ async function _adminAddRoomToProperty(propertyId: string, roomData: any) {
 
         return room;
     });
+
+    revalidateAdminDashboard();
+    revalidateGlobalProperty(propertyId);
+
+    return result;
 }
 
 async function _adminEditRoom(roomId: string, roomData: any) {
@@ -1120,11 +1130,22 @@ async function _adminEditRoom(roomId: string, roomData: any) {
     const room = await prisma.room.findUnique({ where: { id: roomId }, include: { property: true } });
     if (!room) throw new Error("Room not found");
 
+    if (roomData.roomNumber) {
+        roomData.roomNumber = roomData.roomNumber.toString().replace(/[^a-zA-Z0-9\-_]/g, '');
+        if (!roomData.roomNumber.trim()) throw new Error("Valid Room Number is required.");
+    }
+    if (roomData.price && parseFloat(roomData.price) <= 0) {
+        throw new Error("Valid monthly rent is required.");
+    }
+    if (roomData.type && !roomData.type.trim()) {
+        throw new Error("Bed Type cannot be empty.");
+    }
+
     const oldAvailability = room.availability;
     const newAvailability = parseInt(roomData.availability) || oldAvailability;
     const depositMonths = Math.min(parseInt(roomData.depositMonths) || (room as any).depositMonths || 1, 2);
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
         const updated = await tx.room.update({
             where: { id: roomId },
             data: {
@@ -1169,6 +1190,11 @@ async function _adminEditRoom(roomId: string, roomData: any) {
 
         return updated;
     });
+
+    revalidateAdminDashboard();
+    revalidateGlobalProperty(room.property.id);
+
+    return result;
 }
 
 async function _adminDeleteRoom(roomId: string) {
@@ -1179,7 +1205,7 @@ async function _adminDeleteRoom(roomId: string) {
     const room = await prisma.room.findUnique({ where: { id: roomId }, include: { property: true } });
     if (!room) throw new Error("Room not found");
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
         await tx.bed.updateMany({ where: { roomId }, data: { status: 'CANCELLED' } });
         const deleted = await tx.room.update({ where: { id: roomId }, data: { status: 'CANCELLED' } });
 
@@ -1199,6 +1225,11 @@ async function _adminDeleteRoom(roomId: string) {
 
         return deleted;
     });
+
+    revalidateAdminDashboard();
+    revalidateGlobalProperty(room.property.id);
+
+    return result;
 }
 
 export async function getAdminPropertyAnalytics() {
@@ -1337,7 +1368,7 @@ async function _startPropertyVerification(propertyId: string) {
         console.error("Email module error:", e);
     }
 
-    revalidatePath('/dashboard/admin/property-approval');
+    revalidateAdminDashboard();
     return result;
 }
 
@@ -1391,8 +1422,8 @@ async function _verifyPropertyDocuments(propertyId: string) {
         console.error("Email module error:", e);
     }
 
-    revalidatePath('/dashboard/admin/property-approval');
-    revalidatePath('/dashboard/owner/properties');
+    revalidateAdminDashboard();
+    revalidateGlobalProperty(propertyId);
     return result;
 }
 
@@ -1454,9 +1485,8 @@ async function _requirePropertyPayment(propertyId: string) {
         console.error("Email module error:", e);
     }
 
-    revalidatePath('/dashboard/admin/property-approval');
-    revalidatePath('/dashboard/owner/properties');
-    revalidatePath('/search');
+    revalidateAdminDashboard();
+    revalidateGlobalProperty(propertyId);
     return result;
 }
 
@@ -1553,9 +1583,8 @@ async function _exemptPropertyFee(propertyId: string, reason: string) {
         console.error("Email module error:", e);
     }
 
-    revalidatePath('/dashboard/admin/property-approval');
-    revalidatePath('/dashboard/owner/properties');
-    revalidatePath('/search');
+    revalidateAdminDashboard();
+    revalidateGlobalProperty(propertyId);
     return result;
 }
 
@@ -1617,8 +1646,8 @@ async function _rejectProperty(propertyId: string, notes: string) {
         console.error("Email module error:", e);
     }
 
-    revalidatePath('/dashboard/admin/property-approval');
-    revalidatePath('/dashboard/owner/properties');
+    revalidateAdminDashboard();
+    revalidateGlobalProperty(propertyId);
     return result;
 }
 
@@ -1680,8 +1709,8 @@ async function _requestPropertyCorrections(propertyId: string, notes: string) {
         console.error("Email module error:", e);
     }
 
-    revalidatePath('/dashboard/admin/property-approval');
-    revalidatePath('/dashboard/owner/properties');
+    revalidateAdminDashboard();
+    revalidateGlobalProperty(propertyId);
     return result;
 }
 
@@ -1710,7 +1739,7 @@ async function _moveToReview(propertyId: string) {
         }
     });
 
-    revalidatePath('/dashboard/admin/property-approval');
+    revalidateAdminDashboard();
     return result;
 }
 
@@ -1775,9 +1804,8 @@ async function _suspendProperty(propertyId: string, notes: string) {
         console.error("Email module error:", e);
     }
 
-    revalidatePath('/dashboard/admin/property-approval');
-    revalidatePath('/dashboard/owner/properties');
-    revalidatePath('/search');
+    revalidateAdminDashboard();
+    revalidateGlobalProperty(propertyId);
     return result;
 }
 
@@ -1862,9 +1890,8 @@ async function _activateProperty(propertyId: string, notes?: string) {
         return updated;
     });
 
-    revalidatePath('/dashboard/admin/property-approval');
-    revalidatePath('/dashboard/owner/properties');
-    revalidatePath('/search');
+    revalidateAdminDashboard();
+    revalidateGlobalProperty(propertyId);
     return result;
 }
 
@@ -1931,8 +1958,8 @@ async function _rollbackPropertyStatus(propertyId: string, notes: string) {
         return updated;
     });
 
-    revalidatePath('/dashboard/admin/property-approval');
-    revalidatePath('/dashboard/owner/properties');
+    revalidateAdminDashboard();
+    revalidateGlobalProperty(propertyId);
     return result;
 }
 async function _adminUpdateProperty(propertyId: string, data: any) {
@@ -1997,8 +2024,7 @@ async function _adminUpdateProperty(propertyId: string, data: any) {
         });
     }
 
-    revalidatePath('/dashboard/admin/property-approval');
-    revalidatePath(`/search`);
+    revalidateGlobalProperty(propertyId);
     return updated;
 }
 async function _adminUpdateRoom(roomId: string, data: any) {
@@ -2011,6 +2037,17 @@ async function _adminUpdateRoom(roomId: string, data: any) {
         include: { property: true }
     });
     if (!oldRoom) throw new Error("Room not found");
+
+    if (data.roomNumber) {
+        data.roomNumber = data.roomNumber.toString().replace(/[^a-zA-Z0-9\-_]/g, '');
+        if (!data.roomNumber.trim()) throw new Error("Valid Room Number is required.");
+    }
+    if (data.price && parseFloat(data.price) <= 0) {
+        throw new Error("Valid monthly rent is required.");
+    }
+    if (data.type && !data.type.trim()) {
+        throw new Error("Bed Type cannot be empty.");
+    }
 
     const oldAvailability = oldRoom.availability;
     const newAvailability = parseInt(data.availability);
@@ -2068,7 +2105,7 @@ async function _adminUpdateRoom(roomId: string, data: any) {
         return updated;
     });
 
-    revalidatePath('/dashboard/admin/property-approval');
+    revalidateGlobalProperty(oldRoom.propertyId);
     return result;
 }
 
@@ -2079,6 +2116,13 @@ async function _adminAddRoom(propertyId: string, data: any) {
 
     const property = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!property) throw new Error("Property not found");
+
+    if (!data.roomNumber || !data.type || !data.price) {
+        throw new Error("Room Number, Bed Type, and Rent Price are required.");
+    }
+    data.roomNumber = data.roomNumber.toString().replace(/[^a-zA-Z0-9\-_]/g, '');
+    if (!data.roomNumber.trim()) throw new Error("Valid Room Number is required.");
+    if (parseFloat(data.price) <= 0) throw new Error("Valid monthly rent is required.");
 
     const availability = parseInt(data.availability);
 
@@ -2125,7 +2169,7 @@ async function _adminAddRoom(propertyId: string, data: any) {
         return room;
     });
 
-    revalidatePath('/dashboard/admin/property-approval');
+    revalidateGlobalProperty(propertyId);
     return result;
 }
 
@@ -2187,8 +2231,8 @@ async function _requestBankCorrections(propertyId: string, notes: string) {
         entityId: propertyId,
         description: `Admin requested bank corrections: ${notes}`,
     });
-    revalidatePath("/dashboard/admin/properties");
-    revalidatePath(`/dashboard/admin/properties/${propertyId}`);
+    revalidateAdminDashboard();
+    revalidateGlobalProperty(propertyId);
     return result;
 }
 
@@ -2223,8 +2267,8 @@ async function _verifyBankDetails(propertyId: string) {
         entityId: propertyId,
         description: `Admin verified bank details`,
     });
-    revalidatePath("/dashboard/admin/properties");
-    revalidatePath(`/dashboard/admin/properties/${propertyId}`);
+    revalidateAdminDashboard();
+    revalidateGlobalProperty(propertyId);
     return result;
 }
 
@@ -2278,8 +2322,8 @@ async function _verifyBankUpdate(propertyId: string) {
         description: `Admin verified and applied updated bank details for LIVE property`,
     });
 
-    revalidatePath("/dashboard/admin/properties");
-    revalidatePath(`/dashboard/admin/properties/${propertyId}`);
+    revalidateAdminDashboard();
+    revalidateGlobalProperty(propertyId);
     return result;
 }
 
@@ -2324,8 +2368,8 @@ async function _rejectBankUpdate(propertyId: string, reason: string) {
         description: `Admin rejected updated bank details for LIVE property. Reason: ${reason}`,
     });
 
-    revalidatePath("/dashboard/admin/properties");
-    revalidatePath(`/dashboard/admin/properties/${propertyId}`);
+    revalidateAdminDashboard();
+    revalidateGlobalProperty(propertyId);
     return result;
 }
 
@@ -2357,7 +2401,7 @@ async function _bypassOnboardingPayment(propertyId: string) {
         description: `Admin bypassed onboarding payment for property ${property.name} — registered when fees were disabled.`,
     });
 
-    revalidatePath('/dashboard/admin/properties');
+    revalidateAdminDashboard();
     return { success: true };
 }
 

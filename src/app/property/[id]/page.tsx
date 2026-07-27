@@ -102,7 +102,15 @@ export default function PropertyDetailPage() {
 
                     setProperty({
                         ...data,
-                        amenities: JSON.parse(data.amenities || "[]"),
+                        amenities: (() => {
+                            if (!data.amenities) return [];
+                            if (Array.isArray(data.amenities)) return data.amenities;
+                            try {
+                                const p = JSON.parse(data.amenities);
+                                if (Array.isArray(p)) return p;
+                            } catch {}
+                            return String(data.amenities).replace(/^\[/, '').replace(/\]$/, '').split(',').map(s => s.replace(/^["'\s]+|["'\s]+$/g, '').trim()).filter(Boolean);
+                        })(),
                         images: allImages
                     });
 

@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession, encryptPassword } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalEmployees } from "@/lib/cache";
 import { uploadToCloudinary } from "@/lib/upload";
 import { logAuditEvent } from "@/lib/audit";
 import { randomUUID } from "crypto";
@@ -135,7 +135,8 @@ export async function addEmployee(data: {
         description: `${emp.name} — ${emp.department} / ${emp.designation}`,
     });
 
-    revalidatePath('/dashboard/admin/employees');
+    // TODO: Add to cache.ts
+    revalidateGlobalEmployees();
     return emp;
 }
 
@@ -174,7 +175,8 @@ export async function updateEmployeeStatus(id: string, status: 'ACTIVE' | 'SUSPE
         description: reason,
     });
 
-    revalidatePath('/dashboard/admin/employees');
+    // TODO: Add to cache.ts
+    revalidateGlobalEmployees();
     return emp;
 }
 
@@ -196,7 +198,8 @@ export async function activateEmployee(id: string) {
         data: { status: "ACTIVE", auditTrail }
     });
 
-    revalidatePath('/dashboard/admin/employees');
+    // TODO: Add to cache.ts
+    revalidateGlobalEmployees();
     return emp;
 }
 
@@ -242,7 +245,8 @@ export async function uploadEmployeeDoc(id: string, docField: string, docData: s
     updateData[fieldMap.nameField] = docName;
 
     const emp = await prisma.employee.update({ where: { id }, data: updateData });
-    revalidatePath('/dashboard/admin/employees');
+    // TODO: Add to cache.ts
+    revalidateGlobalEmployees();
     return emp;
 }
 
@@ -273,7 +277,8 @@ export async function verifyEmployeeDoc(id: string, docType: 'aadhaar' | 'pan' |
     }
 
     const emp = await prisma.employee.update({ where: { id }, data: updateData });
-    revalidatePath('/dashboard/admin/employees');
+    // TODO: Add to cache.ts
+    revalidateGlobalEmployees();
     return emp;
 }
 
@@ -301,7 +306,8 @@ export async function updateBackgroundCheck(id: string, status: 'IN_PROGRESS' | 
         }
     });
 
-    revalidatePath('/dashboard/admin/employees');
+    // TODO: Add to cache.ts
+    revalidateGlobalEmployees();
     return emp;
 }
 
@@ -321,7 +327,8 @@ export async function updateEmployeePermissions(id: string, permissions: string[
         data: { permissions: JSON.stringify(permissions), department, designation, auditTrail }
     });
 
-    revalidatePath('/dashboard/admin/employees');
+    // TODO: Add to cache.ts
+    revalidateGlobalEmployees();
     return emp;
 }
 // ── GENERATE EMPLOYEE CODE (after activation) ────────────
@@ -357,7 +364,8 @@ export async function generateEmpCode(id: string) {
         where: { id },
         data: { empCode: newCode, auditTrail }
     });
-    revalidatePath('/dashboard/admin/employees');
+    // TODO: Add to cache.ts
+    revalidateGlobalEmployees();
     return emp;
 }
 
@@ -384,7 +392,8 @@ export async function editEmpCode(id: string, newCode: string, notes: string) {
         where: { id },
         data: { empCode: newCode.trim(), empCodeNotes: notes.trim(), auditTrail }
     });
-    revalidatePath('/dashboard/admin/employees');
+    // TODO: Add to cache.ts
+    revalidateGlobalEmployees();
     return emp;
 }
 
@@ -415,6 +424,7 @@ export async function unsuspendEmployee(id: string, reason: string) {
         entityId: id,
         description: reason,
     });
-    revalidatePath('/dashboard/admin/employees');
+    // TODO: Add to cache.ts
+    revalidateGlobalEmployees();
     return emp;
 }

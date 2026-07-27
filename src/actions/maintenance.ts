@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateGlobalMaintenance } from "@/lib/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { generateMasterId } from "@/lib/ids";
 import { uploadToCloudinary } from "@/lib/upload";
@@ -87,7 +87,8 @@ export async function createMaintenanceRequest(data: {
         description: `Maintenance request: ${data.title} [${data.priority}] in category ${data.category}`,
     });
 
-    revalidatePath('/dashboard/student/maintenance');
+    // TODO: Add to cache.ts
+    revalidateGlobalMaintenance();
     return request;
 }
 
@@ -186,6 +187,7 @@ export async function updateMaintenanceStatus(
         description: `Maintenance request status updated to ${status}. Note: ${ownerNote || 'None'}`,
     });
 
-    revalidatePath('/dashboard/owner/maintenance');
+    // TODO: Add to cache.ts
+    revalidateGlobalMaintenance();
     return updated;
 }

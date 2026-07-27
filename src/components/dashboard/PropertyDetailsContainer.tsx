@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { getPropertyById, savePropertyDocuments, addRoomToProperty, deletePropertyDocument, requestPropertyDeactivation, requestPropertyReactivation, updatePropertyRules, requestBankDetailsCorrection, approveBankDetails } from "@/actions/properties";
+import { getPropertyById, savePropertyDocuments, addRoomToProperty, deletePropertyDocument, requestPropertyDeactivation, requestPropertyReactivation, updatePropertyRules, requestBankDetailsCorrection, approveBankDetails, updatePropertyDescription, updatePropertyAmenities, updatePropertyLocation } from "@/actions/properties";
 import { requestEditBankDetails } from "@/actions/security";
 import { deleteRoomByOwner, updateRoomByOwner } from "@/actions/rooms";
 import { 
@@ -18,7 +18,7 @@ import {
     BedDouble, Clock, Users, ParkingCircle, AlertCircle, MapPin, ArrowRight,
     Search, ChevronLeft, ChevronRight, RotateCcw, ZoomIn, ZoomOut, XCircle,
     Home, ShieldCheck, UtensilsCrossed, PowerOff, AlertTriangle, Zap, Pencil,
-    LockOpen, Lock, Loader2
+    LockOpen, Lock, Loader2, Sparkles
 } from 'lucide-react';
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -55,13 +55,13 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
 
     // Add Room State
     const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
-    const [roomForm, setRoomForm] = useState({ roomNumber: "", type: "Single Sharing (1)", price: "", availability: "1", depositMonths: 0 as 0 | 1 | 2 });
+    const [roomForm, setRoomForm] = useState({ roomNumber: "", type: "", price: "", availability: "", depositMonths: 0 as 0 | 1 | 2 });
     const [roomFormErrors, setRoomFormErrors] = useState<Record<string, string>>({});
     const [savingRoom, setSavingRoom] = useState(false);
 
     // Edit Room State
     const [isEditRoomOpen, setIsEditRoomOpen] = useState(false);
-    const [editRoomForm, setEditRoomForm] = useState({ id: "", roomNumber: "", type: "Single Sharing (1)", price: "", availability: "1", depositMonths: 0 as 0 | 1 | 2 });
+    const [editRoomForm, setEditRoomForm] = useState({ id: "", roomNumber: "", type: "", price: "", availability: "", depositMonths: 0 as 0 | 1 | 2 });
     const [editingRoom, setEditingRoom] = useState(false);
 
     // Delete Room Confirmation State
@@ -82,6 +82,120 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
     const [rulesDraft, setRulesDraft] = useState<string[]>([]);
     const [newRuleInput, setNewRuleInput] = useState('');
     const [savingRules, setSavingRules] = useState(false);
+
+    // Property Description State
+    const [descEditOpen, setDescEditOpen] = useState(false);
+    const [descDraft, setDescDraft] = useState('');
+    const [savingDesc, setSavingDesc] = useState(false);
+
+    // Amenities State & Options
+    const AMENITY_PRESETS = [
+        'WiFi', 'AC', 'Parking', 'Security', 'Food/Mess', 'Gym', 
+        'Laundry', 'CCTV', 'Power Backup', 'Hot Water', 'Lift/Elevator', 
+        'Study Room', 'Attached Bathroom', 'Biometric Entry', 'Cleaning Service'
+    ];
+    const [amenitiesEditOpen, setAmenitiesEditOpen] = useState(false);
+    const [amenitiesDraft, setAmenitiesDraft] = useState<string[]>([]);
+    const [newAmenityInput, setNewAmenityInput] = useState('');
+    const [savingAmenities, setSavingAmenities] = useState(false);
+
+    // Location State
+    const [locationEditOpen, setLocationEditOpen] = useState(false);
+    const [locationDraft, setLocationDraft] = useState({ address: '', city: '' });
+    const [savingLocation, setSavingLocation] = useState(false);
+    const [pinLoading, setPinLoading] = useState(false);
+
+    const parseAmenities = (val: any): string[] => {
+        if (!val) return [];
+        if (Array.isArray(val)) return val.map(String).map(s => s.trim()).filter(Boolean);
+        if (typeof val === 'string') {
+            const trimmed = val.trim();
+            if (!trimmed) return [];
+            try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) {
+                    return parsed.map(String).map(s => s.trim()).filter(Boolean);
+                }
+            } catch {}
+            const cleaned = trimmed.replace(/^\[/, '').replace(/\]$/, '');
+            return cleaned
+                .split(',')
+                .map(item => item.replace(/^["'\s]+|["'\s]+$/g, '').trim())
+                .filter(Boolean);
+        }
+        return [];
+    };
+
+    const handleSaveDescription = async (desc: string) => {
+        setSavingDesc(true);
+        try {
+            await updatePropertyDescription(property.id, desc);
+            setProperty({ ...property, description: desc.trim() });
+            setDescEditOpen(false);
+            toast.success('Property description updated!');
+        } catch (e: any) {
+            toast.error(`Error: ${e.message}`);
+        } finally {
+            setSavingDesc(false);
+        }
+    };
+
+    const handleSaveAmenities = async (amenities: string[]) => {
+        setSavingAmenities(true);
+        try {
+            await updatePropertyAmenities(property.id, amenities);
+            setProperty({ ...property, amenities: JSON.stringify(amenities) });
+            setAmenitiesEditOpen(false);
+            setNewAmenityInput('');
+            toast.success('Property amenities updated!');
+        } catch (e: any) {
+            toast.error(`Error: ${e.message}`);
+        } finally {
+            setSavingAmenities(false);
+        }
+    };
+
+    const handleSaveLocation = async (draft: { address: string; city: string }) => {
+        if (!draft.address.trim()) { toast.error('Street Address is required.'); return; }
+        if (!draft.city.trim()) { toast.error('City is required.'); return; }
+        setSavingLocation(true);
+        try {
+            await updatePropertyLocation(property.id, draft);
+            setProperty({ ...property, address: draft.address.trim(), city: draft.city.trim() });
+            setLocationEditOpen(false);
+            toast.success('Property location updated!');
+        } catch (e: any) {
+            toast.error(`Error: ${e.message}`);
+        } finally {
+            setSavingLocation(false);
+        }
+    };
+
+    const handlePincodeLookup = async (code: string) => {
+        if (code.length !== 6) return;
+        setPinLoading(true);
+        try {
+            const res = await fetch(`https://api.postalpincode.in/pincode/${code}`);
+            const data = await res.json();
+            if (data?.[0]?.Status === 'Success' && data[0].PostOffice?.length > 0) {
+                const po = data[0].PostOffice[0];
+                const addition = `, ${po.Name}, ${po.District}, ${po.State} - ${code}, India`;
+                setLocationDraft(prev => ({ 
+                    ...prev, 
+                    address: prev.address + addition,
+                    city: po.District
+                }));
+                toast.info(`Location appended: ${po.District}`);
+            } else {
+                toast.error("Invalid PIN code.");
+            }
+        } catch {
+            toast.error("Failed to fetch PIN details.");
+        } finally {
+            setPinLoading(false);
+        }
+    };
+
 
     // Live Capture State
     const [isCaptureOpen, setIsCaptureOpen] = useState(false);
@@ -371,6 +485,7 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
     const handleSaveRoom = async () => {
         const errs: Record<string, string> = {};
         if (!roomForm.roomNumber.trim()) errs.roomNumber = "Room number is required";
+        if (!roomForm.type) errs.type = "Bed type is required";
         if (!roomForm.price || parseFloat(roomForm.price) <= 0) errs.price = "Valid monthly rent is required";
         if (!roomForm.availability || parseInt(roomForm.availability) <= 0) errs.availability = "Beds available must be at least 1";
         if (roomForm.depositMonths === 0) errs.depositMonths = "Security deposit selection is mandatory";
@@ -442,8 +557,8 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
     };
 
     const handleEditRoomSave = async () => {
-        if (!editRoomForm.roomNumber || !editRoomForm.price) {
-            alert("Room Number and Rent Price are required.");
+        if (!editRoomForm.roomNumber || !editRoomForm.type || !editRoomForm.price) {
+            alert("Room Number, Bed Type, and Rent Price are required.");
             return;
         }
 
@@ -825,35 +940,187 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                         {/* Property Description + Amenities */}
                         <Card className="rounded-3xl border-2 border-slate-50 shadow-sm overflow-hidden">
                             <CardHeader className="bg-slate-50/50 border-b-2 border-slate-50">
-                                <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Property Description</CardTitle>
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Property Description</CardTitle>
+                                    {!descEditOpen && (
+                                        <button
+                                            onClick={() => { setDescDraft(property.description || ''); setDescEditOpen(true); }}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all active:scale-95"
+                                        >
+                                            <Pencil className="w-3 h-3" /> Edit Description
+                                        </button>
+                                    )}
+                                </div>
                             </CardHeader>
                             <CardContent className="p-6 space-y-6">
-                                <p className="text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">{property.description}</p>
-                                <div className="pt-4 border-t-2 border-slate-50 space-y-2">
-                                    <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Available Amenities</div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {(property.amenities || '').split(',').filter(Boolean).map((a: string) => (
-                                            <span key={a} className="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] font-bold border border-indigo-100">{a.trim()}</span>
-                                        ))}
+                                {!descEditOpen ? (
+                                    <p className="text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">
+                                        {property.description || <span className="text-slate-400 italic">No description provided yet. Click “Edit Description” to add one.</span>}
+                                    </p>
+                                ) : (
+                                    <div className="space-y-3 bg-indigo-50/30 p-4 rounded-2xl border-2 border-indigo-100">
+                                        <textarea
+                                            value={descDraft}
+                                            onChange={e => setDescDraft(e.target.value)}
+                                            placeholder="Describe your PG — location advantages, cleanliness, security, food quality..."
+                                            rows={4}
+                                            className="w-full p-3 rounded-xl border-2 border-indigo-200 text-sm font-medium focus:outline-none focus:border-indigo-500 bg-white"
+                                        />
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => setDescEditOpen(false)}
+                                                className="flex-1 h-9 rounded-xl bg-slate-900 hover:bg-black text-white font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
+                                            >Cancel</button>
+                                            <button
+                                                onClick={() => handleSaveDescription(descDraft)}
+                                                disabled={savingDesc}
+                                                className="flex-1 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] uppercase tracking-widest transition-all disabled:opacity-50 active:scale-95"
+                                            >{savingDesc ? 'Saving...' : 'Save Description'}</button>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
+
+                                {/* Available Amenities */}
                                 <div className="pt-4 border-t-2 border-slate-50 space-y-3">
-                                    <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">General Information</div>
-                                    <div className="grid grid-cols-2 gap-3 pt-1">
-                                        {[
-                                            ["Stay Gender Type", property.genderType || "COED"],
-                                            ["Food Type", property.foodType === "INCLUDED" ? "Included in Rent" : property.foodType === "OPTIONAL" ? "Optional (Add-on)" : "Not Available"],
-                                            ["Food Price", property.foodType === "INCLUDED" ? "Included in Rent" : property.foodPricePerMonth ? `₹${property.foodPricePerMonth}` : "N/A"],
-                                            ["PG License", property.licenseNumber || "N/A"],
-                                            ["GST Number", property.gstNumber || "N/A"],
-                                            ["RERA ID", property.reraId || "N/A"],
-                                            ["Notice Period", property.noticePeriod ? `${property.noticePeriod} days` : `${property.minimumNoticeDays || 30} days`],
-                                        ].map(([label, val]) => (
-                                            <div key={label} className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 transition-all hover:bg-slate-50">
-                                                <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</div>
-                                                <div className="text-xs font-bold text-slate-800 leading-snug">{val}</div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Available Amenities</div>
+                                        {!amenitiesEditOpen && (
+                                            <button
+                                                onClick={() => { setAmenitiesDraft(parseAmenities(property.amenities)); setAmenitiesEditOpen(true); }}
+                                                className="flex items-center gap-1 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg transition-all active:scale-95"
+                                            >
+                                                <Pencil className="w-2.5 h-2.5" /> Edit Amenities
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {!amenitiesEditOpen ? (
+                                        <div className="flex flex-wrap gap-2">
+                                            {parseAmenities(property.amenities).length === 0 ? (
+                                                <p className="text-xs text-slate-400 italic">No amenities selected. Click “Edit Amenities” to select.</p>
+                                            ) : (
+                                                parseAmenities(property.amenities).map((a: string) => (
+                                                    <span key={a} className="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] font-bold border border-indigo-100 flex items-center gap-1">
+                                                        <Sparkles className="w-3 h-3 text-indigo-500" />
+                                                        {a}
+                                                    </span>
+                                                ))
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4 bg-indigo-50/30 p-4 rounded-2xl border-2 border-indigo-100">
+                                            <p className="text-xs font-bold text-slate-600">Select preset amenities or add custom amenities below:</p>
+                                            {/* Preset Option Chips */}
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                {AMENITY_PRESETS.map((preset) => {
+                                                    const isSelected = amenitiesDraft.includes(preset);
+                                                    return (
+                                                        <button
+                                                            key={preset}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (isSelected) {
+                                                                    setAmenitiesDraft(amenitiesDraft.filter(a => a !== preset));
+                                                                } else {
+                                                                    setAmenitiesDraft([...amenitiesDraft, preset]);
+                                                                }
+                                                            }}
+                                                            className={`px-3 py-2 rounded-xl border-2 text-xs font-bold transition-all text-left flex items-center justify-between ${
+                                                                isSelected 
+                                                                    ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' 
+                                                                    : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-300'
+                                                            }`}
+                                                        >
+                                                            <span>{preset}</span>
+                                                            {isSelected && <span className="text-[10px] font-black">✓</span>}
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
-                                        ))}
+
+                                            {/* Custom Amenities List & Input */}
+                                            <div className="pt-2 border-t border-indigo-100 space-y-2">
+                                                <div className="text-[10px] font-black uppercase text-slate-500">Custom Amenities</div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {amenitiesDraft.filter(a => !AMENITY_PRESETS.includes(a)).map(custom => (
+                                                        <span key={custom} className="px-2.5 py-1 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold border border-purple-200 flex items-center gap-1.5">
+                                                            {custom}
+                                                            <button 
+                                                                type="button"
+                                                                onClick={() => setAmenitiesDraft(amenitiesDraft.filter(a => a !== custom))}
+                                                                className="text-purple-500 hover:text-purple-800"
+                                                            >
+                                                                <XCircle className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        value={newAmenityInput}
+                                                        onChange={e => setNewAmenityInput(e.target.value)}
+                                                        onKeyDown={e => {
+                                                            if (e.key === 'Enter' && newAmenityInput.trim()) {
+                                                                if (!amenitiesDraft.includes(newAmenityInput.trim())) {
+                                                                    setAmenitiesDraft([...amenitiesDraft, newAmenityInput.trim()]);
+                                                                }
+                                                                setNewAmenityInput('');
+                                                            }
+                                                        }}
+                                                        placeholder="Add custom amenity (e.g. Swimming Pool)..."
+                                                        className="flex-1 h-9 rounded-xl border-2 border-indigo-200 px-3 text-xs font-medium focus:outline-none focus:border-indigo-400 bg-white"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        disabled={!newAmenityInput.trim()}
+                                                        onClick={() => {
+                                                            if (newAmenityInput.trim()) {
+                                                                if (!amenitiesDraft.includes(newAmenityInput.trim())) {
+                                                                    setAmenitiesDraft([...amenitiesDraft, newAmenityInput.trim()]);
+                                                                }
+                                                                setNewAmenityInput('');
+                                                            }
+                                                        }}
+                                                        className="h-9 px-3 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl disabled:opacity-40 transition-all text-xs font-bold shrink-0 active:scale-95"
+                                                    >
+                                                        <Plus className="w-3.5 h-3.5 mr-1" /> Add
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-2 pt-2 border-t border-indigo-100">
+                                                <button
+                                                    onClick={() => { setAmenitiesEditOpen(false); setNewAmenityInput(''); }}
+                                                    className="flex-1 h-9 rounded-xl bg-slate-900 hover:bg-black text-white font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
+                                                >Cancel</button>
+                                                <button
+                                                    onClick={() => handleSaveAmenities(amenitiesDraft)}
+                                                    disabled={savingAmenities}
+                                                    className="flex-1 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] uppercase tracking-widest transition-all disabled:opacity-50 active:scale-95"
+                                                >{savingAmenities ? 'Saving...' : 'Save Amenities'}</button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* General Information */}
+                                    <div className="pt-4 border-t-2 border-slate-50 space-y-3">
+                                        <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">General Information</div>
+                                        <div className="grid grid-cols-2 gap-3 pt-1">
+                                            {[
+                                                ["Stay Gender Type", property.genderType || "COED"],
+                                                ["Food Type", property.foodType === "INCLUDED" ? "Included in Rent" : property.foodType === "OPTIONAL" ? "Optional (Add-on)" : "Not Available"],
+                                                ["Food Price", property.foodType === "INCLUDED" ? "Included in Rent" : property.foodPricePerMonth ? `₹${property.foodPricePerMonth}` : "N/A"],
+                                                ["PG License", property.licenseNumber || "N/A"],
+                                                ["GST Number", property.gstNumber || "N/A"],
+                                                ["RERA ID", property.reraId || "N/A"],
+                                                ["Notice Period", property.noticePeriod ? `${property.noticePeriod} days` : `${property.minimumNoticeDays || 30} days`],
+                                            ].map(([label, val]) => (
+                                                <div key={label} className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 transition-all hover:bg-slate-50">
+                                                    <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</div>
+                                                    <div className="text-xs font-bold text-slate-800 leading-snug">{val}</div>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </CardContent>
@@ -956,17 +1223,85 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                         </CardContent>
                     </Card>
 
-                    {/* Location Map — moved to bottom */}
+                    {/* Location Map */}
                     <Card className="rounded-3xl border-2 border-slate-50 shadow-sm overflow-hidden">
                         <CardHeader className="bg-slate-50/50 border-b-2 border-slate-50">
-                            <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Location Map</CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-center min-h-[140px] gap-6">
-                            <div className="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center text-3xl shrink-0">📍</div>
-                            <div className="text-center sm:text-left">
-                                <div className="font-black text-slate-800 uppercase tracking-tight text-lg">{property.city}</div>
-                                <p className="text-sm font-bold text-slate-400 mt-1">{property.address}</p>
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Location Map</CardTitle>
+                                {!locationEditOpen && (
+                                    <button
+                                        onClick={() => { 
+                                            setLocationDraft({ address: property.address || '', city: property.city || '' }); 
+                                            setLocationEditOpen(true); 
+                                        }}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all active:scale-95"
+                                    >
+                                        <Pencil className="w-3 h-3" /> Edit Location
+                                    </button>
+                                )}
                             </div>
+                        </CardHeader>
+                        <CardContent className="p-6 min-h-[140px]">
+                            {!locationEditOpen ? (
+                                <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+                                    <div className="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center text-3xl shrink-0">📍</div>
+                                    <div className="text-center sm:text-left">
+                                        <div className="font-black text-slate-800 uppercase tracking-tight text-lg">{property.city}</div>
+                                        <p className="text-sm font-bold text-slate-400 mt-1">{property.address}</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-4 bg-indigo-50/30 p-5 rounded-2xl border-2 border-indigo-100">
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-black uppercase tracking-widest text-slate-500">Full Address</Label>
+                                        <textarea
+                                            value={locationDraft.address}
+                                            onChange={e => setLocationDraft({ ...locationDraft, address: e.target.value })}
+                                            placeholder="e.g. 42 MG Road, Bangalore, Karnataka - 560001, India"
+                                            className="w-full min-h-[80px] rounded-xl border-2 border-indigo-200 p-3 font-bold text-slate-800 focus:border-indigo-400 bg-white"
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <Label className="text-xs font-black uppercase tracking-widest text-slate-500">Auto-fill via PIN</Label>
+                                            <div className="relative">
+                                                <Input
+                                                    maxLength={6}
+                                                    onChange={e => {
+                                                        const code = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                                        if (code.length === 6) handlePincodeLookup(code);
+                                                    }}
+                                                    placeholder="Enter 6-digit PIN"
+                                                    className="h-11 rounded-xl border-2 border-indigo-200 font-bold text-slate-800 focus:border-indigo-400 bg-white"
+                                                />
+                                                {pinLoading && <div className="absolute right-3 top-3 w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />}
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                            <Label className="text-xs font-black uppercase tracking-widest text-slate-500">City</Label>
+                                            <Input
+                                                value={locationDraft.city}
+                                                onChange={e => setLocationDraft({ ...locationDraft, city: e.target.value })}
+                                                placeholder="e.g. Bangalore"
+                                                className="h-11 rounded-xl border-2 border-indigo-200 font-bold text-slate-800 focus:border-indigo-400 bg-white"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 pt-2 border-t border-indigo-100">
+                                        <button
+                                            onClick={() => setLocationEditOpen(false)}
+                                            className="flex-1 h-10 rounded-xl bg-slate-900 hover:bg-black text-white font-black text-[11px] uppercase tracking-widest transition-all active:scale-95"
+                                        >Cancel</button>
+                                        <button
+                                            onClick={() => handleSaveLocation(locationDraft)}
+                                            disabled={savingLocation}
+                                            className="flex-1 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[11px] uppercase tracking-widest transition-all disabled:opacity-50 active:scale-95"
+                                        >{savingLocation ? 'Saving...' : 'Save Location'}</button>
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -1118,7 +1453,7 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                                 placeholder="e.g. 101, B-4"
                                                 className={`h-11 rounded-xl border-2 font-bold text-slate-800 ${roomFormErrors.roomNumber ? 'border-red-400 bg-red-50' : 'border-slate-100 focus:border-emerald-300'}`}
                                                 value={roomForm.roomNumber}
-                                                onChange={e => { setRoomForm({...roomForm, roomNumber: e.target.value}); setRoomFormErrors(p => { const n = {...p}; delete n.roomNumber; return n; }); }}
+                                                onChange={e => { setRoomForm({...roomForm, roomNumber: e.target.value.replace(/[^a-zA-Z0-9\-_]/g, '')}); setRoomFormErrors(p => { const n = {...p}; delete n.roomNumber; return n; }); }}
                                             />
                                             {roomFormErrors.roomNumber && <p className="text-[10px] text-red-600 font-bold">{roomFormErrors.roomNumber}</p>}
                                         </div>
@@ -1127,17 +1462,20 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                         <div className="space-y-1.5">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Bed Type <span className="text-red-500">*</span></label>
                                             <select
-                                                className="w-full h-11 rounded-xl border-2 border-slate-100 bg-white px-3 font-bold text-slate-800 focus:border-emerald-300 focus:outline-none"
+                                                className={`w-full h-11 rounded-xl border-2 px-3 font-bold text-slate-800 bg-white focus:outline-none transition-all ${roomFormErrors.type ? 'border-red-400 text-red-600 bg-red-50' : 'border-slate-100 focus:border-emerald-300'}`}
                                                 value={roomForm.type}
                                                 onChange={e => {
                                                     const type = e.target.value;
                                                     const match = type.match(/(\d+)/);
                                                     const count = match ? match[1] : "1";
                                                     setRoomForm({...roomForm, type, availability: count});
+                                                    setRoomFormErrors(p => { const n = {...p}; delete n.type; return n; });
                                                 }}
                                             >
-                                                {['Single Sharing (1)','Double Sharing (2)','Three Sharing (3)','Four Sharing (4)','Five Sharing (5)','Six Sharing (6)'].map(t => <option key={t}>{t}</option>)}
+                                                <option value="" disabled>Select Bed Type</option>
+                                                {['Single Sharing (1)','Double Sharing (2)','Three Sharing (3)','Four Sharing (4)','Five Sharing (5)','Six Sharing (6)'].map(t => <option key={t} value={t}>{t}</option>)}
                                             </select>
+                                            {roomFormErrors.type && <p className="text-[10px] text-red-600 font-bold mt-1">{roomFormErrors.type}</p>}
                                         </div>
 
                                         {/* Monthly Rent + Beds */}
@@ -1505,7 +1843,7 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                         placeholder="e.g. 101, B-4"
                                         className="h-12 rounded-xl border-2 border-slate-100 font-bold text-slate-800 focus:border-emerald-300"
                                         value={editRoomForm.roomNumber}
-                                        onChange={e => setEditRoomForm({...editRoomForm, roomNumber: e.target.value})}
+                                        onChange={e => setEditRoomForm({...editRoomForm, roomNumber: e.target.value.replace(/[^a-zA-Z0-9\-_]/g, '')})}
                                     />
                                 </div>
                             </div>
@@ -1521,7 +1859,8 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                         setEditRoomForm({...editRoomForm, type, availability: count});
                                     }}
                                 >
-                                    {['Single Sharing (1)','Double Sharing (2)','Three Sharing (3)','Four Sharing (4)','Five Sharing (5)','Six Sharing (6)'].map(t => <option key={t}>{t}</option>)}
+                                    <option value="" disabled>Select Bed Type</option>
+                                    {['Single Sharing (1)','Double Sharing (2)','Three Sharing (3)','Four Sharing (4)','Five Sharing (5)','Six Sharing (6)'].map(t => <option key={t} value={t}>{t}</option>)}
                                 </select>
                             </div>
                         </div>
@@ -1685,24 +2024,27 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                     placeholder="e.g. 101, B-4"
                                     className={`h-12 rounded-xl border-2 font-bold text-slate-800 ${roomFormErrors.roomNumber ? 'border-red-400' : 'border-slate-100 focus:border-emerald-300'}`}
                                     value={roomForm.roomNumber}
-                                    onChange={e => { setRoomForm({...roomForm, roomNumber: e.target.value}); setRoomFormErrors(p => { const n = {...p}; delete n.roomNumber; return n; }); }}
+                                    onChange={e => { setRoomForm({...roomForm, roomNumber: e.target.value.replace(/[^a-zA-Z0-9\-_]/g, '')}); setRoomFormErrors(p => { const n = {...p}; delete n.roomNumber; return n; }); }}
                                 />
                                 {roomFormErrors.roomNumber && <p className="text-[10px] text-red-600 font-bold">{roomFormErrors.roomNumber}</p>}
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Bed Type <span className="text-red-500">*</span></label>
                                 <select
-                                    className="w-full h-12 rounded-xl border-2 border-slate-100 bg-white px-3 font-bold text-slate-800 focus:border-emerald-300 focus:outline-none"
+                                    className={`w-full h-12 rounded-xl border-2 px-3 font-bold text-slate-800 bg-white focus:outline-none transition-all ${roomFormErrors.type ? 'border-red-400 text-red-600 bg-red-50' : 'border-slate-100 focus:border-emerald-300'}`}
                                     value={roomForm.type}
                                     onChange={e => {
                                         const type = e.target.value;
                                         const match = type.match(/(\d+)/);
                                         const count = match ? match[1] : "1";
                                         setRoomForm({...roomForm, type, availability: count});
+                                        setRoomFormErrors(p => { const n = {...p}; delete n.type; return n; });
                                     }}
                                 >
-                                    {['Single Sharing (1)','Double Sharing (2)','Three Sharing (3)','Four Sharing (4)','Five Sharing (5)','Six Sharing (6)'].map(t => <option key={t}>{t}</option>)}
+                                    <option value="" disabled>Select Bed Type</option>
+                                    {['Single Sharing (1)','Double Sharing (2)','Three Sharing (3)','Four Sharing (4)','Five Sharing (5)','Six Sharing (6)'].map(t => <option key={t} value={t}>{t}</option>)}
                                 </select>
+                                {roomFormErrors.type && <p className="text-[10px] text-red-600 font-bold mt-1">{roomFormErrors.type}</p>}
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
@@ -1751,7 +2093,7 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                         </div>
                         <div className="flex gap-3 pt-2">
                             <button
-                                onClick={() => { setIsAddRoomOpen(false); setRoomForm({ roomNumber: '', type: 'Single Sharing (1)', price: '', availability: '1', depositMonths: 0 }); setRoomFormErrors({}); }}
+                                onClick={() => { setIsAddRoomOpen(false); setRoomForm({ roomNumber: '', type: '', price: '', availability: '', depositMonths: 0 }); setRoomFormErrors({}); }}
                                 className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-sm bg-red-600 hover:bg-red-700 text-white transition-all active:scale-95 shadow-sm"
                             >
                                 CANCEL

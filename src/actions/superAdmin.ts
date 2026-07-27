@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 import { withSafeAction } from "@/lib/safe-action";
 
 /**
@@ -12,7 +12,7 @@ import { withSafeAction } from "@/lib/safe-action";
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateAdminDashboard } from "@/lib/cache";
 import { requirePermission } from "@/actions/rbac";
 import { logAuditEvent } from "@/lib/audit";
 import { TENANT_STATUS } from "@/lib/constants/statuses";
@@ -493,8 +493,7 @@ async function _updatePlatformConfig(config: {
         description: `Config changed: ${Object.entries(config).map(([k, v]) => `${k}=${v}`).join(', ')}`,
     });
 
-    revalidatePath('/dashboard/admin/platform-fees');
-    revalidatePath('/dashboard/admin/settings');
+     revalidateAdminDashboard();
     return updated;
 }
 
